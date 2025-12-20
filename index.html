@@ -756,6 +756,26 @@
     // 3. Run on initial page load
     checkNetwork();
 </script>
+ 
+<script>
+(function () {
+    const requiredKeys = [
+        'AV_ledger_account_key',
+        'AV_ledger_username',
+        'AV_ledger_auth_status'
+    ];
+
+    const allExist = requiredKeys.every(key => {
+        const value = localStorage.getItem(key);
+        return value !== null && value !== '';
+    });
+
+    if (allExist) {
+        // Prevent going back to login page
+        window.location.replace('dashboard.html');
+    }
+})();
+</script>
 
 
 </body>
