@@ -140,21 +140,13 @@
         };
         
       const formatDate = (date) => {
-    // Ensures local date (no UTC shift issues)
+    // This ensures we get the local date string YYYY-MM-DD 
+    // without UTC timezone shifts affecting the day
     const d = new Date(date);
-
     const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
     const day = String(d.getDate()).padStart(2, '0');
-
-    const monthNames = [
-        "January", "February", "March", "April",
-        "May", "June", "July", "August",
-        "September", "October", "November", "December"
-    ];
-
-    const month = monthNames[d.getMonth()];
-
-    return `${year} ${month} ${day}`;
+    return `${year}-${month}-${day}`;
 };
 
 const getStartOfWeek = (date) => {
@@ -1253,6 +1245,7 @@ padding-bottom: env(safe-area-inset-bottom, 20px);
     }
 })();
 </script>
+
 <div id="network-overlay" style="display: none;">
     <div class="loader-content">
         <div class="spinner"></div>
