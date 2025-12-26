@@ -342,7 +342,7 @@
             }, []);
 
 
-            const fetchData = useCallback(async (accName, user) => {
+                        const fetchData = useCallback(async (accName, user) => {
                 if (!accName || !user) {
                     setData(d => ({ ...d, isLoading: false, error: "Account or username not found in local storage." }));
                     return;
@@ -359,16 +359,15 @@
                     const datesData = statsSnap.val() || {};
                     const datesKeys = Object.keys(datesData).sort(); // YYYY-MM-DD sorted ascending
                     
-                    // Determine the oldest data date for full period list generation
                     const oldestDateKey = datesKeys.length > 0 ? datesKeys[0] : null;
 
-                    // 3. Find Inventory As At Date (Balanced or Latest)
+                    // 3. Find Inventory As At Date (Latest Balanced)
                     let inventoryDate = null;
                     let inventoryItems = {};
                     
+                    // Search backwards for the most recent balanced day
                     for (let i = datesKeys.length - 1; i >= 0; i--) {
                         const dateKey = datesKeys[i];
-                        
                         if (datesData[dateKey].balanced === true) {
                             inventoryDate = dateKey;
                             inventoryItems = datesData[dateKey].items || {};
@@ -376,6 +375,7 @@
                         }
                     }
 
+                    // Fallback to latest date if nothing is balanced yet
                     if (!inventoryDate && datesKeys.length > 0) {
                         const latestDateKey = datesKeys[datesKeys.length - 1];
                         inventoryDate = latestDateKey;
@@ -389,19 +389,17 @@
                     // 4. Process Inventory Items & Purchase Data
                     const finalItems = [];
                     const purchaseDataByPeriod = {}; 
-                    const purchasePeriods = new Set(); // To track periods with actual purchases
+                    const purchasePeriods = new Set();
                     let totalStockUnits = 0;
                     let totalExpectedRevenue = 0;
                     let totalPurchasedUnits = 0;
                     let totalPurchasedValue = 0;
-                    
                     const itemDataMap = {}; 
 
                     Object.entries(inventoryItems).forEach(([itemId, data]) => {
                         const stock = data.closing || 0; 
                         const price = data.price || 0;
                         const costPrice = data.lastOrderCost || 0;
-                        // Use the name from the inventory item map, falling back to a generic ID if name is missing
                         const name = data.name || `Item ${itemId}`; 
 
                         totalStockUnits += stock;
@@ -415,10 +413,8 @@
                             costPrice: costPrice,
                             status: stock > 0 ? "Healthy" : "Low",
                         });
-                        // CRITICAL: Populate itemDataMap correctly with the name, price, and costPrice
                         itemDataMap[itemId] = { name: name, price, costPrice };
                     });
-
 
                     // Process Purchases from all dates
                     for (const dateKey of datesKeys) {
@@ -428,7 +424,6 @@
                         Object.entries(dayData).forEach(([itemId, data]) => {
                             const orders = data.orders || 0;
                             if (orders > 0) {
-                                // Use itemDataMap lookup for name.
                                 const itemInfo = itemDataMap[itemId] || { 
                                     name: data.name || `Item ${itemId}`, 
                                     price: data.price || 0, 
@@ -437,18 +432,14 @@
 
                                 const purchaseCost = itemInfo.costPrice || 0; 
                                 const purchasePrice = itemInfo.price || 0;
-                                
                                 const value = orders * (gfaEnabled ? purchaseCost : purchasePrice);
                                 
                                 totalPurchasedUnits += orders;
                                 totalPurchasedValue += value;
-                                purchasePeriods.add(periodKey); // Track month with data
+                                purchasePeriods.add(periodKey);
 
                                 if (!purchaseDataByPeriod[periodKey]) {
-                                    purchaseDataByPeriod[periodKey] = {
-                                        period: periodKey,
-                                        purchases: [],
-                                    };
+                                    purchaseDataByPeriod[periodKey] = { period: periodKey, purchases: [] };
                                 }
                                 purchaseDataByPeriod[periodKey].purchases.push({
                                     id: `${dateKey}-${itemId}`, 
@@ -461,73 +452,61 @@
                             }
                         });
                     }
-const today = new Date();
-const yesterday = new Date(today);
-yesterday.setDate(today.getDate() - 1);
-const yesterdayStr = yesterday.toISOString().split('T')[0];
 
-                    // 5. Fetch, Calculate, & Clean Empty Bottles
+                    // 5. Fetch, Calculate, & Clean Empty Bottles (BALANCED ONLY)
                     const emptiesSnap = await db.ref(emptiesPath).once('value');
-                    const emptiesData = emptiesSnap.val() || {};
+                    const emptiesRaw = emptiesSnap.val() || {};
                     const finalEmpties = [];
                     let totalEmptiesUnits = 0;
-                    
-                    const emptiesPathBase = emptiesPath; // Base path for the delete function
 
-                    Object.entries(emptiesData).forEach(([itemId, emptyItemData]) => {
-                        
-                        // *** NEW DATA CLEANUP LOGIC ***
-                        // Check if the item ID from empties_tracking exists in the itemDataMap (from avanti_stats).
+                    Object.entries(emptiesRaw).forEach(([itemId, config]) => {
+                        // Data Cleanup: Remove tracking if item doesn't exist in system
                         if (!itemDataMap[itemId] || !itemDataMap[itemId].name) {
-                            console.warn(`Obsolete empties item found: ${itemId}. Deleting from database.`);
-                            
-                            // Delete the obsolete node from the database
-                            deleteEmptyBottleItem(emptiesPathBase, itemId);
-                            
-                            // Skip processing this item further in the frontend
+                            deleteEmptyBottleItem(emptiesPath, itemId);
                             return; 
                         }
-                        // *** END NEW DATA CLEANUP LOGIC ***
 
-                        const initialCount = emptyItemData.initialCount || 0;
-                        const startDateKey = emptyItemData.startDate;
-                        if (!startDateKey) return; 
+                        const initialCount = config.initialCount || 0;
+                        const startDate = config.startDate;
+                        if (!startDate) return; 
 
-                        let emptiesCount = initialCount;
+                        let runningEmpties = initialCount;
                         
-                        datesKeys.forEach(dateKey => {
-    if (dateKey >= startDateKey && dateKey <= yesterdayStr) {
-        const dayData = datesData[dateKey].items && datesData[dateKey].items[itemId];
-        if (dayData) {
-            const opening = dayData.opening || 0;
-            const orders = dayData.orders || 0;
-            const closing = dayData.closing || 0;
+                        // Loop through all dates to find empty bottle movement
+                        datesKeys.forEach(dk => {
+                            const dayObj = datesData[dk];
+                            // REQUIREMENT: Must be after start date AND status must be balanced
+                            if (dk >= startDate && dayObj?.balanced === true) {
+                                const itemDay = dayObj.items?.[itemId];
+                                if (itemDay) {
+                                    const opening = itemDay.opening || 0;
+                                    const orders = itemDay.orders || 0;
+                                    const closing = itemDay.closing || 0;
 
-            const sales = opening + orders - closing;
-            emptiesCount += (sales - orders);
-        }
-    }
-});
+                                    const sales = opening + orders - closing;
+                                    // Formula: +Sales (gain empty) - Orders (give empty to supplier)
+                                    runningEmpties += (sales - orders);
+                                }
+                            }
+                        });
                         
-                        const units = Math.max(0, emptiesCount);
+                        const units = Math.max(0, runningEmpties);
                         totalEmptiesUnits += units;
 
                         finalEmpties.push({
-                            item: itemDataMap[itemId].name, // Safe to use map name here due to check above
+                            item: itemDataMap[itemId].name,
                             units: units,
                         });
                     });
 
-                    // We still calculate a period list, but the navigation won't use it for bounds
                     const fullPeriodList = generateFullPeriodList(oldestDateKey);
-
 
                     setData({
                         items: finalItems,
                         purchases: Object.values(purchaseDataByPeriod).flatMap(p => p.purchases), 
                         empties: finalEmpties,
                         periodList: fullPeriodList, 
-                        purchasePeriods: purchasePeriods, // Pass periods that actually have purchases
+                        purchasePeriods: purchasePeriods,
                         totalStockUnits: totalStockUnits,
                         totalExpectedRevenue: totalExpectedRevenue,
                         totalEmptiesUnits: totalEmptiesUnits, 
@@ -544,7 +523,8 @@ const yesterdayStr = yesterday.toISOString().split('T')[0];
                     setData(d => ({ ...d, isLoading: false, error: "Failed to load data from Firebase." }));
                 }
 
-            }, [getTargetProfile, getGfaSetting, getBasePaths, deleteEmptyBottleItem]); // Added deleteEmptyBottleItem dependency
+            }, [getTargetProfile, getGfaSetting, getBasePaths, deleteEmptyBottleItem]);
+
 
 
             useEffect(() => {
