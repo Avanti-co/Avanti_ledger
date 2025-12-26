@@ -522,6 +522,7 @@ async function fetchData() {
         const cleanupUpdates = {};
         emptiesData = [];
 
+                // --- UPDATED CALCULATION LOGIC ---
         for (const [id, e] of Object.entries(emptiesRaw)) {
             if (!allHistoricalItemIds.has(id)) {
                 cleanupUpdates[`${basePath}/empties_tracking/${id}`] = null;
@@ -530,14 +531,17 @@ async function fetchData() {
 
             let count = e.initialCount || 0;
             datesKeys.forEach(dk => {
-    if (dk >= e.startDate && dk <= yesterdayStr) {
-        const day = fullStatsData[dk]?.items?.[id];
-        if (day) {
-            const sales = (day.opening || 0) + (day.orders || 0) - (day.closing || 0);
-            count += (sales - (day.orders || 0));
-        }
-    }
-});
+                const dayObj = fullStatsData[dk];
+                // ONLY calculate if date is >= start AND status is balanced
+                if (dk >= e.startDate && dayObj?.balanced === true) {
+                    const day = dayObj.items?.[id];
+                    if (day) {
+                        const sales = (day.opening || 0) + (day.orders || 0) - (day.closing || 0);
+                        // Sales add to empties, Orders (purchases) remove empties
+                        count += (sales - (day.orders || 0));
+                    }
+                }
+            });
 
             const name = Object.values(fullStatsData).reverse()
                 .find(d => d.items?.[id])?.items[id].name || "Unknown";
@@ -547,11 +551,17 @@ async function fetchData() {
 
         if (Object.keys(cleanupUpdates).length > 0) db.ref().update(cleanupUpdates);
 
-        const sourceDate = yesterdayToggle.checked ? yesterdayStr : (datesKeys.findLast(k => fullStatsData[k].balanced) || today);
+        // Find the most recent date that has been balanced
+        const latestBalancedDate = [...datesKeys].reverse().find(dk => fullStatsData[dk]?.balanced === true);
+        
+        // Use yesterday if toggled, otherwise use the latest balanced date
+        const sourceDate = yesterdayToggle.checked ? yesterdayStr : (latestBalancedDate || today);
+        
         const dayData = fullStatsData[sourceDate]?.items || {};
         inventoryData = Object.entries(dayData).map(([id, item]) => ({
             id, name: item.name, stock: item.closing || 0, price: item.price || 0
         }));
+
 
         renderUI(sourceDate);
         
@@ -704,19 +714,21 @@ window.openItemModal = function(id) {
         startSpan.textContent = "Not Tracking";
     }
 
-    const calculateLocalEmpties = (initialVal, startDate) => {
-    let count = initialVal;
-    datesKeys.forEach(dk => {
-        if (dk >= startDate && dk <= yesterdayStr) {
-            const day = fullStatsData[dk]?.items?.[id];
-            if (day) {
-                const sales = (day.opening || 0) + (day.orders || 0) - (day.closing || 0);
-                count += (sales - (day.orders || 0));
+        const calculateLocalEmpties = (initialVal, startDate) => {
+        let count = initialVal;
+        datesKeys.forEach(dk => {
+            const dayObj = fullStatsData[dk];
+            // Match the logic: Start date check + Balanced status check
+            if (dk >= startDate && dayObj?.balanced === true) {
+                const day = dayObj.items?.[id];
+                if (day) {
+                    const sales = (day.opening || 0) + (day.orders || 0) - (day.closing || 0);
+                    count += (sales - (day.orders || 0));
+                }
             }
-        }
-    });
-    return Math.max(0, count);
-};
+        });
+        return Math.max(0, count);
+    };
 
     toggle.onchange = async (e) => {
         const accName = localStorage.getItem('AV_ledger_account_key');
