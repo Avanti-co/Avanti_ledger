@@ -5,22 +5,21 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Avanti Ledger | Loading</title>
 
-
-
-    <!-- GSAP -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
-<link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#3f72af">
+    
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#3f72af">
 
-<script>
-  if ("serviceWorker" in navigator) {
-    window.addEventListener("load", () => {
-      navigator.serviceWorker.register("/service-worker.js")
-        .then(reg => console.log("Service worker registered:", reg))
-        .catch(err => console.error("Service worker error:", err));
-    });
-  }
-</script>
+    <script>
+        if ("serviceWorker" in navigator) {
+            window.addEventListener("load", () => {
+                navigator.serviceWorker.register("/service-worker.js")
+                    .then(reg => console.log("Service worker registered:", reg))
+                    .catch(err => console.error("Service worker error:", err));
+            });
+        }
+    </script>
+
     <style>
         body {
             margin: 0;
@@ -30,12 +29,13 @@
             align-items: center;
             background: #154C8E;
             overflow: hidden;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
         }
 
         .logo-container {
             position: relative;
             width: 260px;
-            height: 300px; /* space for loader */
+            height: 300px;
             display: flex;
             justify-content: center;
             align-items: center;
@@ -49,7 +49,7 @@
             will-change: transform, opacity;
         }
 
-        /* Loader */
+        /* Loader Track */
         .loader {
             position: absolute;
             bottom: 10px;
@@ -60,6 +60,7 @@
             overflow: hidden;
         }
 
+        /* Animated Progress Bar */
         .loader-progress {
             height: 100%;
             width: 0%;
@@ -72,7 +73,6 @@
     <div class="logo-container">
         <img id="ledger-logo" src="ledger-logo.png" alt="Ledger" class="logo">
 
-        <!-- Loading bar -->
         <div class="loader">
             <div class="loader-progress" id="loaderProgress"></div>
         </div>
@@ -82,22 +82,41 @@
         const logo = document.getElementById("ledger-logo");
         const loader = document.getElementById("loaderProgress");
 
+        /**
+         * Checks LocalStorage for specific keys and redirects accordingly
+         */
+        function handleNavigation() {
+            const accountKey = localStorage.getItem("AV_ledger_account_key");
+            const username = localStorage.getItem("AV_ledger_username");
+            const authStatus = localStorage.getItem("AV_ledger_auth_status");
+
+            // Logic: All three keys must exist and not be null/empty
+            if (accountKey && username && authStatus) {
+                window.location.href = "dashboard.html";
+            } else {
+                window.location.href = "index.html";
+            }
+        }
+
+        // Initialize GSAP Timeline
         const tl = gsap.timeline({
             onUpdate: () => {
+                // Sync loader bar width with timeline progress
                 loader.style.width = `${tl.progress() * 100}%`;
             },
             onComplete: () => {
-                window.location.href = "index.html";
+                // Once animation is finished, check storage and redirect
+                handleNavigation();
             }
         });
 
-        // Fade in logo
+        // 1. Entrance: Fade in and scale up logo
         tl.fromTo(logo,
             { scale: 0.9, opacity: 0 },
             { scale: 1, opacity: 1, duration: 1.2, ease: "power2.out" }
         )
 
-        // Pulse while loading
+        // 2. Pulse: Smoothly scale up and down (Repeats 2 times = 3 pulses total)
         .to(logo, {
             scale: 1.06,
             duration: 1.8,
@@ -106,7 +125,7 @@
             ease: "sine.inOut"
         })
 
-        // Final fade out
+        // 3. Exit: Final fade out before navigation
         .to(logo, {
             opacity: 0,
             duration: 0.8,
