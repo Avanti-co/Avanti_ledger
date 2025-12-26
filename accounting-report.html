@@ -148,21 +148,21 @@
             return result;
         };
 
-        const getStartOfWeek = (date) => {
-            const d = new Date(date);
-            const day = d.getDay();
-            const diff = d.getDate() - day + (day === 0 ? -6 : 1); 
-            const start = new Date(d.setDate(diff));
-            start.setHours(0, 0, 0, 0);
-            return start;
-        };
-        
-        const getEndOfWeek = (date) => {
-            const start = getStartOfWeek(date);
-            const end = addDays(start, 6);
-            end.setHours(23, 59, 59, 999);
-            return end;
-        };
+        // ISO-8601 week: Monday (1) → Sunday (7)
+const getStartOfWeek = (date) => {
+    const d = new Date(date);
+    const day = d.getDay() || 7; // Convert Sunday (0) → 7
+    d.setDate(d.getDate() - day + 1); // Move to Monday
+    d.setHours(0, 0, 0, 0);
+    return d;
+};
+
+const getEndOfWeek = (startOfWeek) => {
+    const d = new Date(startOfWeek);
+    d.setDate(d.getDate() + 6); // Monday + 6 = Sunday
+    d.setHours(23, 59, 59, 999);
+    return d;
+};
 
         // --- ACCOUNTING LOGIC & DATA FETCHING HOOK ---
 
@@ -368,9 +368,9 @@ const ReportsUnavailableInline = () => (
         
         const WeekNavigation = ({ startDate, endDate, setStartDate }) => {
             const navigateWeek = (direction) => {
-                const newStart = addDays(startDate, direction * 7);
-                setStartDate(newStart);
-            };
+    const newStart = addDays(startDate, direction * 7);
+    setStartDate(newStart);
+};
 
             return (
                <div className="flex justify-between items-center p-3  sticky top-0 z-10 bg-[#366497] backdrop-blur-md border-b border-white/20">
@@ -901,9 +901,8 @@ padding-bottom: env(safe-area-inset-bottom, 20px);
 
         function AvantiLedger() {
             const today = new Date();
-            const [startDate, setStartDate] = useState(getStartOfWeek(today));
-            const endDate = getEndOfWeek(startDate);
-
+const [startDate, setStartDate] = useState(getStartOfWeek(today));
+const endDate = getEndOfWeek(startDate);
             const startDateStr = formatDate(startDate);
             const endDateStr = formatDate(endDate);
 
