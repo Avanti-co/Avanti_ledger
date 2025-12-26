@@ -420,6 +420,7 @@ yesterday.setDate(today.getDate() - 1);
 const yesterdayStr = yesterday.toISOString().split('T')[0];
             
             // --- INVENTORY METRICS CALCULATOR (FIXED) ---
+                        // --- INVENTORY METRICS CALCULATOR (WITH BALANCED LOGIC FOR EMPTIES) ---
             const calculateInventoryMetrics = useCallback((allDatesData, emptiesData) => {
                 let totalStockUnits = 0;
                 let totalExpectedRevenue = 0;
@@ -428,14 +429,22 @@ const yesterdayStr = yesterday.toISOString().split('T')[0];
                 
                 const datesKeys = Object.keys(allDatesData).sort();
 
+                // 1. Find the latest BALANCED day for Stock Inventory
                 let latestSnapshot = {};
                 for (let i = datesKeys.length - 1; i >= 0; i--) {
                     const dateKey = datesKeys[i];
-                    if (allDatesData[dateKey] && (allDatesData[dateKey].balanced === true || i === datesKeys.length - 1)) {
+                    // We check if the day is balanced
+                    if (allDatesData[dateKey] && allDatesData[dateKey].balanced === true) {
                         inventoryDate = dateKey;
                         latestSnapshot = allDatesData[dateKey].items || {};
-                        if (allDatesData[dateKey].balanced === true) break;
+                        break; // Stop at the most recent balanced day
                     }
+                }
+                
+                // Fallback: If no day is balanced, use the last available day but mark as N/A
+                if (inventoryDate === 'N/A' && datesKeys.length > 0) {
+                    const lastKey = datesKeys[datesKeys.length - 1];
+                    latestSnapshot = allDatesData[lastKey].items || {};
                 }
                 
                 const itemDataMap = {};
@@ -449,8 +458,9 @@ const yesterdayStr = yesterday.toISOString().split('T')[0];
                     itemDataMap[itemId] = { name, price, stock, lastOrderCost: data.lastOrderCost || 0 };
                 });
                 
+                // 2. Calculate Empties (Strictly using BALANCED days only)
                 Object.entries(emptiesData).forEach(([itemId, emptyItemData]) => {
-                    
+                    // Only calculate if the item currently exists in active inventory
                     if (!itemDataMap[itemId]) return;
                     
                     const initialCount = emptyItemData.initialCount || 0;
@@ -459,19 +469,24 @@ const yesterdayStr = yesterday.toISOString().split('T')[0];
 
                     let emptiesCount = initialCount;
                     
-                    datesKeys
-  .filter(dateKey => dateKey >= startDateKey && dateKey <= yesterdayStr)
-  .forEach(dateKey => {
-      const dayData = allDatesData[dateKey].items && allDatesData[dateKey].items[itemId];
-      if (dayData) {
-          const opening = dayData.opening || 0;
-          const orders = dayData.orders || 0;
-          const closing = dayData.closing || 0;
+                    // Filter dates: must be >= start date AND explicitly marked as balanced
+                    datesKeys.forEach(dateKey => {
+                        const dayObj = allDatesData[dateKey];
+                        
+                        if (dateKey >= startDateKey && dayObj?.balanced === true) {
+                            const itemDay = dayObj.items && dayObj.items[itemId];
+                            if (itemDay) {
+                                const opening = itemDay.opening || 0;
+                                const orders = itemDay.orders || 0;
+                                const closing = itemDay.closing || 0;
 
-          const sales = opening + orders - closing;
-          emptiesCount += (sales - orders);
-      }
-  });
+                                // Formula: Gain empty on Sale, Lose empty on Purchase (Orders)
+                                const sales = opening + orders - closing;
+                                emptiesCount += (sales - orders);
+                            }
+                        }
+                    });
+                    
                     totalEmptiesUnits += Math.max(0, emptiesCount);
                 });
                 
@@ -481,7 +496,8 @@ const yesterdayStr = yesterday.toISOString().split('T')[0];
                     totalEmptiesUnits, 
                     inventoryDate: inventoryDate === 'N/A' ? 'N/A' : formatDateForDisplay(inventoryDate),
                 };
-            }, []);
+            }, [yesterdayStr]); // Ensure yesterdayStr is accessible or defined in scope
+
             
             const getFirebaseRef = async (accountKey, username) => {
                 if (!database) {
