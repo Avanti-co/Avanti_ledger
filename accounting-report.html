@@ -18,6 +18,7 @@
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#3f72af">
 
+
 <script>
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", () => {
@@ -138,31 +139,45 @@
             return result;
         };
         
-        const formatDate = (date) => {
-            return new Date(date).toISOString().split('T')[0];
-        };
+      const formatDate = (date) => {
+    // Ensures local date (no UTC shift issues)
+    const d = new Date(date);
 
-        const addDays = (date, days) => {
-            const result = new Date(date);
-            result.setDate(result.getDate() + days);
-            return result;
-        };
+    const year = d.getFullYear();
+    const day = String(d.getDate()).padStart(2, '0');
 
-        // ISO-8601 week: Monday (1) → Sunday (7)
+    const monthNames = [
+        "January", "February", "March", "April",
+        "May", "June", "July", "August",
+        "September", "October", "November", "December"
+    ];
+
+    const month = monthNames[d.getMonth()];
+
+    return `${year} ${month} ${day}`;
+};
+
 const getStartOfWeek = (date) => {
     const d = new Date(date);
-    const day = d.getDay() || 7; // Convert Sunday (0) → 7
-    d.setDate(d.getDate() - day + 1); // Move to Monday
-    d.setHours(0, 0, 0, 0);
-    return d;
+    const day = d.getDay(); 
+    // Find Monday: If Sun(0), move back 6. If others, move back (day - 1)
+    const diff = d.getDate() - (day === 0 ? 6 : day - 1);
+    const start = new Date(d.getFullYear(), d.getMonth(), diff);
+    start.setHours(0, 0, 0, 0);
+    return start;
 };
 
-const getEndOfWeek = (startOfWeek) => {
-    const d = new Date(startOfWeek);
-    d.setDate(d.getDate() + 6); // Monday + 6 = Sunday
-    d.setHours(23, 59, 59, 999);
-    return d;
+const getEndOfWeek = (date) => {
+    // 1. Get the start Monday first
+    const start = getStartOfWeek(date);
+    // 2. Clone it so we don't mutate the original
+    const end = new Date(start);
+    // 3. Add EXACTLY 6 days to get to Sunday (Mon + 6 = Sun)
+    end.setDate(start.getDate() + 6);
+    end.setHours(23, 59, 59, 999);
+    return end;
 };
+
 
         // --- ACCOUNTING LOGIC & DATA FETCHING HOOK ---
 
@@ -368,9 +383,14 @@ const ReportsUnavailableInline = () => (
         
         const WeekNavigation = ({ startDate, endDate, setStartDate }) => {
             const navigateWeek = (direction) => {
-    const newStart = addDays(startDate, direction * 7);
-    setStartDate(newStart);
+    // direction is -1 or 1.
+    setStartDate(prevDate => {
+        const newDate = new Date(prevDate);
+        newDate.setDate(newDate.getDate() + (direction * 7));
+        return newDate;
+    });
 };
+
 
             return (
                <div className="flex justify-between items-center p-3  sticky top-0 z-10 bg-[#366497] backdrop-blur-md border-b border-white/20">
@@ -901,8 +921,9 @@ padding-bottom: env(safe-area-inset-bottom, 20px);
 
         function AvantiLedger() {
             const today = new Date();
-const [startDate, setStartDate] = useState(getStartOfWeek(today));
-const endDate = getEndOfWeek(startDate);
+            const [startDate, setStartDate] = useState(getStartOfWeek(today));
+            const endDate = getEndOfWeek(startDate);
+
             const startDateStr = formatDate(startDate);
             const endDateStr = formatDate(endDate);
 
