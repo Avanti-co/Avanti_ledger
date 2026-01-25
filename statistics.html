@@ -1131,31 +1131,33 @@ function setupDataListener() {
     dataListenerActive = true;
     
     currentDataRef.on('value', (snapshot) => {
-        const remote = snapshot.val();
-        
-        if (remote && remote.dates) {
-            state.dates = remote.dates || {};
-            if (remote.currentDate && remote.currentDate !== state.currentDate) {
-                 // Only update currentDate if it exists remotely
-                 state.currentDate = remote.currentDate;
-            }
-            console.log(`Real-time update received from ${REMOTE_DB_PATH}`);
-        } else if (Object.keys(state.dates).length === 0) {
-            // If the remote is empty and local state is empty, initialize default.
-            initializeDefault();
-            console.log('Real-time listener: No remote data found, initialized default structure locally.');
+    const remote = snapshot.val();
+    
+    if (remote && remote.dates) {
+        state.dates = remote.dates || {};
+        if (remote.currentDate) {
+            state.currentDate = remote.currentDate;
         }
-        
-        // Ensure the current date is valid after any update
-        if(!state.currentDate) state.currentDate = todayKey();
-        ensureDateExists(state.currentDate);
+        console.log(`Selective update received for ${state.currentDate}`);
+    } else if (Object.keys(state.dates).length === 0) {
+        initializeDefault();
+    }
+    
+    if(!state.currentDate) state.currentDate = todayKey();
+    ensureDateExists(state.currentDate);
 
-        // Re-render the UI based on the new state
-        renderAll();
-    }, (error) => {
-        console.error("Firebase Real-time Listener Failed:", error);
-        dataListenerActive = false;
-    });
+    // SELECTIVE RENDERING:
+    renderDateDisplay();       // Simple text update
+    syncTableToState();        // Atomic table update
+    renderExpensesIncomes();   // Finance section
+    updateTotalsNumbers();     // Summary update
+    
+    // Close dropdown only on explicit actions, not background syncs
+}, (error) => {
+    console.error("Firebase Real-time Listener Failed:", error);
+    dataListenerActive = false;
+});
+
 }
 
 
@@ -1344,80 +1346,155 @@ function directOrderEntry(itemId) {
 }
 
 
-function renderTable(){
+function syncTableToState() {
     const tbody = document.getElementById('statsTableBody');
-    if(!tbody) return;
-    tbody.innerHTML = '';
+    if (!tbody) return;
+
     const dateObj = state.dates[state.currentDate] || makeEmptyDate();
     const items = Object.values(dateObj.items || {});
-    const filter = (document.getElementById('searchItemInput')||{value:''}).value.trim().toUpperCase();
+    const filter = (document.getElementById('searchItemInput') || { value: '' }).value.trim().toUpperCase();
 
-    let totalSales = 0;
-    items.forEach(item=>{
-        if(filter && !item.name.toUpperCase().includes(filter)) return;
-        const tr = document.createElement('tr');
-        tr.dataset.itemId = item.id;
-
-        // select col
-        const tdSelect = document.createElement('td'); tdSelect.className = 'select-col';
-        if(state.selectMode) tdSelect.classList.remove('hidden'); else tdSelect.classList.add('hidden');
-        const cb = document.createElement('input'); cb.type='checkbox';
-        cb.checked = state.selectedForDelete.has(item.id);
-        cb.onchange = (e)=>{ if(e.target.checked) state.selectedForDelete.add(item.id); else state.selectedForDelete.delete(item.id); updateSelectionUI(); };
-        tdSelect.appendChild(cb);
-        tr.appendChild(tdSelect);
-
-        const tdItem = document.createElement('td'); tdItem.className='editable'; tdItem.dataset.col='item'; tdItem.contentEditable = true; tdItem.spellcheck=false;
-        tdItem.textContent = item.name;
-        tdItem.onblur = ()=>{
-            const newName = tdItem.textContent.trim() || 'new item';
-            if(state.dates[state.currentDate] && state.dates[state.currentDate].items[item.id]){
-                state.dates[state.currentDate].items[item.id].name = newName;
-            }
-            propagateNameAcrossDates(item.id, newName);
-            persistItemChange(item.id);
-        };
-        tdItem.onkeydown = (e)=>{ if(e.key==='Enter'){ e.preventDefault(); tdItem.blur(); } };
-        tr.appendChild(tdItem);
-
-        const tdOpening = document.createElement('td'); tdOpening.className='editable'; tdOpening.dataset.col='openingStock'; tdOpening.contentEditable = true; tdOpening.textContent = item.opening;
-        tdOpening.onblur = ()=>{ item.opening = sanitizeNumber(tdOpening.textContent); persistItemChange(item.id); };
-        tdOpening.onkeydown = (e)=>{ if(e.key==='Enter'){ e.preventDefault(); tdOpening.blur(); } };
-        tr.appendChild(tdOpening);
-
-        const tdOrders = document.createElement('td'); tdOrders.dataset.col='orders'; tdOrders.style.cursor='pointer'; tdOrders.onclick = ()=>handleOrdersClick(item.id);
-        tdOrders.textContent = item.orders;
-        tr.appendChild(tdOrders);
-
-        const totalStock = Number(item.opening) + Number(item.orders);
-        const tdTotalStock = document.createElement('td'); tdTotalStock.dataset.col='totalStock'; tdTotalStock.textContent = totalStock;
-        tr.appendChild(tdTotalStock);
-
-        const tdPrice = document.createElement('td'); tdPrice.className='editable'; tdPrice.dataset.col='price'; tdPrice.contentEditable=true; tdPrice.textContent = item.price;
-        tdPrice.onblur = ()=>{ const old = item.price; item.price = sanitizeNumber(tdPrice.textContent); if(item.price !== old) propagatePriceToFuture(item.id, item.price); persistItemChange(item.id); };
-        tdPrice.onkeydown = (e)=>{ if(e.key==='Enter'){ e.preventDefault(); tdPrice.blur(); } };
-        tr.appendChild(tdPrice);
-
-        const tdClosing = document.createElement('td'); tdClosing.className='editable'; tdClosing.dataset.col='closingStock'; tdClosing.contentEditable=true; tdClosing.textContent = item.closing;
-        tdClosing.onblur = ()=>{ item.closing = sanitizeNumber(tdClosing.textContent); persistItemChange(item.id); propagateClosingToNext(item.id); };
-        tdClosing.onkeydown = (e)=>{ if(e.key==='Enter'){ e.preventDefault(); tdClosing.blur(); } };
-        tr.appendChild(tdClosing);
-
-        const sales = Math.max(0, totalStock - Number(item.closing));
-        const tdSales = document.createElement('td'); tdSales.dataset.col='sales'; tdSales.textContent = sales;
-        tr.appendChild(tdSales);
-
-        const total = sales * Number(item.price);
-        const tdTotal = document.createElement('td'); tdTotal.dataset.col='total'; tdTotal.textContent = total;
-        tr.appendChild(tdTotal);
-
-        tbody.appendChild(tr);
-        totalSales += Number(total);
+    // 1. Remove rows that are no longer in the data
+    const existingRows = tbody.querySelectorAll('tr[data-item-id]');
+    existingRows.forEach(row => {
+        const id = row.dataset.itemId;
+        if (!dateObj.items[id]) row.remove();
     });
 
-    const totEl = document.getElementById('totalSalesAmount');
-    if(totEl) totEl.textContent = "K"+totalSales;
+    // 2. Update or Add rows
+    items.forEach(item => {
+        if (filter && !item.name.toUpperCase().includes(filter)) return;
+
+        let tr = tbody.querySelector(`tr[data-item-id="${item.id}"]`);
+        
+        if (!tr) {
+            // Create the row once if it doesn't exist
+            tr = createRowElement(item);
+            tbody.appendChild(tr);
+        } else {
+            // Only update values if the user isn't currently typing in that cell
+            updateRowValues(tr, item);
+        }
+    });
+
     updateTotalsNumbers();
+}
+
+function updateRowValues(tr, item) {
+    const totalStock = Number(item.opening) + Number(item.orders);
+    const sales = Math.max(0, totalStock - Number(item.closing));
+    const total = sales * Number(item.price);
+
+    // Helper to update text ONLY if it changed and isn't focused
+    const safeUpdate = (colSelector, newValue) => {
+        const cell = tr.querySelector(`td[data-col="${colSelector}"]`);
+        if (cell && document.activeElement !== cell && cell.textContent != newValue) {
+            cell.textContent = newValue;
+        }
+    };
+
+    safeUpdate('item', item.name);
+    safeUpdate('openingStock', item.opening);
+    safeUpdate('orders', item.orders);
+    safeUpdate('totalStock', totalStock);
+    safeUpdate('price', item.price);
+    safeUpdate('closingStock', item.closing);
+    safeUpdate('sales', sales);
+    safeUpdate('total', total);
+}
+
+function createRowElement(item) {
+    const tr = document.createElement('tr');
+    tr.dataset.itemId = item.id;
+
+    // 1. Selection Column
+    const tdSelect = document.createElement('td'); 
+    tdSelect.className = 'select-col ' + (state.selectMode ? '' : 'hidden');
+    const cb = document.createElement('input'); 
+    cb.type = 'checkbox';
+    cb.checked = state.selectedForDelete.has(item.id);
+    cb.onchange = (e) => { 
+        if(e.target.checked) state.selectedForDelete.add(item.id); 
+        else state.selectedForDelete.delete(item.id); 
+        updateSelectionUI(); 
+    };
+    tdSelect.appendChild(cb);
+    tr.appendChild(tdSelect);
+
+    // 2. Item Name
+    const tdItem = document.createElement('td');
+    tdItem.className = 'editable'; tdItem.dataset.col = 'item';
+    tdItem.contentEditable = true; tdItem.textContent = item.name;
+    tdItem.onblur = () => {
+        const newName = tdItem.textContent.trim() || 'new item';
+        if(state.dates[state.currentDate]?.items[item.id]) {
+            state.dates[state.currentDate].items[item.id].name = newName;
+            propagateNameAcrossDates(item.id, newName);
+            persistItemChange(item.id);
+        }
+    };
+    tr.appendChild(tdItem);
+
+    // 3. Opening Stock
+    const tdOpening = document.createElement('td');
+    tdOpening.className = 'editable'; tdOpening.dataset.col = 'openingStock';
+    tdOpening.contentEditable = true; tdOpening.textContent = item.opening;
+    tdOpening.onblur = () => { item.opening = sanitizeNumber(tdOpening.textContent); persistItemChange(item.id); };
+    tr.appendChild(tdOpening);
+
+    // 4. Orders (Handled by Modal or Direct Entry)
+    const tdOrders = document.createElement('td');
+    tdOrders.dataset.col = 'orders'; tdOrders.style.cursor = 'pointer';
+    tdOrders.textContent = item.orders;
+    tdOrders.onclick = () => handleOrdersClick(item.id);
+    tr.appendChild(tdOrders);
+
+    // 5. Total Stock (Calculated)
+    const tdTotalStock = document.createElement('td');
+    tdTotalStock.dataset.col = 'totalStock';
+    tdTotalStock.textContent = Number(item.opening) + Number(item.orders);
+    tr.appendChild(tdTotalStock);
+
+    // 6. Price
+    const tdPrice = document.createElement('td');
+    tdPrice.className = 'editable'; tdPrice.dataset.col = 'price';
+    tdPrice.contentEditable = true; tdPrice.textContent = item.price;
+    tdPrice.onblur = () => { 
+        const old = item.price; 
+        item.price = sanitizeNumber(tdPrice.textContent); 
+        if(item.price !== old) propagatePriceToFuture(item.id, item.price); 
+        persistItemChange(item.id); 
+    };
+    tr.appendChild(tdPrice);
+
+    // 7. Closing Stock
+    const tdClosing = document.createElement('td');
+    tdClosing.className = 'editable'; tdClosing.dataset.col = 'closingStock';
+    tdClosing.contentEditable = true; tdClosing.textContent = item.closing;
+    tdClosing.onblur = () => { 
+        item.closing = sanitizeNumber(tdClosing.textContent); 
+        persistItemChange(item.id); 
+        propagateClosingToNext(item.id); 
+    };
+    tr.appendChild(tdClosing);
+
+    // 8. Sales (Calculated)
+    const sales = Math.max(0, (Number(item.opening) + Number(item.orders)) - Number(item.closing));
+    const tdSales = document.createElement('td');
+    tdSales.dataset.col = 'sales'; tdSales.textContent = sales;
+    tr.appendChild(tdSales);
+
+    // 9. Total Revenue (Calculated)
+    const tdTotal = document.createElement('td');
+    tdTotal.dataset.col = 'total'; tdTotal.textContent = sales * Number(item.price);
+    tr.appendChild(tdTotal);
+
+    // Enter Key Handler for all editable cells
+    tr.querySelectorAll('[contenteditable]').forEach(cell => {
+        cell.onkeydown = (e) => { if(e.key === 'Enter') { e.preventDefault(); cell.blur(); } };
+    });
+
+    return tr;
 }
 
 /* ---------- Utility render helpers ---------- */
