@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=0.7, maximum-scale=0.7, viewport-fit=cover, user-scalable=no" />
-<title>Statistics - Avanti Ledger</title>
+<title>Statistics Table</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 
 
@@ -37,7 +37,7 @@
     --system-red: #FF3B30;
     --bg: #F2F2F7;
     --card: #FFFFFF;
-    --border-color: #E5E5E5;
+    --border-color: #eff6ff;
     --text-color: #3f72af;
     --muted-color: #8E8E93;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
@@ -45,7 +45,7 @@
   html,body{
     height:100%;
     margin:0;
-    background:var(--bg);
+    background: linear-gradient(180deg,#f2f6fb 0%, #eef2f7 100%);
     color:var(--text-color);
     margin-top: 50px;
     padding-bottom: 200px;
@@ -103,7 +103,7 @@ position: fixed;
     border-radius:10px; /* More standard iOS rounding */
     overflow:hidden;
     background:var(--card);
-border: 1px solid #d1d5db;
+border: 1px solid var(--border-color);
   }
   .date-nav-btn{
     padding:8px 12px;
@@ -136,7 +136,25 @@ border: 1px solid #d1d5db;
     background:var(--card);
     position:relative;
     box-shadow:none; /* No shadow for iOS style */
-border: 1px solid #d1d5db;
+border: 1px solid var(--border-color);
+  }
+  .more1-btn{
+    
+    border-radius:10px;
+    border:1px solid var(--border-color);
+    
+
+    
+    
+    cursor:pointer;
+    background:var(--card);
+    position:relative;
+    box-shadow:none; /* No shadow for iOS style */
+border: 1px solid #dbeafe;
+padding:8px 12px;
+    border-radius:8px;
+    cursor:pointer;
+    font-weight:600;
   }
   .more-btn .dropdown{
     position:absolute;
@@ -178,7 +196,7 @@ transform: scale(1.2);
   font-size: 1rem;
   border-radius: 0.5rem;
   border-width: 1px;
-  border-color: #d1d5db;
+  border-color: var(--border-color);
   background-color: #ffffff;
 border: 1px solid #d1d5db;
   }
@@ -395,6 +413,7 @@ text-align: left;
     }
   }
 </style>
+
 </head>
 <body>
 
@@ -413,7 +432,7 @@ text-align: left;
         border: 1px solid rgba(255, 255, 255, 0.4);
         letter-spacing: 0.5px;
     ">
-        Online
+        Online...
     </span>
     </div>
 
@@ -484,14 +503,14 @@ padding-bottom: env(safe-area-inset-bottom, 50px);
 </nav>
 
 
-    <div class="date-nav-row" >
-      <div class="date-nav-pill" id="dateNavPill">
+    <div class="date-nav-row " >
+      <div class="date-nav-pill border border-blue-100" id="dateNavPill">
         <button class="date-nav-btn" id="prevDateBtn" title="Previous date"><i class="fas fa-chevron-left"></i></button>
         <div class="date-display" id="dateDisplay"></div>
-        <button class="date-nav-btn" id="nextDateBtn" title="Next date"><i class="fas fa-chevron-right"></i></button>
+        <button class="date-nav-btn " id="nextDateBtn" title="Next date"><i class="fas fa-chevron-right"></i></button>
       </div>
 
-      <div class="more-btn" id="moreBtn" title="More">
+      <div class="more-btn border border-blue-100" id="moreBtn" title="More">
         <i class="fas fa-ellipsis-h" id="moreIcon"></i>
         <div class="dropdown" id="moreDropdown">
           <div onclick="enterSelectMode()">Select</div>
@@ -503,7 +522,7 @@ padding-bottom: env(safe-area-inset-bottom, 50px);
 
         <div class="px-2 mb-6 m-2">
         <div class="relative">
-            <input type="text" id="searchItemInput" placeholder="Search Items" class="w-full py-3 pl-10 pr-4 text-base rounded-lg border border-gray-300 focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white" onkeyup="filterSettings()" />
+            <input type="text" id="searchItemInput" placeholder="Search Items" class="w-full py-3 pl-10 pr-4 text-base rounded-lg border border-blue-100 focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white" onkeyup="filterSettings()" />
             <svg class="absolute left-3 top-1/2 transform -translate-y-1/2 w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
         </div>
     </div>
@@ -513,7 +532,7 @@ padding-bottom: env(safe-area-inset-bottom, 50px);
 
       <table class="stats-table" id="statisticsTable">
         <thead>
-          <tr >
+          <tr class="border border-blue-100">
             <th class="select-col hidden"></th>
             <th >Item</th>
             <th>Opening Stock</th>
@@ -528,14 +547,8 @@ padding-bottom: env(safe-area-inset-bottom, 50px);
         <tbody id="statsTableBody"></tbody>
         <tfoot >
           <tr style="background:#F9F9F9;">
-            <th  style="border-top:1px solid var(--border-color);"> <button class="btn" onclick="addRow()" title="Add new item"><i class="fas fa-plus"></i></button></th>
- <th class="table-controls" colspan="5" style="border-top:1px solid var(--border-color);">  <div class="balancing-switch-group">
-        <span>done balancing</span>
-        <label class="switch">
-          <input type="checkbox" id="doneBalancingSwitch" onchange="saveBalancingStatus()">
-          <span class="slider"></span>
-        </label>
-      </div></th>
+            <th  style="border-top:1px solid var(--border-color); padding-right: 2em;" colspan="2"> <button class="more1-btn" onclick="addRow()" title="Add new item" style=" min-width: 100%; text-align: left;"><i class="fas fa-plus" ></i> New Item</button></th>
+ <th class="table-controls" colspan="4" style="border-top:1px solid var(--border-color);">  </th>
             <th style="border-top:1px solid var(--border-color); color:var(--text-color);">Total Sales:</th>
             <th id="totalSalesAmount" style="border-top:1px solid var(--border-color); font-weight:600; color:var(--system-blue);">K0</th>
           </tr>
@@ -556,7 +569,7 @@ padding-bottom: env(safe-area-inset-bottom, 50px);
             <div class="expenses-section">
               <div class="finance-header">
                 <span>Expenses</span>
-                <div class="edit-btn1" id="edit-btn"><button class="small-btn" id="addExpenseBtn" onclick="addExpense()" title="Add Expense"><i class="fas fa-plus"></i></button></div>
+                <div class="edit-btn1" id="edit-btn"><button class="more1-btn" id="addExpenseBtn" onclick="addExpense()" title="Add Expense"><i class="fas fa-plus"></i></button></div>
               </div>
               <div id="expensesList">
               
@@ -568,7 +581,7 @@ padding-bottom: env(safe-area-inset-bottom, 50px);
             <div class="incomes-section">
               <div class="finance-header">
                 <span>Incomes</span>
-                <div class="edit-btn1" id="edit-btn-inc"><button class="small-btn" id="addIncomeBtn" onclick="addIncome()" title="Add Income"><i class="fas fa-plus"></i></button></div>
+                <div class="edit-btn1" id="edit-btn-inc"><button class="more1-btn" id="addIncomeBtn" onclick="addIncome()" title="Add Income"><i class="fas fa-plus"></i></button></div>
               </div>
               <div id="incomesList">
                
@@ -584,10 +597,19 @@ padding-bottom: env(safe-area-inset-bottom, 50px);
    <div class="section-container mb-20" style="padding-bottom: 120px;">
     
     <div class="totals-section" style="width: 100%; background: #ffffff; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); border: 1px solid rgba(0,0,0,0.05); overflow: hidden;">
+
         
         <h3 style="margin: 0; padding: 20px 24px; background: #ffffff; border-bottom: 1px solid #eeeeee; font-size: 1rem; font-weight: 900; color: #3f72af; text-transform: uppercase; letter-spacing: 1px;">
-            Summary
-        </h3>
+            Summary </h3>
+<div class="balancing-switch-group" style=" position: absolute; right: 2em; margin-top: -48px;  background: #ffffff; font-size: 1em;   letter-spacing: 1px;">
+        <span>balanced</span>
+        <label class="switch">
+          <input type="checkbox" id="doneBalancingSwitch" onchange="saveBalancingStatus()">
+          <span class="slider"></span>
+        </label>
+      </div>
+        
+
 
         <div style="padding: 8px 0;">
             <div class="total-item" style="display: flex; justify-content: space-between; padding: 12px 24px; color: #3f72af;">
@@ -898,8 +920,8 @@ const state = {
     selectMode: false,
     selectedForDelete: new Set(),
     ordersModalItemId: null,
-    futureWindowDays: 600,  
-    pastWindowDays: 600    
+    futureWindowDays: 100,  
+    pastWindowDays: 100     
 };
 
 let dataListenerActive = false;
@@ -931,15 +953,15 @@ function updateSyncDisplay() {
     const username = localStorage.getItem("AV_ledger_username");
 
     if (!firebaseDB || !accountName || !username) {
-        if(syncSpan) syncSpan.textContent = "Offline ";
+        if (syncSpan) syncSpan.textContent = "Offline";
         return;
     }
-    
-    if(syncSpan) syncSpan.textContent = "Loading...";
 
-    const settingsRef   = firebaseDB.ref(`accounts/${accountName}/settings`);
-    const syncingToRef  = firebaseDB.ref(`accounts/${accountName}/profiles/${username}/syncingTo`);
-    const syncingWithRef= firebaseDB.ref(`accounts/${accountName}/profiles/${username}/syncingWith`);
+    if (syncSpan) syncSpan.textContent = "Loading...";
+
+    const settingsRef    = firebaseDB.ref(`accounts/${accountName}/settings`);
+    const syncingToRef   = firebaseDB.ref(`accounts/${accountName}/profiles/${username}/syncingTo`);
+    const syncingWithRef = firebaseDB.ref(`accounts/${accountName}/profiles/${username}/syncingWith`);
 
     Promise.all([
         settingsRef.once("value"),
@@ -948,38 +970,53 @@ function updateSyncDisplay() {
     ])
     .then(([settingsSnap, syncingToSnap, syncingWithSnap]) => {
 
-        const settings = settingsSnap.val() || {};
-        const syncMode = settings.synchronization;
-        const syncingTo = syncingToSnap.val() || {}; 
+        const settings    = settingsSnap.val() || {};
+        const syncMode    = settings.synchronization;
+        const syncingTo   = syncingToSnap.val() || {}; 
         const syncingWith = syncingWithSnap.val() || {};
 
+        let newSource = "none";   // 👈 what we detect now
+
         if (syncMode === "all") {
-            if(syncSpan) syncSpan.textContent = "Syncing All Profiles";
+            newSource = "all";
+            if (syncSpan) syncSpan.textContent = "Syncing All Profiles";
+        } else {
+            const sourceTarget = getTarget(syncingWith);
+            const sendTarget   = getTarget(syncingTo);
+
+            if (sourceTarget) {
+                newSource = `source:${sourceTarget.status}`;
+                if (syncSpan) syncSpan.textContent = `Source: ${sourceTarget.status}`;
+            } 
+            else if (sendTarget) {
+                newSource = `send:${sendTarget.status}`;
+                if (syncSpan) syncSpan.textContent = `Syncing to: ${sendTarget.status}`;
+            } 
+            else {
+                newSource = "none";
+                if (syncSpan) syncSpan.textContent = "Not syncing";
+            }
+        }
+
+        // 🔁 Reload page ONLY if the source changed
+        const lastSource = localStorage.getItem("AV_last_sync_source");
+
+        if (lastSource && lastSource !== newSource) {
+            console.log("Sync source changed:", lastSource, "→", newSource);
+            localStorage.setItem("AV_last_sync_source", newSource);
+            location.reload(); // 🔄 reload page
             return;
         }
 
-        const sourceTarget = getTarget(syncingWith);
-        const sendTarget = getTarget(syncingTo);
-
-        if (sourceTarget) {
-            if(syncSpan) syncSpan.textContent = `Source: ${sourceTarget.status}`;
-            return;
-        }
-
-        if (sendTarget) {
-            if(syncSpan) syncSpan.textContent = `syncing to: ${sendTarget.status}`;
-            return;
-        }
-        
-        if(syncSpan) syncSpan.textContent = "not sycing";
+        // Save current source for next check
+        localStorage.setItem("AV_last_sync_source", newSource);
 
     })
     .catch(err => {
         console.error("Error loading sync state:", err);
-        if(syncSpan) syncSpan.textContent = "Error loading sync";
+        if (syncSpan) syncSpan.textContent = "Error loading sync";
     });
 }
-
 
 /**
  * Sets up real-time Firebase listeners for sync status display.
@@ -999,18 +1036,34 @@ function setupSyncListeners() {
     settingsRef.on("value", updateSyncDisplay);
     syncingToRef.on("value", updateSyncDisplay);
     syncingWithRef.on("value", updateSyncDisplay);
+
+renderAll();
+
 }
 
 
 /* ---------- Helpers ---------- */
 function formatDateLabel(dateKey) {
+    if (!dateKey) return "Loading…";   // 👈 default
+
     const d = new Date(dateKey + 'T00:00:00');
+
+    if (isNaN(d)) return "Loading…";
+
     const day = d.getDate();
-    const daySuffix = (n => { if (n%10==1 && n!=11) return 'st'; if (n%10==2 && n!=12) return 'nd'; if (n%10==3 && n!=13) return 'rd'; return 'th'; })(day);
-    const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-    return `${day}${daySuffix} ${months[d.getMonth()]}, ${d.getFullYear()}`;
+    const daySuffix = (n => { 
+        if (n % 10 == 1 && n != 11) return 'st'; 
+        if (n % 10 == 2 && n != 12) return 'nd'; 
+        if (n % 10 == 3 && n != 13) return 'rd'; 
+        return 'th'; 
+    })(day);
+
+    const weekdays = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+    const months   = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+    return `${weekdays[d.getDay()]}, ${day}${daySuffix} ${months[d.getMonth()]}, ${d.getFullYear()}`;
 }
-function todayKey(){ const d=new Date(); return d.toISOString().slice(0,10); }
+function todayKey(){ const d=new Date(); return  }
 function addDays(yyyy_mm_dd, n) {
     const d = new Date(yyyy_mm_dd);
     d.setDate(d.getDate() + n);
@@ -1043,121 +1096,141 @@ async function checkProfileAndSyncSettings() {
         const [settingsSnapshot, profileSnapshot, allProfilesSnapshot] = await Promise.all([
             accountRef.child('settings').once('value'),
             profileRef.once('value'),
-            accountRef.child('profiles').once('value') // Fetch all profiles to check status
+            accountRef.child('profiles').once('value')
         ]);
 
         const settingsData = settingsSnapshot.val() || {};
         const profileData = profileSnapshot.val() || {};
         const allProfilesData = allProfilesSnapshot.val() || {};
 
-        // 1. Load User Settings
+        // 1. Load User Settings (initial)
         if (settingsData) {
-            if (settingsData[AV_LEDGER_USERNAME] && typeof settingsData[AV_LEDGER_USERNAME].GFA === 'boolean') {
+            if (
+                settingsData[AV_LEDGER_USERNAME] &&
+                typeof settingsData[AV_LEDGER_USERNAME].GFA === 'boolean'
+            ) {
                 USER_SETTINGS.GFA = settingsData[AV_LEDGER_USERNAME].GFA;
             }
+
             if (settingsData.synchronization) {
                 USER_SETTINGS.synchronization = settingsData.synchronization;
             }
         }
 
+        // 🔁 REALTIME LISTENER for GFA
+        if (!window._gfaListenerAttached) {
+            const gfaRef = firebaseDB.ref(
+                `accounts/${AV_LEDGER_ACCOUNT_KEY}/settings/${AV_LEDGER_USERNAME}/GFA`
+            );
+
+            gfaRef.on('value', (snapshot) => {
+                const val = snapshot.val();
+                if (typeof val === 'boolean') {
+                    USER_SETTINGS.GFA = val;
+                    console.log('Realtime GFA updated:', USER_SETTINGS.GFA);
+
+                    // Optional: update UI
+                    const gfaToggle = document.getElementById('gfaToggle');
+                    if (gfaToggle) gfaToggle.checked = USER_SETTINGS.GFA;
+                }
+            });
+
+            window._gfaListenerAttached = true;
+        }
+
         // 2. Determine Data Source (REMOTE_DB_PATH)
-        let syncSourceUsername = AV_LEDGER_USERNAME; 
-        
-        // GLOBAL SYNC: Overrides specific syncs
+        let syncSourceUsername = AV_LEDGER_USERNAME;
+
         if (USER_SETTINGS.synchronization === 'all') {
-            syncSourceUsername = 'GLOBAL_LEDGER'; 
+            syncSourceUsername = 'GLOBAL_LEDGER';
             console.log(`Synchronization: GLOBAL. Using path for ${syncSourceUsername}`);
 
         } else if (profileData.syncingWith && typeof profileData.syncingWith === 'object') {
-            // SPECIFIC SYNC: Syncing with another profile (or profiles)
-            const targets = Object.keys(profileData.syncingWith).filter(t => profileData.syncingWith[t] === true);
-            
+            const targets = Object.keys(profileData.syncingWith).filter(
+                t => profileData.syncingWith[t] === true
+            );
+
             if (targets.length > 0) {
-                
-                // === ADMIN PRIORITY LOGIC ===
-                
                 let adminTargets = [];
                 targets.forEach(username => {
-                    const status = allProfilesData[username] && allProfilesData[username].authStatus;
-                    if (status === 'Admin') {
-                        adminTargets.push(username);
-                    }
+                    const status = allProfilesData[username] &&
+                                   allProfilesData[username].authStatus;
+                    if (status === 'Admin') adminTargets.push(username);
                 });
 
                 if (adminTargets.length > 0) {
-                    // If Admin exists, sort by username alphabetically and select the first
                     adminTargets.sort((a, b) => a.localeCompare(b));
                     syncSourceUsername = adminTargets[0];
                     console.log(`Synchronization: ADMIN RESOLVE. Source: ${syncSourceUsername}`);
                 } else {
-                    // If no Admin, fall back to the first target found (alphabetical by key)
                     targets.sort((a, b) => a.localeCompare(b));
                     syncSourceUsername = targets[0];
                     console.log(`Synchronization: PROFILE (No Admin). Source: ${syncSourceUsername}`);
                 }
             }
         }
-        
+
         TARGET_PROFILE_USERNAME = syncSourceUsername;
-        
+
         // 3. Define the final database path
         if (TARGET_PROFILE_USERNAME === 'GLOBAL_LEDGER') {
-             REMOTE_DB_PATH = `accounts/${AV_LEDGER_ACCOUNT_KEY}/global_ledger/avanti_stats`;
+            REMOTE_DB_PATH = `accounts/${AV_LEDGER_ACCOUNT_KEY}/global_ledger/avanti_stats`;
         } else {
             REMOTE_DB_PATH = `accounts/${AV_LEDGER_ACCOUNT_KEY}/profiles/${TARGET_PROFILE_USERNAME}/avanti_stats`;
         }
 
     } catch (e) {
         console.error('Failed to check user settings/sync. Proceeding with defaults.', e);
-        // Fallback
         REMOTE_DB_PATH = `accounts/${AV_LEDGER_ACCOUNT_KEY}/profiles/${AV_LEDGER_USERNAME}/avanti_stats`;
         TARGET_PROFILE_USERNAME = AV_LEDGER_USERNAME;
     }
 }
-
 /* ---------- Persistence: Firebase Real-time Listener ---------- */
 
 function setupDataListener() {
-    if(!firebaseDB || REMOTE_DB_PATH === DEFAULT_FALLBACK_PATH || dataListenerActive) {
-        return;
-    }
+    if (!firebaseDB || REMOTE_DB_PATH === DEFAULT_FALLBACK_PATH || dataListenerActive) return;
 
-    if (currentDataRef) {
-        // Remove previous listener if the path changed
-        currentDataRef.off('value'); 
-    }
+    if (currentDataRef) currentDataRef.off();
 
     currentDataRef = firebaseDB.ref(REMOTE_DB_PATH);
     dataListenerActive = true;
-    
-    currentDataRef.on('value', (snapshot) => {
-        const remote = snapshot.val();
-        
-        if (remote && remote.dates) {
-            state.dates = remote.dates || {};
-            if (remote.currentDate && remote.currentDate !== state.currentDate) {
-                 // Only update currentDate if it exists remotely
-                 state.currentDate = remote.currentDate;
-            }
-            console.log(`Real-time update received from ${REMOTE_DB_PATH}`);
-        } else if (Object.keys(state.dates).length === 0) {
-            // If the remote is empty and local state is empty, initialize default.
-            initializeDefault();
-            console.log('Real-time listener: No remote data found, initialized default structure locally.');
-        }
-        
-        // Ensure the current date is valid after any update
-        if(!state.currentDate) state.currentDate = todayKey();
-        ensureDateExists(state.currentDate);
 
-        // Re-render the UI based on the new state
-        renderAll();
-    }, (error) => {
-        console.error("Firebase Real-time Listener Failed:", error);
-        dataListenerActive = false;
+    // Listen only to date-level changes
+    const datesRef = currentDataRef.child('dates');
+
+    datesRef.on('child_added', snap => {
+        const dateKey = snap.key;
+        state.dates[dateKey] = snap.val();
     });
-}
 
+    datesRef.on('child_changed', snap => {
+        const dateKey = snap.key;
+        state.dates[dateKey] = snap.val();
+        if (dateKey === state.currentDate) {
+            renderTable();
+            renderExpensesIncomes();
+            updateTotalsNumbers();
+        }
+    });
+
+    datesRef.on('child_removed', snap => {
+        delete state.dates[snap.key];
+        if (snap.key === state.currentDate) {
+            renderAll();
+        }
+    });
+
+    // currentDate listener
+    currentDataRef.child('currentDate').on('value', snap => {
+        const newDate = snap.val();
+        if (newDate && newDate !== state.currentDate) {
+            state.currentDate = newDate;
+            ensureDateExists(state.currentDate);
+            renderAll();
+        }
+    });
+
+}
 
 async function loadState(){
     // 1. Determine the correct data source path (Admin Priority handled here)
@@ -1189,18 +1262,16 @@ function saveState(){
 }
 
 function saveToDatabase(data){
-    if(!firebaseDB || !isOnline || REMOTE_DB_PATH === DEFAULT_FALLBACK_PATH) {
-        console.error('saveToDatabase: Skipping remote save (Offline, No Firebase, or Fallback Path)');
-        return;
-    }
-    
-    // Write data to the shared/source path (REMOTE_DB_PATH)
-    firebaseDB.ref(REMOTE_DB_PATH).set(data).then(()=>{
-        // The real-time listener will pick up this change and trigger renderAll()
-        console.log(`Saved successfully to remote DB at ${REMOTE_DB_PATH}`);
-    }).catch(err=>console.error('Firebase write failed', err));
-}
+    if(!firebaseDB || !isOnline || REMOTE_DB_PATH === DEFAULT_FALLBACK_PATH) return;
 
+    // Only save current date and NOT the entire table
+    const updates = {};
+    updates[`currentDate`] = state.currentDate;
+    updates[`dates/${state.currentDate}`] = state.dates[state.currentDate];
+
+    firebaseDB.ref(REMOTE_DB_PATH).update(updates)
+        .catch(err => console.error('Firebase update failed', err));
+}
 /* ---------- Initialize Default (No Hardcoded Items) ---------- */
 function initializeDefault(){
     const start = todayKey();
@@ -1490,7 +1561,7 @@ const dd = document.getElementById('moreDropdown'); if(dd) dd.classList.remove('
     }
     document.getElementById('moreIcon').className = 'fas fa-times';
     document.getElementById('moreBtn').onclick = exitSelectMode;
-    document.querySelector('.table-controls').setAttribute('colspan', '6');
+    document.querySelector('.table-controls').setAttribute('colspan', '5');
     renderTable();
 }
 function exitSelectMode(){
@@ -1509,7 +1580,7 @@ function exitSelectMode(){
     document.getElementById('moreIcon').className = 'fas fa-ellipsis-h';
     document.getElementById('moreBtn').onclick = toggleMoreDropdown;
     
-document.querySelector('.table-controls').setAttribute('colspan', '5');
+document.querySelector('.table-controls').setAttribute('colspan', '4');
     document.querySelectorAll('.select-col').forEach(td=>td.classList.add('hidden'));
     renderAll();
 }
@@ -1563,25 +1634,35 @@ function deleteItemFromDateAndFuture(itemId, fromDateKey){
         const dKey = addDays(fromDateKey,i);
         const dateData = state.dates[dKey];
         
+        // Remove locally
         if(dateData && dateData.items && dateData.items[itemId] && dateData.balanced !== true){
             delete dateData.items[itemId];
-        } else if (dateData && dateData.balanced === true) {
-            console.log(`Skipping deletion of item ${itemId} on balanced date ${dKey}.`);
+            
+            // Push deletion to Firebase for every future day
+            if(firebaseDB && isOnline) {
+                firebaseDB.ref(`${REMOTE_DB_PATH}/dates/${dKey}/items/${itemId}`).remove();
+            }
         }
     }
-    saveState();
 }
 
+
 function persistItemChange(itemId){
-    if(!state.dates[state.currentDate] || !state.dates[state.currentDate].items || !state.dates[state.currentDate].items[itemId]) return;
-    const it = state.dates[state.currentDate].items[itemId];
-    it.opening = Number(it.opening||0);
-    it.orders = Number(it.orders||0);
-    it.closing = Number(it.closing||0);
-    it.price = Number(it.price||0);
+    const dateKey = state.currentDate;
+    const item = state.dates[dateKey]?.items?.[itemId];
+    if(!item) return;
+
+    item.opening = Number(item.opening||0);
+    item.orders  = Number(item.orders||0);
+    item.closing = Number(item.closing||0);
+    item.price   = Number(item.price||0);
+
     propagateClosingToNext(itemId);
-    saveState();
-    renderTable();
+
+    const path = `${REMOTE_DB_PATH}/dates/${dateKey}/items/${itemId}`;
+    firebaseDB.ref(path).update(item);
+
+    updateRow(itemId); // only re-render this row
 }
 
 /* ---------- Propagation ---------- */
@@ -1722,9 +1803,11 @@ function saveOrders(){
     item.orders = item.batches.filter(b => b.date === state.currentDate).reduce((sum, b) => sum + b.qty, 0);
     item.lastOrderCost = cost;
     
+closeOrdersModal();
     persistItemChange(id);
     saveState();
-    closeOrdersModal();
+    
+renderAll()
 }
 
 /* ---------- Date Navigation ---------- */
@@ -1801,14 +1884,14 @@ function handleFinanceSelection(type){
     const sel = document.querySelector(`input[name="${type}-radio"]:checked`);
     const btn = document.getElementById(type==='expense' ? 'edit-btn' : 'edit-btn-inc');
     if(sel){
-        btn.innerHTML = `<i class="small-btn fas fa-trash" title="Delete" style="margin-right:6px;" onclick="deleteFinanceItem('${type}')"></i>
-        <i class="small-btn fas fa-check-double" title="Select All" style="margin-right:6px;" onclick="selectAllFinance('${type}')"></i>
-        <i class="small-btn fas fa-times" title="Cancel" onclick="cancelFinanceSelection('${type}')"></i>`;
+        btn.innerHTML = `<i class="more1-btn fas fa-trash" title="Delete" style="margin-right:6px;" onclick="deleteFinanceItem('${type}')"></i>
+        <i class="more1-btn fas fa-check-double" title="Select All" style="margin-right:6px;" onclick="selectAllFinance('${type}')"></i>
+        <i class="more1-btn fas fa-times" title="Cancel" onclick="cancelFinanceSelection('${type}')"></i>`;
         btn.onclick = null;
 
     } else {
 
-        btn.innerHTML = `<button class="small-btn" ><i class="fas fa-plus"></i></button>`;
+        btn.innerHTML = `<button class="more1-btn" ><i class="fas fa-plus"></i></button>`;
         btn.onclick = type==='expense' ? addExpense : addIncome;
     }
 }
@@ -1893,6 +1976,7 @@ function setupModalCloseOnBackdropClick() {
 
 document.addEventListener('DOMContentLoaded', setupModalCloseOnBackdropClick);
 document.addEventListener('DOMContentLoaded', init);
+renderAll();
 
 </script>
 
