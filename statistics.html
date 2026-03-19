@@ -1187,25 +1187,39 @@ async function checkProfileAndSyncSettings() {
 }
 /* ---------- Persistence: Firebase Real-time Listener ---------- */
 
+/**
+ * Sets up Firebase listeners for the Avanti ledger data.
+ * Ensures that if no current date is set in the DB, it defaults to today.
+ */
 function setupDataListener() {
-    if (!firebaseDB || REMOTE_DB_PATH === DEFAULT_FALLBACK_PATH || dataListenerActive) return;
+    // 1. Guard clauses for initialization safety
+    if (!firebaseDB || REMOTE_DB_PATH === DEFAULT_FALLBACK_PATH || dataListenerActive) {
+        return;
+    }
 
-    if (currentDataRef) currentDataRef.off();
+    // 2. Cleanup existing listeners to prevent memory leaks/duplicate triggers
+    if (currentDataRef) {
+        currentDataRef.off();
+    }
 
     currentDataRef = firebaseDB.ref(REMOTE_DB_PATH);
     dataListenerActive = true;
 
-    // Listen only to date-level changes
+    // 3. Listen to the 'dates' collection for real-time ledger updates
     const datesRef = currentDataRef.child('dates');
 
+    // Handle new date entries added to the database
     datesRef.on('child_added', snap => {
         const dateKey = snap.key;
         state.dates[dateKey] = snap.val();
     });
 
+    // Handle updates to existing ledger entries
     datesRef.on('child_changed', snap => {
         const dateKey = snap.key;
         state.dates[dateKey] = snap.val();
+        
+        // Only re-render the UI if the modified date is the one currently being viewed
         if (dateKey === state.currentDate) {
             renderTable();
             renderExpensesIncomes();
@@ -1213,6 +1227,7 @@ function setupDataListener() {
         }
     });
 
+    // Handle deletion of date entries
     datesRef.on('child_removed', snap => {
         delete state.dates[snap.key];
         if (snap.key === state.currentDate) {
@@ -1220,16 +1235,28 @@ function setupDataListener() {
         }
     });
 
-    // currentDate listener
+    // 4. Current Selected Date Listener with Auto-Initialization
     currentDataRef.child('currentDate').on('value', snap => {
-        const newDate = snap.val();
-        if (newDate && newDate !== state.currentDate) {
+        let newDate = snap.val();
+
+        // LOGIC: If current date doesn’t exist in DB, set it as today's date (YYYY-MM-DD)
+        if (!newDate) {
+            newDate = new Date().toISOString().split('T')[0];
+            
+            // Persist this default to the remote database immediately
+            currentDataRef.child('currentDate').set(newDate);
+            
+            // Ensure the data structure for this specific date exists in the 'dates' node
+            ensureDateExists(newDate);
+        }
+
+        // Trigger UI update only if the date has changed or was just initialized
+        if (newDate !== state.currentDate) {
             state.currentDate = newDate;
             ensureDateExists(state.currentDate);
             renderAll();
         }
     });
-
 }
 
 async function loadState(){
