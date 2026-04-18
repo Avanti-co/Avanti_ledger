@@ -1631,6 +1631,66 @@ const handleLogout = async () => {
     checkNetwork();
 </script>
 
+<script>
+(function() {
+    const ACCOUNT_KEY_STORAGE = 'AV_ledger_account_key';
+    const currentLocalKey = localStorage.getItem(ACCOUNT_KEY_STORAGE);
+
+    // Only run if we are actually logged into an account
+    if (!currentLocalKey) return;
+
+    // Listen to the top-level accounts node
+    const accountsRef = firebase.database().ref('accounts');
+
+    accountsRef.on('value', (snapshot) => {
+        const allAccounts = snapshot.val();
+        if (!allAccounts) return;
+
+        // 1. If our current account key still exists, we are fine.
+        if (allAccounts[currentLocalKey]) {
+            // Optional: You could sync the Account Name to local storage here if needed
+            return;
+        }
+
+        // 2. If our key is MISSING, look for it in the history of other accounts
+        console.warn("Current Account Key not found. Searching for migration...");
+        let migrationFound = false;
+
+        for (const [newSlug, data] of Object.entries(allAccounts)) {
+            // Check if this account has a list of 'oldAccountKeys' 
+            // and if our missing key is one of them.
+            if (data.oldAccountKeys && Array.isArray(data.oldAccountKeys) && data.oldAccountKeys.includes(currentLocalKey)) {
+                
+                console.log(`Account Migration Detected! ${currentLocalKey} -> ${newSlug}`);
+                
+                // 3. Update the local storage with the new Slug
+                localStorage.setItem(ACCOUNT_KEY_STORAGE, newSlug);
+                
+                migrationFound = true;
+                
+                // 4. Force a reload so the entire app points to the new Firebase path
+                window.location.reload();
+                break;
+            }
+        }
+
+        // 5. If it's truly gone (no migration found), the account was likely deleted.
+        if (!migrationFound) {
+            console.error("Account has been deleted or access revoked.");
+            localStorage.clear();
+            window.location.href = "index.html";
+        }
+    }, (error) => {
+        // If we get a permission error, it usually means our key was deleted 
+        // and we no longer have access to the accounts node.
+        if (error.code === 'PERMISSION_DENIED') {
+            console.warn("Access denied. Attempting global account search...");
+            // In a strict security setup, you might need a dedicated 'migrations' node 
+            // that is publicly readable to find where your account moved to.
+        }
+    });
+})();
+</script>
 
 </body>
 </html>
