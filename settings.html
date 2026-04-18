@@ -968,5 +968,62 @@ loadSettingsData();
     // 3. Run on initial page load
     checkNetwork();
 </script>
+<script>
+(function() {
+    const ACCOUNT_KEY = localStorage.getItem('AV_ledger_account_key');
+    const LOCAL_USERNAME = localStorage.getItem('AV_ledger_username');
+
+    // Only run if we are actually logged in
+    if (!ACCOUNT_KEY || !LOCAL_USERNAME) return;
+
+    const migrationRef = firebase.database().ref(`accounts/${ACCOUNT_KEY}/profiles`);
+
+    migrationRef.on('value', (snapshot) => {
+        const profiles = snapshot.val();
+        if (!profiles) return;
+
+        // 1. Check if our current local name still exists
+        if (!profiles[LOCAL_USERNAME]) {
+            console.log("Current profile name not found. Checking for migration...");
+
+            // 2. Scan for our old name in the history of other profiles
+            let migrated = false;
+            for (const [newName, data] of Object.entries(profiles)) {
+                if (data.oldNames && Array.isArray(data.oldNames) && data.oldNames.includes(LOCAL_USERNAME)) {
+                    
+                    // 3. Update all local storage keys associated with the identity
+                    localStorage.setItem('AV_ledger_username', newName);
+                    
+                    if (data.authStatus) {
+                        localStorage.setItem('AV_ledger_auth_status', data.authStatus);
+                    }
+                    
+                    if (data.email) {
+                        localStorage.setItem('AV_ledger_account_email', data.email);
+                    }
+
+                    console.log(`Successfully migrated identity: ${LOCAL_USERNAME} -> ${newName}`);
+                    migrated = true;
+                    
+                    // 4. Force reload to apply the new name to the UI/Listeners
+                    window.location.reload();
+                    break;
+                }
+            }
+
+            // 5. If it's completely gone with no trail, the profile was likely deleted
+            if (!migrated) {
+                console.warn("Profile has been removed. Redirecting to login.");
+                // Clear local storage and bounce to login
+                localStorage.clear(); 
+                window.location.href = "index.html";
+            }
+        }
+    }, (error) => {
+        console.error("Migration listener failed:", error);
+    });
+})();
+</script>
+
 </body>
-</html>
+</html>hi
