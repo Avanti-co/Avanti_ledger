@@ -1,3 +1,5 @@
+
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -648,9 +650,11 @@ padding-bottom: env(safe-area-inset-bottom, 25px);
         span.addEventListener('keydown', handleKeydown);
     }
 
-    async function updateUsername(oldName, newName, accountKey) {
+async function updateUsername(oldName, newName, accountKey) {
     if (allProfiles[newName]) {
         toast('Error', 'Username already exists!', false);
+        const modalSpan = document.querySelector(".modal .user-name span");
+        if(modalSpan) modalSpan.textContent = oldName;
         return;
     }
 
@@ -660,33 +664,36 @@ padding-bottom: env(safe-area-inset-bottom, 25px);
         const snapshot = await oldProfileRef.once('value');
         const profileData = snapshot.val();
 
-        if (!profileData) return;
+        if (!profileData) {
+            toast('Error', 'Profile not found.', false);
+            return;
+        }
 
         const allUpdates = {};
-        profileData.displayName = newName;
         
-        // Move profile data and delete old entry
+        // --- NEW LOGIC: Manage name history ---
+        // Initialize or update the oldNames array
+        if (!profileData.oldNames) profileData.oldNames = [];
+        if (!profileData.oldNames.includes(oldName)) {
+            profileData.oldNames.push(oldName);
+        }
+        // --------------------------------------
+
+        profileData.displayName = newName;
         allUpdates[`accounts/${accountKey}/profiles/${newName}`] = profileData;
         allUpdates[`accounts/${accountKey}/profiles/${oldName}`] = null;
 
-        // BROADCAST: This is the trigger for other devices
-        allUpdates[`accounts/${accountKey}/name-change`] = {
-            from: oldName,
-            to: newName,
-            timestamp: Date.now()
-        };
-
-        // Update reciprocal sync references (keep your existing loop here)
+        // Update references across all profiles (keep your existing reference logic)
         Object.keys(allProfiles).forEach(otherProfileName => {
             if (otherProfileName !== oldName) {
-                const pathBase = `accounts/${accountKey}/profiles/${otherProfileName}`;
                 const otherProfile = allProfiles[otherProfileName];
-                if (otherProfile.syncingTo?.[oldName]) {
-                    allUpdates[`${pathBase}/syncingTo/${newName}`] = true;
+                const pathBase = `accounts/${accountKey}/profiles/${otherProfileName}`;
+                if (otherProfile.syncingTo && otherProfile.syncingTo[oldName] !== undefined) {
+                    allUpdates[`${pathBase}/syncingTo/${newName}`] = otherProfile.syncingTo[oldName];
                     allUpdates[`${pathBase}/syncingTo/${oldName}`] = null;
                 }
-                if (otherProfile.syncingWith?.[oldName]) {
-                    allUpdates[`${pathBase}/syncingWith/${newName}`] = true;
+                if (otherProfile.syncingWith && otherProfile.syncingWith[oldName] !== undefined) {
+                    allUpdates[`${pathBase}/syncingWith/${newName}`] = otherProfile.syncingWith[oldName];
                     allUpdates[`${pathBase}/syncingWith/${oldName}`] = null;
                 }
             }
@@ -694,18 +701,17 @@ padding-bottom: env(safe-area-inset-bottom, 25px);
 
         await db.ref().update(allUpdates);
 
-        // Update local storage for the device that initiated the change
-        localStorage.setItem('AV_ledger_username', newName);
+        // Update local storage for the device that made the change
+        localStorage.setItem(USERNAME_STORAGE, newName);
         CURRENT_PROFILE_NAME = newName;
 
-        toast('Success', 'Username updated globally.');
-        
-        // Cleanup the broadcast node after 5 seconds to prevent stale data
-        setTimeout(() => db.ref(`accounts/${accountKey}/name-change`).remove(), 5000);
+        toast('Username Updated', `Profile name changed to ${newName}.`);
+        fetchAndRenderDevices();
+        closeModal('deviceModal');
 
     } catch(error) {
-        console.error(error);
-        toast('Error', 'Update failed.', false);
+        console.error("Error updating username:", error);
+        toast('Error', 'Failed to update username.', false);
     }
 }
 
@@ -1051,46 +1057,86 @@ padding-bottom: env(safe-area-inset-bottom, 25px);
             }
         }).catch(e => console.error("Error fetching account email:", e));
 
-        // Realtime listener for all profiles
-        profilesRef.on('value', (snapshot) => {
-            const profilesData = snapshot.val();
-            if (profilesData) {
-                allProfiles = profilesData;
-                renderDevices(profilesData);
+// Realtime listener for all profiles
+profilesRef.on('value', (snapshot) => {
+    const profilesData = snapshot.val();
+    
+    if (profilesData) {
+        allProfiles = profilesData;
 
-                // --- NEW: keep modal live-updated when open ---
-                if (deviceModal && deviceModal.classList.contains('active')) {
-                    // Use the name shown in the modal header
-                    const shownName = modalName.textContent && modalName.textContent.trim();
-                    if (shownName) {
-                        // Find the corresponding device button to simulate an "open" event
-                        const modalBtn = document.querySelector(`.device-btn[data-profile-name="${shownName}"]`);
-                        if (modalBtn) {
-                            // Re-open (refresh) the modal content with updated data
-                            try {
-                                openModal({ currentTarget: modalBtn });
-                            } catch (err) {
-                                console.error("Error refreshing open modal:", err);
-                            }
-                        } else {
-                            // If the profile no longer exists, close the modal to avoid stale UI
-                            closeModal('deviceModal');
-                        }
-                    }
-                }
+        // --- 1. IDENTITY MIGRATION CHECK ---
+        const localName = localStorage.getItem(USERNAME_STORAGE);
+        
+        // If our current local username is missing from the active profiles list
+        if (localName && !profilesData[localName]) {
+            let migrationFound = false;
 
-            } else {
-                primaryList.innerHTML = '';
-                connectedList.innerHTML = '<p class="p-4 text-center text-gray-500">No connected devices found.</p>';
-                if (CURRENT_ACCOUNT_KEY) {
-                    handleLogout();
-                    toast('Error', 'Account profiles were cleared. Logging out.', false);
+            // Scan active profiles to see if they list our localName as an 'oldName'
+            for (const [activeName, data] of Object.entries(profilesData)) {
+                if (data.oldNames && Array.isArray(data.oldNames) && data.oldNames.includes(localName)) {
+                    console.log(`Identity migration detected: ${localName} -> ${activeName}`);
+                    
+                    // Update Local Storage for this device
+                    localStorage.setItem(USERNAME_STORAGE, activeName);
+                    
+                    // Update the auth status in case it changed during migration
+                    localStorage.setItem(AUTH_STATUS_STORAGE, data.authStatus || 'Standard');
+                    
+                    migrationFound = true;
+                    
+                    // Force a reload to re-initialize the entire app state with the new name
+                    window.location.reload();
+                    break; 
                 }
             }
-        }, (error) => {
-            console.error("Firebase fetch error:", error);
-            toast('Error', 'Failed to load device data.', false);
-        });
+
+            // Optional: If the name is gone and NO migration is found, the profile was deleted.
+            if (!migrationFound) {
+                console.warn("Profile no longer exists. Logging out.");
+                handleLogout();
+                return;
+            }
+        }
+
+        // --- 2. RENDER MAIN UI ---
+        renderDevices(profilesData);
+
+        // --- 3. LIVE MODAL UPDATE ---
+        // Keeps the device modal updated in real-time if it is currently open
+        if (deviceModal && deviceModal.classList.contains('active')) {
+            const shownName = modalName.textContent && modalName.textContent.trim();
+            if (shownName) {
+                // Find the device button in the DOM to simulate an "open" event
+                const modalBtn = document.querySelector(`.device-btn[data-profile-name="${shownName}"]`);
+                if (modalBtn) {
+                    try {
+                        // Refresh the modal content with fresh data from Firebase
+                        openModal({ currentTarget: modalBtn });
+                    } catch (err) {
+                        console.error("Error refreshing open modal:", err);
+                    }
+                } else {
+                    // If the specific profile being viewed was deleted, close the modal
+                    closeModal('deviceModal');
+                }
+            }
+        }
+
+    } else {
+        // Handle case where all profiles are deleted or the account node is missing
+        primaryList.innerHTML = '';
+        connectedList.innerHTML = '<p class="p-4 text-center text-gray-500">No connected devices found.</p>';
+        
+        if (CURRENT_ACCOUNT_KEY) {
+            handleLogout();
+            toast('Error', 'Account data was cleared. Logging out.', false);
+        }
+    }
+}, (error) => {
+    console.error("Firebase fetch error:", error);
+    toast('Error', 'Failed to load device data.', false);
+});
+
     }
 
     function attachEventListeners() {
@@ -1433,43 +1479,6 @@ modalHtml += `
 
     // --- INITIALIZATION ---
     document.addEventListener('DOMContentLoaded', fetchAndRenderDevices);
-
-function initNameChangeWatcher() {
-    const accountKey = localStorage.getItem('AV_ledger_account_key');
-    if (!accountKey) return;
-
-    // Listen to the specific name-change node
-    db.ref(`accounts/${accountKey}/name-change`).on('value', (snapshot) => {
-        const changeData = snapshot.val();
-        
-        if (changeData && changeData.from && changeData.to) {
-            const currentLocalName = localStorage.getItem('AV_ledger_username');
-
-            // Logic: If MY local storage name matches the "FROM", I need to update to "TO"
-            if (currentLocalName === changeData.from) {
-                console.log(`Syncing name change: ${changeData.from} -> ${changeData.to}`);
-                
-                // 1. Update Local Storage
-                localStorage.setItem('AV_ledger_username', changeData.to);
-                
-                // 2. Update the global variable used by the script
-                CURRENT_PROFILE_NAME = changeData.to;
-
-                // 3. UI Feedback
-                toast('Profile Sync', `Username updated to ${changeData.to} from another device.`);
-                
-                // 4. Re-run rendering to update headers/modals
-                if (typeof fetchAndRenderDevices === "function") {
-                    fetchAndRenderDevices();
-                }
-            }
-        }
-    });
-}
-
-// Call this on page load
-initNameChangeWatcher();
-
 </script>
 <script>
 /* =========================================================
@@ -1601,4 +1610,4 @@ document.addEventListener('DOMContentLoaded', () => {
     checkNetwork();
 </script>
 </body>
-</html>no
+</html>
