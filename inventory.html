@@ -845,12 +845,21 @@ document.getElementById('close-modal-btn').onclick = () => {
     setTimeout(() => document.getElementById('item-modal').classList.add('hidden'), 300);
 };
 
+// The existing overlay click handler
 document.getElementById('item-modal').onclick = () => {
     const content = document.getElementById('modal-content');
     content.style.transform = "translateY(100%)";
     currentSelectedItem = null;
     renderStockChangeCarousel(null);
-    setTimeout(() => document.getElementById('item-modal').classList.add('hidden'), 300);
+    
+    setTimeout(() => {
+        document.getElementById('item-modal').classList.add('hidden');
+    }, 300);
+};
+
+// Add this to prevent the "bubble" effect
+document.getElementById('modal-content').onclick = (event) => {
+    event.stopPropagation();
 };
 
 
