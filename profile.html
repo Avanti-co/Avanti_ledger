@@ -76,8 +76,8 @@
 
     /* --- TOPOLOGY STYLES --- */
     .sync-node {
-        display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 5px;
-        background: #f8fafc; border-radius: 18px; border: 1px solid #e2e8f0; width: 80px; height: 80px; z-index: 10;
+        display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 12px;
+        background: #f8fafc; border-radius: 18px; border: 1px solid #e2e8f0; width: 90px; height: 90px; z-index: 10;
         box-shadow: 0 2px 8px rgba(0,0,0,0.04); transition: transform 0.1s, border-color 0.2s;
     }
     .sync-node:active { transform: scale(0.95); }
@@ -302,7 +302,6 @@ padding-bottom: env(safe-area-inset-bottom, 25px);
     function buildJsonTree(key, value) {
         const li = document.createElement('li');
         const isObj = typeof value === 'object' && value !== null;
-        
         if (isObj) {
             const keys = Object.keys(value);
             if (keys.length === 0) {
@@ -312,26 +311,21 @@ padding-bottom: env(safe-area-inset-bottom, 25px);
                 header.className = 'cursor-pointer hover:bg-slate-200/50 rounded inline-flex items-center select-none py-0.5 px-1 -ml-1';
                 header.innerHTML = `<span class="mr-1.5 w-3 h-3 flex items-center justify-center text-[10px] text-slate-400"><i class="fa fa-caret-right transition-transform duration-200"></i></span><span class="json-key">${key}:</span>`;
                 li.appendChild(header);
-
                 const ul = document.createElement('ul');
                 ul.className = 'nested border-l border-slate-300 ml-[5px] pl-4 mt-1 mb-2';
                 keys.forEach(k => ul.appendChild(buildJsonTree(k, value[k])));
                 li.appendChild(ul);
-
                 header.addEventListener('click', function(e) {
                     e.stopPropagation();
-                    const icon = this.querySelector('i');
-                    icon.classList.toggle('rotate-90');
+                    this.querySelector('i').classList.toggle('rotate-90');
                     ul.classList.toggle('active');
                 });
             }
         } else {
-            let valHtml = '';
-            if (typeof value === 'string') valHtml = `<span class="json-string">"${value}"</span>`;
-            else if (typeof value === 'number') valHtml = `<span class="json-number">${value}</span>`;
-            else if (typeof value === 'boolean') valHtml = `<span class="json-boolean">${value}</span>`;
-            else valHtml = `<span class="text-slate-400 italic">null</span>`;
-            
+            let valHtml = (typeof value === 'string') ? `<span class="json-string">"${value}"</span>` :
+                          (typeof value === 'number') ? `<span class="json-number">${value}</span>` :
+                          (typeof value === 'boolean') ? `<span class="json-boolean">${value}</span>` :
+                          `<span class="text-slate-400 italic">null</span>`;
             li.innerHTML = `<div class="ml-5 flex py-0.5"><span class="json-key mr-2">${key}:</span> <span>${valHtml}</span></div>`;
         }
         return li;
@@ -348,12 +342,9 @@ padding-bottom: env(safe-area-inset-bottom, 25px);
         container.appendChild(ul);
         const modal = document.getElementById('deviceInfoModal');
         const sheet = document.getElementById('deviceInfoSheet');
-        modal.classList.remove('hidden');
+        modal.classList.remove('hidden', 'opacity-0');
         modal.classList.add('flex');
-        setTimeout(() => {
-            modal.classList.remove('opacity-0');
-            sheet.classList.remove('translate-y-full');
-        }, 10);
+        setTimeout(() => { sheet.classList.remove('translate-y-full'); }, 10);
     }
 
     function closeDeviceModal() {
@@ -361,10 +352,7 @@ padding-bottom: env(safe-area-inset-bottom, 25px);
         const sheet = document.getElementById('deviceInfoSheet');
         modal.classList.add('opacity-0');
         sheet.classList.add('translate-y-full');
-        setTimeout(() => {
-            modal.classList.add('hidden');
-            modal.classList.remove('flex');
-        }, 300);
+        setTimeout(() => { modal.classList.add('hidden'); modal.classList.remove('flex'); }, 300);
     }
 
     document.addEventListener('DOMContentLoaded', () => {
@@ -384,9 +372,7 @@ padding-bottom: env(safe-area-inset-bottom, 25px);
             if (!data) return;
 
             document.getElementById('accountNameDisplay').textContent = data.displayName || 'Unnamed Account';
-            if (document.activeElement !== descField) {
-                descField.textContent = data.description || 'Add your profile summary';
-            }
+            if (document.activeElement !== descField) descField.textContent = data.description || 'Add profile summary';
             
             const email = data.email || '';
             document.getElementById('contactDisplay').textContent = email.endsWith('@phone.avanti') ? (data.phone || 'No Phone') : (email || 'No Email');
@@ -398,14 +384,19 @@ padding-bottom: env(safe-area-inset-bottom, 25px);
                 document.getElementById('defaultUserIcon').classList.add('hidden');
             }
 
+            // --- STRATEGIC CLUSTERING & TOPOLOGY ---
             const profiles = data.profiles || {};
-            currentProfilesData = profiles; 
-            
+            currentProfilesData = profiles;
             const carousel = document.getElementById('deviceCarousel');
             const nodeContainer = document.getElementById('bracketNodes');
             const svg = document.getElementById('bracketSvg');
             const syncBracketContainer = document.getElementById('syncBracketContainer');
             
+            // Ensure SVG is visually above background but below interactivity if needed
+            svg.style.zIndex = "5"; 
+            nodeContainer.style.zIndex = "10";
+            nodeContainer.style.position = "relative";
+
             carousel.innerHTML = '';
             nodeContainer.innerHTML = '';
             
@@ -420,28 +411,36 @@ padding-bottom: env(safe-area-inset-bottom, 25px);
                     <marker id="arrow-universal" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
                         <path d="M 0 0 L 10 5 L 0 10 z" fill="#10b981" />
                     </marker>
-                </defs>
-            `;
+                </defs>`;
 
-            let adm = 0, std = 0;
-            const profileKeys = Object.keys(profiles);
-            const sortedKeys = [...profileKeys].sort((a, b) => (a === currentUserKey ? -1 : (b === currentUserKey ? 1 : 0)));
+            const allKeys = Object.keys(profiles);
+            const density = {};
+            allKeys.forEach(k => {
+                const out = Object.keys(profiles[k].syncingTo || {}).length;
+                const inc = allKeys.filter(o => profiles[o].syncingTo?.[k]).length;
+                density[k] = out + inc;
+            });
 
-            // Universal Sync Logic
-            let isUniversal = sortedKeys.length > 1;
-            if (isUniversal) {
-                for (let p1 of sortedKeys) {
-                    for (let p2 of sortedKeys) {
-                        if (p1 !== p2 && (!profiles[p1].syncingTo || !profiles[p1].syncingTo[p2])) {
-                            isUniversal = false; break;
-                        }
-                    }
-                    if(!isUniversal) break;
-                }
+            const densitySorted = [...allKeys].sort((a, b) => density[b] - density[a]);
+            const sortedKeys = [];
+            const visited = new Set();
+
+            function cluster(key) {
+                if (visited.has(key)) return;
+                visited.add(key);
+                sortedKeys.push(key);
+                const targets = Object.keys(profiles[key].syncingTo || {});
+                targets.sort((a, b) => (profiles[b]?.syncingTo?.[key] ? 1 : 0) - (profiles[a]?.syncingTo?.[key] ? 1 : 0));
+                targets.forEach(t => { if (profiles[t]) cluster(t); });
             }
+            densitySorted.forEach(k => cluster(k));
 
-            const existingBadge = document.getElementById('universal-badge');
-            if (existingBadge) existingBadge.remove();
+            let isUniversal = sortedKeys.length > 1 && sortedKeys.every(p1 => 
+                sortedKeys.every(p2 => p1 === p2 || (profiles[p1].syncingTo && profiles[p1].syncingTo[p2]))
+            );
+
+            const oldBadge = document.getElementById('universal-badge');
+            if (oldBadge) oldBadge.remove();
             if (isUniversal) {
                 syncBracketContainer.classList.add('ring-2', 'ring-emerald-400', 'bg-emerald-50/20');
                 const badge = document.createElement('div');
@@ -453,87 +452,55 @@ padding-bottom: env(safe-area-inset-bottom, 25px);
                 syncBracketContainer.classList.remove('ring-2', 'ring-emerald-400', 'bg-emerald-50/20');
             }
 
-            // Carousel Generation
+            let adm = 0, std = 0;
             sortedKeys.forEach((name) => {
                 const p = profiles[name];
                 const isMe = name === currentUserKey;
                 const status = (p.authStatus || 'standard').toLowerCase();
                 status === 'admin' ? adm++ : std++;
+                
                 const card = document.createElement('div');
                 card.className = `device-pill cursor-pointer ${isMe ? 'current-device-border' : ''}`;
                 card.onclick = () => showDeviceModal(name);
-                card.innerHTML = `<div class="flex justify-between items-start mb-2"><p class="font-bold text-slate-800">${name} ${isMe ? '<span class="ml-1 text-[10px] text-blue-500">(You)</span>' : ''}</p><span class="text-[9px] px-2 py-0.5 rounded-full ${status === 'admin' ? 'bg-red-50 text-red-600' : 'bg-blue-50 text-blue-600'} font-bold uppercase">${status}</span></div><div class="flex items-center gap-2 text-slate-400 text-[11px]"><i class="fa ${p.deviceName?.toLowerCase().includes('phone') ? 'fa-mobile-screen' : 'fa-desktop'}"></i><p>${p.deviceName || 'Unknown Device'}</p></div><p class="text-[9px] text-slate-300 mt-3 font-medium">Created on: ${formatTS(p.createdAt)}</p>`;
+                card.innerHTML = `
+                    <div class="flex justify-between items-start mb-2">
+                        <p class="font-bold text-slate-800">${name} ${isMe ? '<span class="ml-1 text-[10px] text-blue-500">(You)</span>' : ''}</p>
+                        <span class="text-[9px] px-2 py-0.5 rounded-full ${status === 'admin' ? 'bg-red-50 text-red-600' : 'bg-blue-50 text-blue-600'} font-bold uppercase">${status}</span>
+                    </div>
+                    <div class="flex items-center gap-2 text-slate-400 text-[11px]">
+                        <i class="fa ${p.deviceName?.toLowerCase().includes('phone') ? 'fa-mobile-screen' : 'fa-desktop'}"></i>
+                        <p>${p.deviceName || 'Unknown'}</p>
+                    </div>
+                    <p class="text-[9px] text-slate-300 mt-3 font-medium">Created: ${formatTS(p.createdAt)}</p>`;
                 carousel.appendChild(card);
-            });
 
-            // --- SPACIOUS STRATEGIC RADIAL TOPOLOGY ---
-            nodeContainer.className = 'relative z-10 w-full h-[360px] mx-auto'; // Increased height
-            
-            const linkCounts = {};
-            profileKeys.forEach(k => linkCounts[k] = 0);
-            profileKeys.forEach(source => {
-                const targets = profiles[source].syncingTo || {};
-                Object.keys(targets).forEach(target => {
-                    if (profileKeys.includes(target)) { linkCounts[source]++; linkCounts[target]++; }
-                });
-            });
-
-            let unvisited = [...profileKeys];
-            const strategicSequence = [];
-            unvisited.sort((a, b) => linkCounts[b] - linkCounts[a]);
-            if (unvisited.length > 0) {
-                let current = unvisited.shift();
-                strategicSequence.push(current);
-                while (unvisited.length > 0) {
-                    let bestNeighbor = null, maxLinks = -1;
-                    for (let candidate of unvisited) {
-                        const isConnected = (profiles[current].syncingTo?.[candidate]) || (profiles[candidate].syncingTo?.[current]);
-                        if (isConnected && linkCounts[candidate] > maxLinks) { bestNeighbor = candidate; maxLinks = linkCounts[candidate]; }
-                    }
-                    if (bestNeighbor) { current = bestNeighbor; unvisited = unvisited.filter(n => n !== bestNeighbor); }
-                    else { current = unvisited.shift(); }
-                    strategicSequence.push(current);
-                }
-            }
-
-            // Dimensions: Radius expanded to 130px for better spacing
-            const R = 145; 
-            const totalNodes = strategicSequence.length;
-
-            strategicSequence.forEach((name, index) => {
-                const p = profiles[name];
-                const isMe = name === currentUserKey;
                 const node = document.createElement('div');
                 node.id = `node-${name}`;
-                node.className = `sync-node cursor-pointer absolute ${isMe ? 'active-me' : ''}`;
+                node.className = `sync-node cursor-pointer ${isMe ? 'active-me' : ''}`;
                 node.onclick = () => showDeviceModal(name);
-                node.innerHTML = `<div class="w-5 h-5 rounded-full bg-white flex items-center justify-center shadow-sm text-slate-400"><i class="fa ${p.deviceName?.toLowerCase().includes('phone') ? 'fa-mobile' : 'fa-laptop'} text-sm"></i></div><p class="text-[10px] font-bold text-slate-700 leading-tight">${name}</p>`;
-
-                const angle = totalNodes === 1 ? 0 : (index / totalNodes) * 2 * Math.PI - (Math.PI / 2);
-                const leftOffset = R * Math.cos(angle);
-                const topOffset = R * Math.sin(angle);
-                
-                // Centered within the 360px container
-                node.style.left = `calc(50% - 45px + ${leftOffset}px)`;
-                node.style.top = `calc(50% - 45px + ${topOffset}px)`;
+                node.innerHTML = `
+                    <div class="w-10 h-10 rounded-full bg-white flex items-center justify-center shadow-sm border border-slate-100 text-slate-400 mb-1 pointer-events-auto">
+                        <i class="fa ${p.deviceName?.toLowerCase().includes('phone') ? 'fa-mobile' : 'fa-laptop'} text-sm"></i>
+                    </div>
+                    <p class="text-[10px] font-bold text-slate-700 leading-tight text-center select-none">${name}</p>`;
                 nodeContainer.appendChild(node);
             });
 
             document.getElementById('adminCount').textContent = adm;
             document.getElementById('standardCount').textContent = std;
             const sync = data.settings?.synchronization?.toLowerCase();
-            syncPill.textContent = sync === 'all' ? 'GLOBAL SYNC' : 'PRIVATE SYNC';
+            syncPill.textContent = sync === 'all' ? 'LIVE SYNC' : 'LOCAL ONLY';
             syncPill.className = `text-[10px] font-bold py-1 px-2 rounded-full ${sync === 'all' ? 'bg-green-50 text-green-600' : 'bg-gray-100 text-gray-400'}`;
             document.getElementById('currentProfileDetails').textContent = `${currentUserKey} • ${profiles[currentUserKey]?.deviceName || 'Unknown'}`;
 
             setTimeout(() => {
-                Object.entries(profiles).forEach(([name, p]) => {
-                    const targets = p.syncingTo || {};
+                sortedKeys.forEach(name => {
+                    const targets = profiles[name].syncingTo || {};
                     Object.keys(targets).forEach(tName => {
                         if (profiles[tName]) drawFlow(name, tName, profiles[tName].syncingTo?.[name], isUniversal);
                     });
                 });
-            }, 300);
+            }, 500);
         });
 
         // --- AUTO-SAVE ---
@@ -541,10 +508,8 @@ padding-bottom: env(safe-area-inset-bottom, 25px);
             const newText = descField.innerText.trim();
             const originalStatus = syncPill.textContent;
             syncPill.textContent = "SAVING...";
-            syncPill.className = "text-[10px] font-bold py-1 px-2 rounded-full bg-yellow-50 text-yellow-600";
             accountRef.update({ description: newText }).then(() => {
                 syncPill.textContent = "SAVED";
-                syncPill.className = "text-[10px] font-bold py-1 px-2 rounded-full bg-green-50 text-green-600";
                 setTimeout(() => { syncPill.textContent = originalStatus; }, 2000);
             });
         });
@@ -554,40 +519,41 @@ padding-bottom: env(safe-area-inset-bottom, 25px);
 
     function drawFlow(sourceId, targetId, isMutual, isUniversal) {
         const svg = document.getElementById('bracketSvg');
-        const startEl = document.getElementById(`node-${sourceId}`);
-        const endEl = document.getElementById(`node-${targetId}`);
-        const container = document.getElementById('syncBracketContainer');
-        if (!startEl || !endEl) return;
+        const sEl = document.getElementById(`node-${sourceId}`);
+        const eEl = document.getElementById(`node-${targetId}`);
+        const cont = document.getElementById('syncBracketContainer');
+        if (!sEl || !eEl) return;
 
-        const cR = container.getBoundingClientRect();
-        const sR = startEl.getBoundingClientRect();
-        const eR = endEl.getBoundingClientRect();
+        const cR = cont.getBoundingClientRect();
+        const sR = sEl.getBoundingClientRect();
+        const eR = eEl.getBoundingClientRect();
 
         const x1 = sR.left + sR.width / 2 - cR.left;
-        const y1 = sR.top + sR.height / 2 - cR.top;
+        const y1 = sR.top + (sR.height / 2) - cR.top - 10; // Adjusted for label height
         const x2 = eR.left + eR.width / 2 - cR.left;
-        const y2 = eR.top + eR.height / 2 - cR.top;
+        const y2 = eR.top + (eR.height / 2) - cR.top - 10;
 
         const dx = x2 - x1, dy = y2 - y1;
-        const length = Math.sqrt(dx * dx + dy * dy);
-        if (length === 0) return;
+        const len = Math.sqrt(dx * dx + dy * dy);
+        if (len < 45) return;
 
-        const nodeVisualRadius = Math.max(sR.width, sR.height) / 2 + 2; 
-        const startRatio = nodeVisualRadius / length;
-        const endRatio = (length - nodeVisualRadius - 8) / length; 
-
-        const sX = x1 + dx * startRatio + (-dy / length * 5);
-        const sY = y1 + dy * startRatio + (dx / length * 5);
-        const eX = x1 + dx * endRatio + (-dy / length * 5);
-        const eY = y1 + dy * endRatio + (dx / length * 5);
+        // "rad" is the distance from the center of the node where the arrow starts/ends
+        // We increase this to ensure the arrow head isn't hidden under the node's white circle
+        const rad = 2; 
+        const sX = x1 + dx * (rad / len);
+        const sY = y1 + dy * (rad / len);
+        const eX = x1 + dx * ((len - rad - 8) / len);
+        const eY = y1 + dy * ((len - rad - 8) / len);
 
         const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
         line.setAttribute("x1", sX); line.setAttribute("y1", sY);
         line.setAttribute("x2", eX); line.setAttribute("y2", eY);
         
-        let colorClass = isUniversal ? 'universal' : (isMutual ? 'mutual' : '');
-        line.setAttribute("class", `flow-line ${colorClass}`);
+        let cls = isUniversal ? 'universal' : (isMutual ? 'mutual' : '');
+        line.setAttribute("class", `flow-line ${cls}`);
         line.setAttribute("marker-end", isUniversal ? "url(#arrow-universal)" : (isMutual ? "url(#arrow-mutual)" : "url(#arrow-single)"));
+        
+        // Append lines before nodes are fully rendered or manage z-index
         svg.appendChild(line);
     }
 
@@ -597,6 +563,122 @@ padding-bottom: env(safe-area-inset-bottom, 25px);
     checkNetwork();
 </script>
 
+<script>
+(function() {
+    const ACCOUNT_KEY_STORAGE = 'AV_ledger_account_key';
+    const currentLocalKey = localStorage.getItem(ACCOUNT_KEY_STORAGE);
+
+    // Only run if we are actually logged into an account
+    if (!currentLocalKey) return;
+
+    // Listen to the top-level accounts node
+    const accountsRef = firebase.database().ref('accounts');
+
+    accountsRef.on('value', (snapshot) => {
+        const allAccounts = snapshot.val();
+        if (!allAccounts) return;
+
+        // 1. If our current account key still exists, we are fine.
+        if (allAccounts[currentLocalKey]) {
+            // Optional: You could sync the Account Name to local storage here if needed
+            return;
+        }
+
+        // 2. If our key is MISSING, look for it in the history of other accounts
+        console.warn("Current Account Key not found. Searching for migration...");
+        let migrationFound = false;
+
+        for (const [newSlug, data] of Object.entries(allAccounts)) {
+            // Check if this account has a list of 'oldAccountKeys' 
+            // and if our missing key is one of them.
+            if (data.oldAccountKeys && Array.isArray(data.oldAccountKeys) && data.oldAccountKeys.includes(currentLocalKey)) {
+                
+                console.log(`Account Migration Detected! ${currentLocalKey} -> ${newSlug}`);
+                
+                // 3. Update the local storage with the new Slug
+                localStorage.setItem(ACCOUNT_KEY_STORAGE, newSlug);
+                
+                migrationFound = true;
+                
+                // 4. Force a reload so the entire app points to the new Firebase path
+                window.location.reload();
+                break;
+            }
+        }
+
+        // 5. If it's truly gone (no migration found), the account was likely deleted.
+        if (!migrationFound) {
+            console.error("Account has been deleted or access revoked.");
+            localStorage.clear();
+            window.location.href = "index.html";
+        }
+    }, (error) => {
+        // If we get a permission error, it usually means our key was deleted 
+        // and we no longer have access to the accounts node.
+        if (error.code === 'PERMISSION_DENIED') {
+            console.warn("Access denied. Attempting global account search...");
+            // In a strict security setup, you might need a dedicated 'migrations' node 
+            // that is publicly readable to find where your account moved to.
+        }
+    });
+})();
+</script>
+<script>
+(function() {
+    const ACCOUNT_KEY = localStorage.getItem('AV_ledger_account_key');
+    const LOCAL_USERNAME = localStorage.getItem('AV_ledger_username');
+
+    // Only run if we are actually logged in
+    if (!ACCOUNT_KEY || !LOCAL_USERNAME) return;
+
+    const migrationRef = firebase.database().ref(`accounts/${ACCOUNT_KEY}/profiles`);
+
+    migrationRef.on('value', (snapshot) => {
+        const profiles = snapshot.val();
+        if (!profiles) return;
+
+        // 1. Check if our current local name still exists
+        if (!profiles[LOCAL_USERNAME]) {
+            console.log("Current profile name not found. Checking for migration...");
+
+            // 2. Scan for our old name in the history of other profiles
+            let migrated = false;
+            for (const [newName, data] of Object.entries(profiles)) {
+                if (data.oldNames && Array.isArray(data.oldNames) && data.oldNames.includes(LOCAL_USERNAME)) {
+                    
+                    // 3. Update all local storage keys associated with the identity
+                    localStorage.setItem('AV_ledger_username', newName);
+                    
+                    if (data.authStatus) {
+                        localStorage.setItem('AV_ledger_auth_status', data.authStatus);
+                    }
+                    
+                    if (data.email) {
+                        localStorage.setItem('AV_ledger_account_email', data.email);
+                    }
+
+                    console.log(`Successfully migrated identity: ${LOCAL_USERNAME} -> ${newName}`);
+                    migrated = true;
+                    
+                    // 4. Force reload to apply the new name to the UI/Listeners
+                    window.location.reload();
+                    break;
+                }
+            }
+
+            // 5. If it's completely gone with no trail, the profile was likely deleted
+            if (!migrated) {
+                console.warn("Profile has been removed. Redirecting to login.");
+                // Clear local storage and bounce to login
+                localStorage.clear(); 
+                window.location.href = "index.html";
+            }
+        }
+    }, (error) => {
+        console.error("Migration listener failed:", error);
+    });
+})();
+</script>
 
 </body>
 </html>
