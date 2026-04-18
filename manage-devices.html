@@ -649,63 +649,78 @@ padding-bottom: env(safe-area-inset-bottom, 25px);
     }
 
     async function updateUsername(oldName, newName, accountKey) {
-        if (allProfiles[newName]) {
-            toast('Error', 'Username already exists!', false);
-            const modalSpan = document.querySelector(".modal .user-name span");
-            if(modalSpan) modalSpan.textContent = oldName;
+    if (allProfiles[newName]) {
+        toast('Error', 'Username already exists!', false);
+        const modalSpan = document.querySelector(".modal .user-name span");
+        if(modalSpan) modalSpan.textContent = oldName;
+        return;
+    }
+
+    const oldProfileRef = db.ref(`accounts/${accountKey}/profiles/${oldName}`);
+
+    try {
+        const snapshot = await oldProfileRef.once('value');
+        const profileData = snapshot.val();
+
+        if (!profileData) {
+            toast('Error', 'Profile not found.', false);
             return;
         }
 
-        const oldProfileRef = db.ref(`accounts/${accountKey}/profiles/${oldName}`);
+        const allUpdates = {};
+        profileData.displayName = newName;
+        
+        // 1. Move profile data to the new name
+        allUpdates[`accounts/${accountKey}/profiles/${newName}`] = profileData;
+        allUpdates[`accounts/${accountKey}/profiles/${oldName}`] = null;
 
-        try {
-            const snapshot = await oldProfileRef.once('value');
-            const profileData = snapshot.val();
+        // 2. Notify other devices of the change
+        // We store from...to so other devices can verify if they are the "oldName"
+        const changeId = Date.now(); // Unique ID for this change event
+        allUpdates[`accounts/${accountKey}/name-change`] = {
+            from: oldName,
+            to: newName,
+            timestamp: changeId
+        };
 
-            if (!profileData) {
-                toast('Error', 'Profile not found.', false);
-                return;
-            }
+        // 3. Update references across all profiles (your existing logic)
+        Object.keys(allProfiles).forEach(otherProfileName => {
+            if (otherProfileName !== oldName) {
+                const otherProfile = allProfiles[otherProfileName];
+                const pathBase = `accounts/${accountKey}/profiles/${otherProfileName}`;
 
-            const allUpdates = {};
-            profileData.displayName = newName;
-            allUpdates[`accounts/${accountKey}/profiles/${newName}`] = profileData;
-            allUpdates[`accounts/${accountKey}/profiles/${oldName}`] = null;
-
-            // Update references across all profiles
-            Object.keys(allProfiles).forEach(otherProfileName => {
-                if (otherProfileName !== oldName) {
-                    const otherProfile = allProfiles[otherProfileName];
-                    const pathBase = `accounts/${accountKey}/profiles/${otherProfileName}`;
-
-                    if (otherProfile.syncingTo && otherProfile.syncingTo[oldName] !== undefined) {
-                        allUpdates[`${pathBase}/syncingTo/${newName}`] = otherProfile.syncingTo[oldName];
-                        allUpdates[`${pathBase}/syncingTo/${oldName}`] = null;
-                    }
-
-                    if (otherProfile.syncingWith && otherProfile.syncingWith[oldName] !== undefined) {
-                        allUpdates[`${pathBase}/syncingWith/${newName}`] = otherProfile.syncingWith[oldName];
-                        allUpdates[`${pathBase}/syncingWith/${oldName}`] = null;
-                    }
+                if (otherProfile.syncingTo && otherProfile.syncingTo[oldName] !== undefined) {
+                    allUpdates[`${pathBase}/syncingTo/${newName}`] = otherProfile.syncingTo[oldName];
+                    allUpdates[`${pathBase}/syncingTo/${oldName}`] = null;
                 }
-            });
 
-            await db.ref().update(allUpdates);
+                if (otherProfile.syncingWith && otherProfile.syncingWith[oldName] !== undefined) {
+                    allUpdates[`${pathBase}/syncingWith/${newName}`] = otherProfile.syncingWith[oldName];
+                    allUpdates[`${pathBase}/syncingWith/${oldName}`] = null;
+                }
+            }
+        });
 
-            localStorage.setItem(USERNAME_STORAGE, newName);
-            CURRENT_PROFILE_NAME = newName;
+        await db.ref().update(allUpdates);
 
-            toast('Username Updated', `Profile name changed from ${oldName} to ${newName}.`);
-            fetchAndRenderDevices();
-            closeModal('deviceModal');
+        // Update local storage for the device making the change
+        localStorage.setItem(USERNAME_STORAGE, newName);
+        CURRENT_PROFILE_NAME = newName;
 
-        } catch(error) {
-            console.error("Error updating username:", error);
-            toast('Error', 'Failed to update username in Firebase.', false);
-            const modalSpan = document.querySelector(".modal .user-name span");
-            if(modalSpan) modalSpan.textContent = oldName;
-        }
+        toast('Username Updated', `Profile name changed to ${newName}.`);
+        fetchAndRenderDevices();
+        closeModal('deviceModal');
+
+        // Optional: Remove the notification node after 10 seconds to keep DB clean
+        setTimeout(() => {
+            db.ref(`accounts/${accountKey}/name-change`).remove();
+        }, 10000);
+
+    } catch(error) {
+        console.error("Error updating username:", error);
+        toast('Error', 'Failed to update username.', false);
     }
+}
 
     function closeModal(modalId) {
         document.getElementById(modalId).classList.remove("active");
@@ -1431,6 +1446,36 @@ modalHtml += `
 
     // --- INITIALIZATION ---
     document.addEventListener('DOMContentLoaded', fetchAndRenderDevices);
+
+// Add this inside fetchAndRenderDevices or at the bottom of your script
+function listenForNameChanges() {
+    if (!CURRENT_ACCOUNT_KEY) return;
+
+    const nameChangeRef = db.ref(`accounts/${CURRENT_ACCOUNT_KEY}/name-change`);
+    
+    nameChangeRef.on('value', (snapshot) => {
+        const data = snapshot.val();
+        if (data && data.from && data.to) {
+            const myStoredName = localStorage.getItem(USERNAME_STORAGE);
+            
+            // If this device is currently logged in as the 'old' name
+            if (myStoredName === data.from) {
+                // Update local storage immediately
+                localStorage.setItem(USERNAME_STORAGE, data.to);
+                CURRENT_PROFILE_NAME = data.to;
+                
+                toast('System Update', `Your profile name was updated to ${data.to} on another device.`);
+                
+                // Refresh the UI to reflect the new name
+                fetchAndRenderDevices();
+            }
+        }
+    });
+}
+
+// Call it once when the app starts
+listenForNameChanges();
+
 </script>
 <script>
 /* =========================================================
@@ -1563,3 +1608,4 @@ document.addEventListener('DOMContentLoaded', () => {
 </script>
 </body>
 </html>
+hi
