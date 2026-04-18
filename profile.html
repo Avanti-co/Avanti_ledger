@@ -3,184 +3,204 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=0.9, viewport-fit=cover, maximum-scale=0.9, user-scalable=no" />
-  <title>Profile</title>
+  <title>Profile | Avanti Ledger</title>
 
   <script src="https://cdn.tailwindcss.com"></script>
-   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-
-
-  
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
-<link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#3f72af">
 
-<script>
-  if ("serviceWorker" in navigator) {
-    window.addEventListener("load", () => {
-      navigator.serviceWorker.register("/service-worker.js")
-        .then(reg => console.log("Service worker registered:", reg))
-        .catch(err => console.error("Service worker error:", err));
-    });
-  }
-</script>
-  
   <style>
-    :root{
-      --card-bg: rgba(255,255,255,0.9);
-      --muted: #6b7280;
-      --accent: #0ea5a4; /* teal-ish */
-      --glass: rgba(255,255,255,0.6);
+    :root {
+      --bg: #F8FAFC;
+      --avanti-blue: #3f72af;
+      --text-main: #1e293b;
+      --border-color: #E5E5E5;
+    }
+
+    body {
+      background-color: var(--bg);
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
+      padding-top: 0px;
+      padding-bottom: 110px;
+      overflow-x: hidden;
+    }
+
+    /* --- HEADER --- */
+    .header {
+        display:flex; align-items:center; justify-content:space-between;
+        padding:25px 0px 10px 12px; background:#3f72af;
+        position:fixed; top:0; z-index:1000; width: 100%;
+    }
+    .header a { color:#a3c9f1; text-decoration:none; font-size:1.0rem; font-weight:500; }
+    .header-title { font-weight:600; font-size:1.1rem; text-align:center; flex:1; color:white; margin-left: -30px; }
+
+    /* --- PROFILE LAYOUT --- */
+    .identity-section {
+        background-color: #3f72af; padding: 100px 20px; border-radius: 0 0 30px 30px;
+        margin-bottom: -40px; color: white; text-align: center;
+    }
+    .profile-hex {
+        width: 100px; height: 100px; margin: 0 auto; background: white;
+        border-radius: 24px; padding: 4px; box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+    }
+
+    .action-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 0 16px; margin-top: 20px; }
+    .action-tile {
+        background: white; padding: 20px; border-radius: 18px; border: 1px solid #e2e8f0;
+        display: flex; flex-direction: column; align-items: center; transition: transform 0.1s;
+    }
+    .action-tile:active { transform: scale(0.96); }
+    .icon-circle { width: 45px; height: 45px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-bottom: 10px; }
+
+    .device-carousel { display: flex; overflow-x: auto; gap: 12px; padding: 10px 16px; scrollbar-width: none; }
+    .device-carousel::-webkit-scrollbar { display: none; }
+    .device-pill {
+        background: white; min-width: 240px; padding: 16px; border-radius: 20px;
+        border: 1px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); flex-shrink: 0;
+        transition: transform 0.1s, box-shadow 0.2s;
+    }
+    .device-pill:active { transform: scale(0.98); }
+    .current-device-border { border: 2px solid #3f72af !important; position: relative; }
+
+    /* --- TOPOLOGY STYLES --- */
+    .sync-node {
+        display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 12px;
+        background: #f8fafc; border-radius: 18px; border: 1px solid #e2e8f0; width: 90px; height: 90px; z-index: 10;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.04); transition: transform 0.1s, border-color 0.2s;
+    }
+    .sync-node:active { transform: scale(0.95); }
+    .sync-node.active-me { background: #eff6ff; border-color: #3f72af; border-width: 2px; }
+    .flow-line { fill: none; stroke: #cbd5e1; stroke-width: 2; stroke-dasharray: 6; animation: flow 1s linear infinite; }
+    .flow-line.mutual { stroke: #3f72af; stroke-dasharray: none; opacity: 0.7; animation: none; }
+    .flow-line.universal { stroke: #10b981; stroke-dasharray: none; opacity: 1; stroke-width: 2.5; animation: none; }
+    @keyframes flow { from { stroke-dashoffset: 12; } to { stroke-dashoffset: 0; } }
+
+    /* --- JSON VIEWER STYLES --- */
+    .json-tree ul { list-style-type: none; margin: 0; }
+    .json-tree .nested { display: none; }
+    .json-tree .active { display: block; }
+    .json-key { font-weight: 600; color: #334155; }
+    .json-string { color: #16a34a; word-break: break-all; } 
+    .json-number { color: #2563eb; } 
+    .json-boolean { color: #d97706; } 
+
+    /* --- NAVIGATION --- */
     
-            --system-blue: #007AFF;
-            --system-red: #FF3B30;
-            --bg: #F2F2F7;
-            --card: #FFFFFF;
-            --border-color: #E5E5E5;
-            --text-color: #000000;
-            --muted-color: #8E8E93;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
-        }
 
-    html,body{
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial;
-      background: linear-gradient(180deg,#f2f6fb 0%, #eef2f7 100%);
-      -webkit-font-smoothing:antialiased;
-      -moz-osx-font-smoothing:grayscale;
-      height:100%;
-      margin-top: 100px;
+    #network-overlay {
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(255, 255, 255, 0.4); backdrop-filter: blur(8px);
+        z-index: 9999; display: none; justify-content: center; align-items: center; text-align: center;
     }
-     .header{
-            display:flex;
-            align-items:center;
-            justify-content:space-between;
-            padding:25px 0px 10px 12px;
-            background:#3f72af;
-            border-bottom:1px solid var(--border-color);
-            position:fixed; top:0; z-index:10;
-            width: 100%;
-        }
-        .header a{
-            color:#a3c9f1;
-            text-decoration:none;
-            font-size:1.0rem;
-            font-weight:500;
-            text-align: left;
-        }
-        .header-title{
-            font-weight:600;
-            font-size:1.1rem;
-            text-align:center;
-            flex:1;
-            color:white;
-            margin-left: -30px;
-        }
-
-    .glass {
-      background: rgba(255,255,255,0.85);
-      backdrop-filter: blur(6px);
-      -webkit-backdrop-filter: blur(6px);
-      border-radius:14px;
-      border:1px solid #a3c9f1;
-      padding:10px;
-     
-    }
-    .sep { height:1px; background: lightgray; margin:12px 0; }
-    .ios-btn {
-      background: linear-gradient(180deg, #ffffff, #f7f9fb);
-      border:1px solid rgba(15,23,42,0.06);
-      padding:8px 12px;
-      border-radius:12px;
-      box-shadow: 0 1px 0 rgba(255,255,255,0.6) inset;
-    }
-    
-    /* Carousel Styles */
-    .carousel-container {
-      display: flex;
-      overflow-x: scroll;
-      gap: 12px;
-      padding: 10px 4px;
-      scroll-snap-type: x mandatory;
-      -webkit-overflow-scrolling: touch;
-      scrollbar-width: none;
-    }
-    .carousel-container::-webkit-scrollbar {
-      display: none;
-    }
-    .carousel-card {
-      min-width: 200px;
-      scroll-snap-align: start;
-      cursor: pointer;
-    }
-    /* Styles for the dropdown (kept from original) */
-    .ios-dropdown-container {
-      position: relative;
-      display: inline-block;
-    }
-    .ios-more-button {
-      background-color: transparent;         
-      border: 1px solid transparent; 
-      border-radius: 8px;
-      padding: 5px 10px;
-      cursor: pointer;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      transition: background-color 0.2s;
-    }
-    .ios-more-button:hover {
-      background-color: rgba(0, 122, 255, 0.05);
-    }
-    .ios-more-button .fa-ellipsis-v{
-      font-size: 20px;
-      color: #007AFF;
-    }
-    .ios-dropdown-menu {
-      display: none; 
-      position: absolute;
-      top: 100%; 
-      right: 0; 
-      z-index: 10;
-      background-color: white;
-      min-width: 160px;
-      border-radius: 12px; 
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15); 
-      overflow: hidden; 
-      margin-top: 8px; 
-      opacity: 0;
-      transform: translateY(-5px);
-      transition: opacity 0.2s ease-out, transform 0.2s ease-out;
-    }
-    .ios-dropdown-menu.show {
-      display: flex;
-      flex-direction: column;
-      opacity: 1;
-      transform: translateY(0);
-    }
-    .ios-dropdown-menu a {
-      padding: 12px 16px;
-      text-decoration: none;
-      color: black;
-      font-size: 15px;
-      font-family: inherit;
-      border-bottom: 1px solid #eee;
-    }
-    .ios-dropdown-menu a:hover {
-      background-color: #f7f7f7; 
-    }
-    .ios-dropdown-menu a:last-child {
-      border-bottom: none;
-    }
-
+    .spinner { width: 40px; height: 40px; border: 4px solid #f3f3f3; border-top: 4px solid #3f72af; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 15px; }
+    @keyframes spin { 100% { transform: rotate(360deg); } }
   </style>
 </head>
 <body>
-<div class="header mb-4">
-    <a href="" onclick="history.back(); return false;"><i class="fas fa-chevron-left"></i> Back</a>
-    <div class="header-title text-gray-750">Profile</div>
+
+<div id="network-overlay">
+    <div>
+        <div class="spinner"></div>
+        <p class="text-slate-700 font-medium"><i class="fa fa-exclamation-triangle"></i> Check your connection.</p>
+    </div>
+</div>
+
+<div id="deviceInfoModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[2000] hidden flex-col justify-end transition-opacity duration-300 opacity-0">
+    <div id="deviceInfoSheet" class="bg-white w-full h-[85vh] rounded-t-[32px] shadow-2xl flex flex-col overflow-hidden transform translate-y-full transition-transform duration-300">
+        <div class="flex justify-between items-center p-6 border-b border-gray-100 bg-white">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center">
+                    <i class="fa fa-database"></i>
+                </div>
+                <div>
+                    <h2 class="text-lg font-bold text-slate-800 leading-tight" id="modalDeviceName">Device Name</h2>
+                    <p class="text-xs text-slate-400 font-medium tracking-wide">DATABASE RECORD</p>
+                </div>
+            </div>
+            <button onclick="closeDeviceModal()" class="w-8 h-8 flex items-center justify-center rounded-full bg-slate-50 text-slate-500 hover:bg-slate-100 transition-colors">
+                <i class="fa fa-times"></i>
+            </button>
+        </div>
+        <div class="flex-1 overflow-y-auto p-6 bg-[#f8f9fa] font-mono text-[13px] leading-relaxed" id="jsonViewerContainer">
+            </div>
+    </div>
+</div>
+
+<div class="header">
+    <a href="#" onclick="history.back(); return false;"><i class="fas fa-chevron-left"></i> Back</a>
+    <div class="header-title">Profile</div>
     <div style="width:36px;"></div>
 </div>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600&display=swap" rel="stylesheet">
+
+<section class="identity-section">
+    <div class="profile-hex">
+        <div id="profileImageContainer" class="w-full h-full rounded-[20px] bg-gray-50 flex items-center justify-center overflow-hidden">
+            <i id="defaultUserIcon" class="fa fa-user text-4xl text-gray-300"></i>
+            <img id="profileImage" class="hidden w-full h-full object-cover">
+        </div>
+    </div>
+    <h2 id="accountNameDisplay" class="text-2xl font-bold mt-4 tracking-tight">Loading...</h2>
+    <p id="contactDisplay" class="text-blue-100 text-sm opacity-80">Loading...</p>
+</section>
+
+<div class="px-4">
+    <div  style="
+    box-shadow: 0px 0px 20px rgba(0,0,0,0.5);
+    transition: all 0.3s ease;
+"
+onmouseover="this.style.transform='translateY(-5px)'; this.style.boxShadow='0 15px 35px rgba(0,0,0,0.15)';"
+onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 8px 20px rgba(0,0,0,0.08)';"class="bg-white rounded-[24px] p-6 shadow-xl shadow-blue-900/5 relative z-20">
+        <div class="flex justify-around border-b border-gray-100 pb-4 mb-4">
+            <div class="text-center">
+                <span id="adminCount" class="block text-xl font-bold text-slate-800">0</span>
+                <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest"><i class="fas fa-crown" style="color: gold;"></i> Admin(s)</span>
+            </div>
+            <div class="h-8 w-[1px] bg-gray-100 mt-2"></div>
+            <div class="text-center">
+                <span id="standardCount" class="block text-xl font-bold text-slate-800">0</span>
+                <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest"><i class="fas fa-laptop" style="color: #3b82f6;"></i> Standard</span>
+            </div>
+        </div>
+        <p id="descriptionDisplay" contenteditable="true" class="text-center text-sm text-slate-600 leading-relaxed italic px-2 outline-none focus:bg-slate-50 rounded-lg transition-colors">
+            Loading description...
+        </p>
+
+
+    </div>
+</div>
+
+<div class="action-grid">
+    <div class="action-tile" onclick="window.location.href='edit-profile.html'">
+        <div class="icon-circle bg-blue-50 text-blue-600"><i class="fa fa-user-pen"></i></div>
+        <span class="text-xs font-bold text-slate-700">Edit Profile</span>
+    </div>
+    <div class="action-tile" onclick="window.location.href='manage-devices.html'">
+        <div class="icon-circle bg-green-50 text-green-600"><i class="fa fa-laptop-code"></i></div>
+        <span class="text-xs font-bold text-slate-700">Devices</span>
+    </div>
+</div>
+
+<div class="mt-8">
+    <div class="flex justify-between items-center px-6 mb-3">
+        <h3 class="text-sm font-bold text-slate-400 uppercase tracking-widest">Active Sessions</h3>
+        <span id="syncStatusDisplay" class="text-[10px] font-bold py-1 px-2 rounded-full bg-blue-50 text-blue-600">SYNCING...</span>
+    </div>
+    <div id="deviceCarousel" class="device-carousel"></div>
+</div>
+
+<div class="mt-10 px-6">
+    <h3 class="text-sm font-bold text-slate-400 uppercase tracking-widest mb-6">Data Flow Topology</h3>
+    <div id="syncBracketContainer" class="bg-white rounded-[24px] p-6 border border-gray-100 shadow-sm overflow-hidden relative min-h-[220px] transition-all duration-300">
+        <svg id="bracketSvg" class="absolute inset-0 w-full h-full pointer-events-none" style="z-index: 1;"></svg>
+        <div id="bracketNodes" class="relative z-10 grid grid-cols-2 gap-y-12 gap-x-6 justify-items-center px-2 py-4"></div>
+    </div>
+</div>
+
+<div class="mt-4 px-6 text-center opacity-40">
+    <p id="authStatusDisplay" class="text-[10px] font-black tracking-[0.2em] uppercase">Status</p>
+    <p id="currentProfileDetails" class="text-[10px] mt-1">User • Device</p>
+</div>
 
 <nav style="
     position: fixed; 
@@ -235,8 +255,8 @@ padding-bottom: env(safe-area-inset-bottom, 25px);
         <span style="font-size: 11px; margin-top: 4px; font-weight: 500;">Stats</span>
     </a>
 
-    <a href="#" style="display: flex; flex-direction: column; align-items: center; text-decoration: none; color: #3f72af; flex: 1; relative">
-<div style="position: absolute; top: 0; width: 20px; height: 3px; background: #3f72af; border-radius: 0 0 4px 4px;"></div>
+    <a href="settings.html" style="display: flex; flex-direction: column; align-items: center; text-decoration: none; color: #3f72af; flex: 1; position: relative">
+<div style="position: absolute; top: -14px; width: 20px; height: 3px; background: #3f72af; border-radius: 0 0 4px 4px;"></div>
         <svg style="width: 22px; height: 22px; fill: rgba(37, 99, 235, 0.1); stroke: currentColor; stroke-width: 2;" viewBox="0 0 24 24">
             <circle cx="12" cy="12" r="3"></circle>
             <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0-.33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0 .33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
@@ -244,436 +264,351 @@ padding-bottom: env(safe-area-inset-bottom, 25px);
         <span style="font-size: 11px; margin-top: 4px; font-weight: 600;">Settings</span>
     </a>
 </nav>
- 
-    <div class="p-4">
 
-      <div class="glass p-6 mb-10 pb-50">   
-
-<div style="display: flex; justify-content: flex-end;">
-<div class="ios-dropdown-container">
-  <button class="ios-more-button" id="moreButton">
-    <i class="fa fa-ellipsis-v"></i>
-  </button>
-  
-  <div class="ios-dropdown-menu" id="dropdownMenu">
-    <a href="edit-profile.html" id="editProfileLink">Edit Profile</a>
-    <a href="manage-devices.html" id="manageDevicesLink">Manage devices</a>
-    <a href="settings.html">Settings</a>
-    <a href="support.html" class="destructive">Report Issue</a>
-  </div>
-</div>
-</div>
-        <div class="flex items-center justify-center">
-          <div class="relative">
-            <div id="profileImageContainer" class="w-28 h-28 rounded-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center border border-gray-200 shadow-sm overflow-hidden">
-              <i id="defaultUserIcon" class="fa fa-user text-4xl font-semibold text-gray-600"></i>
-              <img id="profileImage" class="hidden w-full h-full object-cover" alt="Profile Picture">
-            </div>
-            <button class="absolute -bottom-1 -right-1 ios-btn text-xs px-2 py-1" onclick="window.location.href='edit-profile.html';" title="Edit photo">Edit</button>
-          </div>
-        </div>
-
-        <div class="text-center mt-4">
-          <h2 id="accountNameDisplay" class="text-xl font-semibold">Loading...</h2>
-          <p id="contactDisplay" class="text-sm text-gray-500 mt-1">Loading Contact...</p>
-         
-        </div>
-
-        <div class="mt-4 text-center">
-          <p class="text-sm text-[#3f72af]">
-            <span id="descriptionDisplay" contenteditable="true" class="cursor-pointer hover:bg-gray-100 rounded p-1 transition-colors duration-150">
-                Add your profile summary
-            </span> 
-            <i class="fa fa-edit text-gray-400"></i>
-          </p>
-          <p id="descriptionSaveStatus" class="text-xs text-green-500 mt-1 hidden">Description saved!</p>
-        </div>
-
-        <div class="mt-4 flex items-center justify-center gap-6">
-          <div class="text-center">
-            <p id="adminCount" class="text-2xl font-semibold">0</p>
-            <p class="text-xs text-gray-500">Admin device</p>
-          </div>
-          <div class="text-center">
-            <p id="standardCount" class="text-2xl font-semibold">0</p>
-            <p class="text-xs text-gray-500">Standard device</p>
-          </div>
-        </div>
-
-        <div id="syncStatusContainer">
-              <p id="syncStatusDisplay" style="text-align: center; margin-top: 10px;" class="text-sm text-gray-500">Checking Sync...</p>
-        </div>
-
-        <div class="sep text-gray-300"></div>
-
-        <div class="flex flex-col gap-2">
-          <div class="text-center">
-            <p id="authStatusDisplay" class="text-xs text-[#3f72af] mt-1">Status</p>
-          </div>
-          <div class="text-center">
-            <p id="currentProfileDetails" class="text-xs text-gray-500 mt-1">Username · Device name</p>
-          </div>
-        </div>
-      </div>
-      
-      <div class=" mt-[-25px] mb-20">
-        <h3 class="text-lg font-semibold text-gray-700  ml-4">Account Devices</h3>
-        <div id="deviceCarousel" class="carousel-container">
-          <p id="loadingMessage" class="text-gray-500 ml-4">Loading devices...</p>
-        </div>
-      </div>
-    </div>
-
-  <script>
-    // ----------------------------------------------------
-    // 🔥 1. FIREBASE CONFIGURATION (Replace with your own)
-    // ----------------------------------------------------
+<script>
+    // --- FIREBASE CONFIG ---
     const firebaseConfig = {
       apiKey: "AIzaSyDZeQXOHRjhqijerFLyNkOLcbQUIwRLRqY",
-  authDomain: "mwelaisha-shaba.firebaseapp.com",
-  databaseURL: "https://mwelaisha-shaba-default-rtdb.firebaseio.com",
-  projectId: "mwelaisha-shaba",
-  storageBucket: "mwelaisha-shaba.firebasestorage.app",
-  messagingSenderId: "262165456072",
-  appId: "1:262165456072:web:40926b87a0eb513cc971fd",
-  measurementId: "G-LVWW6PJ0P0"
-
-  
+      authDomain: "mwelaisha-shaba.firebaseapp.com",
+      databaseURL: "https://mwelaisha-shaba-default-rtdb.firebaseio.com",
+      projectId: "mwelaisha-shaba",
+      storageBucket: "mwelaisha-shaba.firebasestorage.app",
+      messagingSenderId: "262165456072",
+      appId: "1:262165456072:web:40926b87a0eb513cc971fd"
     };
 
-    // Initialize Firebase
-    if (!firebase.apps.length) {
-      firebase.initializeApp(firebaseConfig);
-    }
+    if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
-    
-    // ----------------------------------------------------
-    // 2. HELPER FUNCTIONS
-    // ----------------------------------------------------
-    
-    // Convert Unix timestamp (milliseconds) to a readable date format
-    function convertTimestampToDate(timestamp) {
-        if (!timestamp) return 'Unknown Date';
-        const date = new Date(Number(timestamp));
-        return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+
+    let currentProfilesData = {}; // Global store for modal access
+
+    function formatTS(ts) {
+        if (!ts) return 'Active';
+        return new Date(Number(ts)).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
     }
 
-    // Update the account description in Firebase
-    function saveDescription(accountName, newDescription) {
-        db.ref(`accounts/${accountName}/description`).set(newDescription)
-            .then(() => {
-                const status = document.getElementById('descriptionSaveStatus');
-                status.classList.remove('hidden');
-                setTimeout(() => status.classList.add('hidden'), 2000);
-            })
-            .catch(error => console.error("Error saving description:", error));
-    }
+    // --- JSON VIEWER LOGIC ---
+    // --- UPDATED JSON TREE LOGIC (DEFAULT COLLAPSED) ---
+function buildJsonTree(key, value) {
+    const li = document.createElement('li');
+    const isObj = typeof value === 'object' && value !== null;
     
-    // ----------------------------------------------------
-    // 3. MAIN DATA LOADING LOGIC
-    // ----------------------------------------------------
+    if (isObj) {
+        const keys = Object.keys(value);
+        if (keys.length === 0) {
+            li.innerHTML = `<span class="json-key">${key}:</span> <span class="text-slate-400">null</span>`;
+        } else {
+            const header = document.createElement('div');
+            header.className = 'cursor-pointer hover:bg-slate-200/50 rounded inline-flex items-center select-none py-0.5 px-1 -ml-1';
+            // Default: Caret is NOT rotated
+            header.innerHTML = `<span class="mr-1.5 w-3 h-3 flex items-center justify-center text-[10px] text-slate-400"><i class="fa fa-caret-right transition-transform duration-200"></i></span><span class="json-key">${key}:</span>`;
+            li.appendChild(header);
+
+            const ul = document.createElement('ul');
+            // Default: 'active' class removed so 'display: none' is applied via CSS
+            ul.className = 'nested border-l border-slate-300 ml-[5px] pl-4 mt-1 mb-2';
+            keys.forEach(k => ul.appendChild(buildJsonTree(k, value[k])));
+            li.appendChild(ul);
+
+            header.addEventListener('click', function(e) {
+                e.stopPropagation();
+                const icon = this.querySelector('i');
+                icon.classList.toggle('rotate-90');
+                ul.classList.toggle('active');
+            });
+        }
+    } else {
+        let valHtml = '';
+        if (typeof value === 'string') valHtml = `<span class="json-string">"${value}"</span>`;
+        else if (typeof value === 'number') valHtml = `<span class="json-number">${value}</span>`;
+        else if (typeof value === 'boolean') valHtml = `<span class="json-boolean">${value}</span>`;
+        else valHtml = `<span class="text-slate-400 italic">null</span>`;
+        
+        li.innerHTML = `<div class="ml-5 flex py-0.5"><span class="json-key mr-2">${key}:</span> <span>${valHtml}</span></div>`;
+    }
+    return li;
+}
+
+
+    function showDeviceModal(deviceName) {
+        if (!currentProfilesData || !currentProfilesData[deviceName]) return;
+        
+        document.getElementById('modalDeviceName').textContent = deviceName;
+        const container = document.getElementById('jsonViewerContainer');
+        container.innerHTML = '';
+        
+        const ul = document.createElement('ul');
+        ul.className = 'json-tree';
+        ul.appendChild(buildJsonTree(deviceName, currentProfilesData[deviceName]));
+        container.appendChild(ul);
+        
+        const modal = document.getElementById('deviceInfoModal');
+        const sheet = document.getElementById('deviceInfoSheet');
+        
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        
+        // Trigger animations
+        setTimeout(() => {
+            modal.classList.remove('opacity-0');
+            sheet.classList.remove('translate-y-full');
+        }, 10);
+    }
+
+    function closeDeviceModal() {
+        const modal = document.getElementById('deviceInfoModal');
+        const sheet = document.getElementById('deviceInfoSheet');
+        
+        modal.classList.add('opacity-0');
+        sheet.classList.add('translate-y-full');
+        
+        setTimeout(() => {
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }, 300);
+    }
 
     document.addEventListener('DOMContentLoaded', () => {
-        // --- A. GET LOCAL STORAGE DATA ---
-        const accountName = localStorage.getItem('AV_ledger_account_key') || 'Guest Account';
-        const username = localStorage.getItem('AV_ledger_username') || 'guest_user';
-        const authStatus = localStorage.getItem('AV_ledger_auth_status') || 'standard';
+        const acc = localStorage.getItem('AV_ledger_account_key');
+        const currentUserKey = localStorage.getItem('AV_ledger_username');
+        const descField = document.getElementById('descriptionDisplay');
+        const syncPill = document.getElementById('syncStatusDisplay');
 
-        // --- B. UPDATE STATIC LOCAL DATA ---
-        
-        document.getElementById('authStatusDisplay').textContent = authStatus.toUpperCase() + ' DEVICE';
+        if (!acc || !currentUserKey) { window.location.replace('index.html'); return; }
 
-        // --- C. FIREBASE FETCH ---
-        if (accountName && accountName !== 'Guest Account') {
-            // Reference to the specific account node
-            const accountRef = db.ref(`accounts/${accountName}`);
+        document.getElementById('authStatusDisplay').textContent = (localStorage.getItem('AV_ledger_auth_status') || 'STANDARD').toUpperCase() + ' DEVICE';
 
-            // --- 1. Account Details Listener ---
-            accountRef.on('value', (snapshot) => {
-                const data = snapshot.val();
-                if (!data) {
-                  console.warn(`Account data not found for ${accountName}`);
-                  return;
-                }
-                
-                // --- Description ---
-                const accountDisplay = document.getElementById('accountNameDisplay');
-const accountName = data.displayName || 'Account Name';
-accountDisplay.textContent = accountName;
- const descriptionDisplay = document.getElementById('descriptionDisplay');
-                const description = data.description || 'Add your profile summary';
-                descriptionDisplay.textContent = description;
-                descriptionDisplay.addEventListener('blur', (e) => {
-                    const newDesc = e.target.textContent.trim();
-                    if (newDesc !== description && newDesc !== 'Add your profile summary') {
-                        saveDescription(accountName, newDesc);
-                    }
-                });
-                
-                // --- Profiles/Authorization Count ---
-                const profiles = data.profiles || {};
-                let adminCount = 0;
-                let standardCount = 0;
-                let allProfiles = [];
+        const accountRef = db.ref(`accounts/${acc}`);
 
-                // Iterate over all profile keys (which are the usernames)
-                for (const [profileUsername, profileData] of Object.entries(profiles)) {
-                    allProfiles.push({ username: profileUsername, ...profileData });
-                    
-                    const status = profileData.authStatus ? profileData.authStatus.toLowerCase() : 'standard';
-                    
-                    if (status === 'admin') {
-                        adminCount++;
-                    } else if (status === 'standard') {
-                        standardCount++;
-                    }
-                }
+        accountRef.on('value', snap => {
+            const data = snap.val();
+            if (!data) return;
 
-                document.getElementById('adminCount').textContent = adminCount;
-                document.getElementById('standardCount').textContent = standardCount;
-                const totalProfiles = adminCount + standardCount;
+            document.getElementById('accountNameDisplay').textContent = data.displayName || 'Unnamed Account';
+            if (document.activeElement !== descField) {
+                descField.textContent = data.description || 'Add your profile summary';
+            }
+            
+            const email = data.email || '';
+            document.getElementById('contactDisplay').textContent = email.endsWith('@phone.avanti') ? (data.phone || 'No Phone') : (email || 'No Email');
 
-                // --- Sync Status ---
-                const syncStatusDisplay = document.getElementById('syncStatusDisplay');
-                const syncStatusContainer = document.getElementById('syncStatusContainer');
-                
-                if (totalProfiles <= 1) {
-                    // Hide if only one profile
-                    syncStatusContainer.style.display = 'none';
-                } else {
-                    syncStatusContainer.style.display = 'block';
-                    // Check under the 'settings' node for synchronization value
-                    const synchronizationSetting = data.settings && data.settings.synchronization ? data.settings.synchronization.toLowerCase() : 'none';
-                    
-                    if (synchronizationSetting === 'all') {
-                        syncStatusDisplay.textContent = 'Data syncing with all devices';
-                        syncStatusDisplay.className = 'text-sm text-green-600 mt-2 text-center';
-                    } else {
-                        syncStatusDisplay.textContent = 'Data not syncing with all devices';
-                        syncStatusDisplay.className = 'text-sm text-gray-500 mt-2 text-center';
-                    }
-                }
-                
-                // --- Profile Image ---
-                const profileImage = document.getElementById('profileImage');
-                const defaultUserIcon = document.getElementById('defaultUserIcon');
-                // The URL is assumed to be directly under the account name node
-                const profileUrl = data.url; 
-                
-                if (profileUrl) {
-                    profileImage.src = profileUrl;
-                    profileImage.classList.remove('hidden');
-                    defaultUserIcon.classList.add('hidden');
-                } else {
-                    profileImage.classList.add('hidden');
-                    defaultUserIcon.classList.remove('hidden');
-                }
+            if (data.url) {
+                const img = document.getElementById('profileImage');
+                img.src = data.url;
+                img.classList.remove('hidden');
+                document.getElementById('defaultUserIcon').classList.add('hidden');
+            }
 
+            // --- CAROUSEL & TOPOLOGY RENDERING ---
+            const profiles = data.profiles || {};
+            currentProfilesData = profiles; // Update global state
+            
+            const carousel = document.getElementById('deviceCarousel');
+            const nodeContainer = document.getElementById('bracketNodes');
+            const svg = document.getElementById('bracketSvg');
+            const syncBracketContainer = document.getElementById('syncBracketContainer');
+            
+            carousel.innerHTML = '';
+            nodeContainer.innerHTML = '';
+            
+            // Set up SVG Arrow Markers
+            svg.innerHTML = `
+                <defs>
+                    <marker id="arrow-mutual" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+                        <path d="M 0 0 L 10 5 L 0 10 z" fill="#3f72af" />
+                    </marker>
+                    <marker id="arrow-single" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+                        <path d="M 0 0 L 10 5 L 0 10 z" fill="#cbd5e1" />
+                    </marker>
+                    <marker id="arrow-universal" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+                        <path d="M 0 0 L 10 5 L 0 10 z" fill="#10b981" />
+                    </marker>
+                </defs>
+            `;
 
-                // --- Current Profile Contact and Device ---
-                const currentProfileData = profiles[username];
-                if (currentProfileData) {
-                    // Device Name
-                    const deviceName = currentProfileData.deviceName || 'No Device Name';
-                    document.getElementById('currentProfileDetails').textContent = `${username} · ${deviceName}`;
-                    
-                    // Contact (Email or Phone)
-                    // The contact details are assumed to be directly under the account node
-                    const contactDisplay = document.getElementById('contactDisplay');
-                    const email = data.email || '';
-                    const phone = data.phone || '';
-                    
-                    if (email.endsWith('@phone.avanti')) {
-                        // Display the phone number stored in the 'phone' field
-                        contactDisplay.textContent = phone || 'Phone not set'; 
-                    } else {
-                        // Display the email
-                        contactDisplay.textContent = email || 'Email not set';
-                    }
+            let adm = 0, std = 0;
 
-                } else {
-                    document.getElementById('currentProfileDetails').textContent = `${username} · Profile Not Found`;
-                }
-
-                // --- Device Carousel ---
-                const carousel = document.getElementById('deviceCarousel');
-                carousel.innerHTML = ''; 
-
-                if (allProfiles.length === 0) {
-                    carousel.innerHTML = '<p class="text-gray-500 ml-4">No devices found for this account.</p>';
-                } else {
-                    allProfiles.forEach(profile => {
-                        const dateCreated = convertTimestampToDate(profile.createdAt); // Use createdAt from the profile
-                        const profileStatus = profile.authStatus ? profile.authStatus.toLowerCase() : 'standard';
-                        
-                        const card = document.createElement('div');
-                        card.className = 'carousel-card glass p-4 shadow-md';
-                        card.setAttribute('onclick', "window.location.href='manage-devices.html'"); 
-                        
-                        card.innerHTML = `
-                            <p class="text-sm font-semibold">${profile.username}</p>
-                            <p class="text-xs text-gray-500 mt-1">Status: <span class="font-medium ${profileStatus === 'admin' ? 'text-red-500' : 'text-blue-500'}">${profileStatus.toUpperCase()}</span></p>
-                            <p class="text-xs text-gray-500">Device: ${profile.deviceName || 'Unknown'}</p>
-                            <p class="text-xs text-gray-400 mt-2">Added: ${dateCreated}</p>
-                        `;
-                        carousel.appendChild(card);
-                    });
-                }
+            const sortedKeys = Object.keys(profiles).sort((a, b) => {
+                if (a === currentUserKey) return -1;
+                if (b === currentUserKey) return 1;
+                return 0;
             });
 
-        } else {
-            console.error("Account Name not found in Local Storage. Cannot fetch Firebase data.");
-        }
+            // Universal Sync Verification
+            let isUniversal = false;
+            if (sortedKeys.length > 1) {
+                isUniversal = true;
+                for (let p1 of sortedKeys) {
+                    for (let p2 of sortedKeys) {
+                        if (p1 !== p2 && (!profiles[p1].syncingTo || !profiles[p1].syncingTo[p2])) {
+                            isUniversal = false;
+                            break;
+                        }
+                    }
+                    if(!isUniversal) break;
+                }
+            }
 
+            // Apply Universal Sync UI Background/Badge
+            const existingBadge = document.getElementById('universal-badge');
+            if (existingBadge) existingBadge.remove();
+            
+            if (isUniversal) {
+                syncBracketContainer.classList.add('ring-2', 'ring-emerald-400', 'bg-emerald-50/20');
+                const badge = document.createElement('div');
+                badge.id = 'universal-badge';
+                badge.className = "absolute top-4 left-1/2 -translate-x-1/2 bg-emerald-100 text-emerald-700 text-[10px] font-bold px-3 py-1 rounded-full shadow-sm z-20 flex items-center gap-1 border border-emerald-200 tracking-wider";
+                badge.innerHTML = '<i class="fa fa-bolt"></i> UNIVERSAL SYNC';
+                syncBracketContainer.appendChild(badge);
+            } else {
+                syncBracketContainer.classList.remove('ring-2', 'ring-emerald-400', 'bg-emerald-50/20');
+            }
 
-        // --- D. DROPDOWN LOGIC ---
-        const button = document.getElementById('moreButton');
-        const menu = document.getElementById('dropdownMenu');
+            sortedKeys.forEach((name, index) => {
+                const p = profiles[name];
+                const isMe = name === currentUserKey;
+                const status = (p.authStatus || 'standard').toLowerCase();
+                status === 'admin' ? adm++ : std++;
+                
+                // 1. Carousel Card
+                const card = document.createElement('div');
+                card.className = `device-pill cursor-pointer ${isMe ? 'current-device-border' : ''}`;
+                card.onclick = () => showDeviceModal(name);
+                card.innerHTML = `
+                    <div class="flex justify-between items-start mb-2">
+                        <p class="font-bold text-slate-800">${name} ${isMe ? '<span class="ml-1 text-[10px] text-blue-500">(You)</span>' : ''}</p>
+                        <span class="text-[9px] px-2 py-0.5 rounded-full ${status === 'admin' ? 'bg-red-50 text-red-600' : 'bg-blue-50 text-blue-600'} font-bold uppercase">${status}</span>
+                    </div>
+                    <div class="flex items-center gap-2 text-slate-400 text-[11px]">
+                        <i class="fa ${p.deviceName?.toLowerCase().includes('phone') ? 'fa-mobile-screen' : 'fa-desktop'}"></i>
+                        <p>${p.deviceName || 'Unknown Device'}</p>
+                    </div>
+                    <p class="text-[9px] text-slate-300 mt-3 font-medium">Created on: ${formatTS(p.createdAt)}</p>
+                `;
+                carousel.appendChild(card);
+
+                // 2. Topology Node
+                const node = document.createElement('div');
+                node.id = `node-${name}`;
+                let colSpanClass = (sortedKeys.length % 2 !== 0 && index === sortedKeys.length - 1) ? 'col-span-2' : '';
+                
+                node.className = `sync-node cursor-pointer ${isMe ? 'active-me' : ''} ${colSpanClass}`;
+                node.onclick = () => showDeviceModal(name);
+                node.innerHTML = `
+                    <div class="w-8 h-8 rounded-full bg-white flex items-center justify-center shadow-sm text-slate-400">
+                        <i class="fa ${p.deviceName?.toLowerCase().includes('phone') ? 'fa-mobile' : 'fa-laptop'} text-sm"></i>
+                    </div>
+                    <p class="text-[11px] font-bold text-slate-700 leading-tight">${name}</p>
+                `;
+                nodeContainer.appendChild(node);
+            });
+
+            document.getElementById('adminCount').textContent = adm;
+            document.getElementById('standardCount').textContent = std;
+
+            const sync = data.settings?.synchronization?.toLowerCase();
+            syncPill.textContent = sync === 'all' ? 'LIVE SYNC' : 'LOCAL ONLY';
+            syncPill.className = `text-[10px] font-bold py-1 px-2 rounded-full ${sync === 'all' ? 'bg-green-50 text-green-600' : 'bg-gray-100 text-gray-400'}`;
+
+            document.getElementById('currentProfileDetails').textContent = `${currentUserKey} • ${profiles[currentUserKey]?.deviceName || 'Unknown'}`;
+
+            // DRAW ARROWS
+            setTimeout(() => {
+                Object.entries(profiles).forEach(([name, p]) => {
+                    const targets = p.syncingTo || {};
+                    Object.keys(targets).forEach(targetName => {
+                        if (profiles[targetName]) {
+                            drawFlow(name, targetName, profiles[targetName].syncingTo?.[name], isUniversal);
+                        }
+                    });
+                });
+            }, 300);
+        });
+
+        // --- AUTO-SAVE ---
+        descField.addEventListener('blur', () => {
+            const newText = descField.innerText.trim();
+            const originalStatus = syncPill.textContent;
+            syncPill.textContent = "SAVING...";
+            syncPill.className = "text-[10px] font-bold py-1 px-2 rounded-full bg-yellow-50 text-yellow-600";
+            accountRef.update({ description: newText }).then(() => {
+                syncPill.textContent = "SAVED";
+                syncPill.className = "text-[10px] font-bold py-1 px-2 rounded-full bg-green-50 text-green-600";
+                setTimeout(() => { syncPill.textContent = originalStatus; }, 2000);
+            });
+        });
+
+        descField.addEventListener('paste', (e) => {
+            e.preventDefault();
+            const text = e.clipboardData.getData('text/plain');
+            document.execCommand('insertText', false, text);
+        });
+
+        descField.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); descField.blur(); } });
+    });
+
+    function drawFlow(sourceId, targetId, isMutual, isUniversal) {
+        const svg = document.getElementById('bracketSvg');
+        const startEl = document.getElementById(`node-${sourceId}`);
+        const endEl = document.getElementById(`node-${targetId}`);
+        const container = document.getElementById('syncBracketContainer');
+        if (!startEl || !endEl) return;
+
+        const cR = container.getBoundingClientRect();
+        const sR = startEl.getBoundingClientRect();
+        const eR = endEl.getBoundingClientRect();
+
+        const x1 = sR.left + sR.width / 2 - cR.left;
+        const y1 = sR.top + sR.height / 2 - cR.top;
+        const x2 = eR.left + eR.width / 2 - cR.left;
+        const y2 = eR.top + eR.height / 2 - cR.top;
+
+        const dx = x2 - x1;
+        const dy = y2 - y1;
+        const length = Math.sqrt(dx * dx + dy * dy);
+        if (length === 0) return;
+
+        const nodeVisualRadius = Math.max(sR.width, sR.height) / 2 + 2; 
+        if(length <= nodeVisualRadius * 2) return; 
+
+        const startRatio = nodeVisualRadius / length;
+        const endRatio = (length - nodeVisualRadius - 8) / length; 
+
+        const startX = x1 + dx * startRatio;
+        const startY = y1 + dy * startRatio;
+        const endX = x1 + dx * endRatio;
+        const endY = y1 + dy * endRatio;
+
+        const perpX = -dy / length;
+        const perpY = dx / length;
+        const offsetAmount = 5; 
         
-        button.addEventListener('click', (event) => {
-          menu.classList.toggle('show');
-          event.stopPropagation();
-        });
-        document.addEventListener('click', (event) => {
-          if (!button.contains(event.target) && !menu.contains(event.target)) {
-            if (menu.classList.contains('show')) {
-              menu.classList.remove('show');
-            }
-          }
-        });
-        menu.querySelectorAll('a').forEach(item => {
-          item.addEventListener('click', () => {
-            // Note: Menu closes on click, actual navigation handled by href
-            menu.classList.remove('show');
-          });
-        });
-    });
-</script>
-<script>
-(function () {
-    const requiredKeys = [
-        'AV_ledger_account_key',
-        'AV_ledger_username',
-        'AV_ledger_auth_status'
-    ];
+        const sX = startX + perpX * offsetAmount;
+        const sY = startY + perpY * offsetAmount;
+        const eX = endX + perpX * offsetAmount;
+        const eY = endY + perpY * offsetAmount;
 
-    const isMissing = requiredKeys.some(key => {
-        const value = localStorage.getItem(key);
-        return value === null || value === '';
-    });
-
-    if (isMissing) {
-        // Clear anything partially stored (safety)
-        localStorage.clear();
-
-        // Redirect to login
-        window.location.replace('index.html');
-    }
-})();
-</script>
-<script>
-(function () {
-    const requiredKeys = [
-        'AV_ledger_account_key',
-        'AV_ledger_username',
-        'AV_ledger_auth_status'
-    ];
-
-    const isMissing = requiredKeys.some(key => {
-        const value = localStorage.getItem(key);
-        return value === null || value === '';
-    });
-
-    if (isMissing) {
-        // Clear anything partially stored (safety)
-        localStorage.clear();
-
-        // Redirect to login
-        window.location.replace('index.html');
-    }
-})();
-</script>
-<div id="network-overlay" style="display: none;">
-    <div class="loader-content">
-        <div class="spinner"></div>
-        <p><i class="fa fa-exclamation-triangle"></i>
- This page is not available. Check your internet connection.</p>
-    </div>
-</div>
-
-<style>
-    /* Full frosted background */
-    #network-overlay {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(255, 255, 255, 0.4);
-        backdrop-filter: blur(8px); /* The "frosted" effect */
-        -webkit-backdrop-filter: blur(8px);
-        z-index: 9;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        font-family: sans-serif;
+        const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+        line.setAttribute("x1", sX);
+        line.setAttribute("y1", sY);
+        line.setAttribute("x2", eX);
+        line.setAttribute("y2", eY);
+        
+        let colorClass = isMutual ? 'mutual' : '';
+        if (isUniversal) colorClass = 'universal';
+        
+        line.setAttribute("class", `flow-line ${colorClass}`);
+        
+        let markerId = isUniversal ? "url(#arrow-universal)" : (isMutual ? "url(#arrow-mutual)" : "url(#arrow-single)");
+        line.setAttribute("marker-end", markerId);
+        
+        svg.appendChild(line);
     }
 
-    .loader-content {
-        text-align: center;
-        color: #333;
-    }
-
-    /* Simple CSS Spinner */
-    .spinner {
-        width: 50px;
-        height: 50px;
-        border: 5px solid #f3f3f3;
-        border-top: 5px solid #3498db;
-        border-radius: 50%;
-        animation: spin 1s linear infinite;
-        margin: 0 auto 20px;
-    }
-
-    @keyframes spin {
-        0% { transform: rotate(0deg); }
-        100% { transform: rotate(360deg); }
-    }
-</style>
-
-<script>
+    // --- NETWORK ---
     const overlay = document.getElementById('network-overlay');
-
-    function checkNetwork() {
-        const isOnline = navigator.onLine;
-        let isSlow = false;
-
-        // Check for slow connection types using the Network Information API
-        if (navigator.connection) {
-            const type = navigator.connection.effectiveType; // 'slow-2g', '2g', '3g', or '4g'
-            if (type === 'slow-2g' || type === '2g') {
-                isSlow = true;
-            }
-        }
-
-        // Show overlay if offline OR if the connection is very slow
-        if (!isOnline || isSlow) {
-            overlay.style.display = 'flex';
-        } else {
-            overlay.style.display = 'none';
-        }
-    }
-
-    // 1. Listen for immediate online/offline changes
-    window.addEventListener('online', checkNetwork);
-    window.addEventListener('offline', checkNetwork);
-
-    // 2. Listen for connection quality changes (speed drops)
-    if (navigator.connection) {
-        navigator.connection.addEventListener('change', checkNetwork);
-    }
-
-    // 3. Run on initial page load
+    function checkNetwork() { overlay.style.display = navigator.onLine ? 'none' : 'flex'; }
+    window.addEventListener('online', checkNetwork); window.addEventListener('offline', checkNetwork);
     checkNetwork();
 </script>
 <script>
@@ -733,6 +668,62 @@ accountDisplay.textContent = accountName;
             // In a strict security setup, you might need a dedicated 'migrations' node 
             // that is publicly readable to find where your account moved to.
         }
+    });
+})();
+</script>
+<script>
+(function() {
+    const ACCOUNT_KEY = localStorage.getItem('AV_ledger_account_key');
+    const LOCAL_USERNAME = localStorage.getItem('AV_ledger_username');
+
+    // Only run if we are actually logged in
+    if (!ACCOUNT_KEY || !LOCAL_USERNAME) return;
+
+    const migrationRef = firebase.database().ref(`accounts/${ACCOUNT_KEY}/profiles`);
+
+    migrationRef.on('value', (snapshot) => {
+        const profiles = snapshot.val();
+        if (!profiles) return;
+
+        // 1. Check if our current local name still exists
+        if (!profiles[LOCAL_USERNAME]) {
+            console.log("Current profile name not found. Checking for migration...");
+
+            // 2. Scan for our old name in the history of other profiles
+            let migrated = false;
+            for (const [newName, data] of Object.entries(profiles)) {
+                if (data.oldNames && Array.isArray(data.oldNames) && data.oldNames.includes(LOCAL_USERNAME)) {
+                    
+                    // 3. Update all local storage keys associated with the identity
+                    localStorage.setItem('AV_ledger_username', newName);
+                    
+                    if (data.authStatus) {
+                        localStorage.setItem('AV_ledger_auth_status', data.authStatus);
+                    }
+                    
+                    if (data.email) {
+                        localStorage.setItem('AV_ledger_account_email', data.email);
+                    }
+
+                    console.log(`Successfully migrated identity: ${LOCAL_USERNAME} -> ${newName}`);
+                    migrated = true;
+                    
+                    // 4. Force reload to apply the new name to the UI/Listeners
+                    window.location.reload();
+                    break;
+                }
+            }
+
+            // 5. If it's completely gone with no trail, the profile was likely deleted
+            if (!migrated) {
+                console.warn("Profile has been removed. Redirecting to login.");
+                // Clear local storage and bounce to login
+                localStorage.clear(); 
+                window.location.href = "index.html";
+            }
+        }
+    }, (error) => {
+        console.error("Migration listener failed:", error);
     });
 })();
 </script>
