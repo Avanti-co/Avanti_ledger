@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,viewport-fit=cover, initial-scale=0.95, maximum-scale=0.95, user-scalable=no">
+<meta name="viewport" content="width=device-width,viewport-fit=cover, initial-scale=0.94, maximum-scale=0.94, user-scalable=no">
 <title>Manage Devices – Avanti Ledger</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css">
 
@@ -52,6 +52,7 @@
         color: #000;
         overflow-x: hidden;
         padding-top: 85px;
+padding-bottom: 100px;
     }
 
    .header{
@@ -158,8 +159,9 @@
         padding: 2px 8px;
         font-size: 11px;
         border-radius: 10px;
-        margin-top: 4px;
+        margin-left: 10px;
         width: fit-content;
+
     }
 
     .chevron {
@@ -378,26 +380,56 @@ padding-bottom: env(safe-area-inset-bottom, 25px);
 
 <div id="devices-container">
     <div class="section-title">PRIMARY DEVICES</div>
+
     <div class="list" id="primary-devices-list">
+<div style="text-align: center; padding: 20px;">
+    <i class="fas fa-sync fa-spin" style="font-size: 1.5rem; color: #4a90e2;"></i>
+    <span style="display: block; color: #4a90e2; font-weight: 500; margin-top: 8px;">Loading...</span>
+</div>
         </div>
     
     <div class="section-title">CONNECTED DEVICES</div>
     <div class="list" id="connected-devices-list">
+<div style="text-align: center; padding: 20px;">
+    <i class="fas fa-sync fa-spin" style="font-size: 1.5rem; color: #4a90e2;"></i>
+    <span style="display: block; color: #4a90e2; font-weight: 500; margin-top: 8px;">Loading...</span>
+</div>
         </div>
 </div>
 
 <div class="list" id="add-device-list">
-  <div class="item" id="add-device-btn"><div class="safe"><i class="fa fa-plus"></i> Add Device</div></div>
+  <div class="item" id="add-device-btn">
+      <div class="safe">
+          <i class="fas fa-plus-circle" style="color: #24b47e; margin-right: 10px;"></i> 
+          Add Device
+      </div>
+  </div>
 </div>
 
 <div class="section-title">ACTIONS</div>
 <div class="list">
-  
-    <div class="item" id="logout-btn" style="display: none;"><div class="danger">Log Out</div></div>
-    <div class="item" id="login-another-btn"><div class="danger">Log out</div></div>
-    <div class="item" id="remove-standard-devices-btn"><div class="danger">Remove All Standard Devices</div></div>
+    <div class="item" id="logout-btn" style="display: none;">
+        <div class="danger">
+            <i class="fas fa-power-off" style="color: #e15b5b; margin-right: 10px;"></i> 
+            Log Out
+        </div>
+    </div>
 
+    <div class="item" id="login-another-btn">
+        <div class="danger">
+            <i class="fas fa-sign-out-alt" style="color: #e15b5b; margin-right: 10px;"></i> 
+            Log out
+        </div>
+    </div>
+
+    <div class="item" id="remove-standard-devices-btn">
+        <div class="danger">
+            <i class="fas fa-user-slash" style="color: #e15b5b; margin-right: 10px;"></i> 
+            Remove All Standard Devices
+        </div>
+    </div>
 </div>
+
 
 <div class="modal" id="deviceModal">
     <div class="modal-header">
@@ -942,23 +974,39 @@ padding-bottom: env(safe-area-inset-bottom, 25px);
             const listToAppend = isPrimary ? primaryList : connectedList;
 
             const itemHtml = `
-                <div class="item device-btn" 
-                     data-profile-name="${profileName}" 
-                     data-auth-status="${authStatusLower}"
-                     data-device-name="${profile.deviceName || 'N/A'}"
-                     data-created-at="${profile.createdAt || ''}"
-                     data-is-current-user="${isCurrentUser}">
-                    <div class="left">
-                        <div class="user-name">
-                            <span data-profile="${profileName}">
-                                ${profileName} ${isCurrentUser ? '(This Device)' : ''}
-                            </span>
-                        </div>
-                        <div class="authStatus">${statusText} • ${profile.deviceName || 'No Name'}</div>
-                    </div>
-                    <div class="chevron">›</div>
-                </div>
-            `;
+               <div class="item device-btn" 
+     data-profile-name="${profileName}" 
+     data-auth-status="${authStatusLower}"
+     data-device-name="${profile.deviceName || 'N/A'}"
+     data-created-at="${profile.createdAt || ''}"
+     data-is-current-user="${isCurrentUser}">
+    
+    <div class="left" style="display: flex; align-items: center; gap: 12px;">
+     
+
+        <div class="details">
+            <div class="user-name" style="font-weight: 600; display: flex; align-items: center; gap: 8px;">
+                <span data-profile="${profileName}">  
+            <i class="fas fa-user-circle" style="font-size: 1rem; color: #3f72af;"></i>
+        
+                    ${profileName}
+                </span>
+                ${isCurrentUser ? '<span class="badge"><i class="fas fa-check-circle"></i> This Device</span>' : ''}
+            </div>
+            
+            <div class="authStatus" style="font-size: 0.85rem; opacity: 0.8; display: flex; align-items: center; gap: 5px;">
+                <i class="fas fa-shield-alt"></i> ${statusText} 
+                <span class="separator">•</span>
+                <i class="fas fa-laptop"></i> ${profile.deviceName || 'No Name'}
+            </div>
+        </div>
+    </div>
+
+    <div class="chevron">
+        <i class="fas fa-chevron-right"></i>
+    </div>
+</div>
+ `;
             listToAppend.insertAdjacentHTML('beforeend', itemHtml);
         });
 
@@ -1113,104 +1161,132 @@ padding-bottom: env(safe-area-inset-bottom, 25px);
         modalName.textContent = targetProfileName;
 
         let modalHtml = `
-            <div class="section-title">DEVICE INFO</div>
-            <div class="list">
-                <div class="item profile-name-item">
-                    <div class="left">
-                        <div class="user-name">
-                            <span data-profile="${targetProfileName}" ${isTargetCurrentUser ? 'contenteditable="false" class="editable-name"' : ''}>
-                                ${targetProfileName}
-                            </span>
-                        </div>
-                        <div class="authStatus">Username </div>
-                    </div> 
-                    ${isTargetCurrentUser ? '<i class="fa fa-edit"></i>' : ''}
+          <div class="section-title">DEVICE INFO</div>
+<div class="list">
+    <div class="item profile-name-item">
+        <div class="left">
+            <div class="info-wrapper">
+                <div class="user-name"> 
+                    <span data-profile="${targetProfileName}" ${isTargetCurrentUser ? 'contenteditable="false" class="editable-name"' : ''}>
+                        ${targetProfileName}
+                    </span>
                 </div>
-                <div class="item">
-                    <div class="left">
-                        <div class="user-name">${targetProfile.deviceName || 'No Name'}</div>
-                        <div class="authStatus">Device Name</div>
-                    </div>
-                </div>
-                <div class="item">
-                    <div class="left">
-                        <div class="user-name">${formatTimestamp(targetProfile.createdAt)}</div>
-                        <div class="authStatus">Created On</div>
-                    </div>
-                </div>
-                <div class="item">
-                    <div class="left">
-                        <div class="user-name">${syncingDisplay}</div>
-                        <div class="authStatus">Syncing with</div>
-                    </div>
-                </div>
+                <div class="authStatus"><i class="fas fa-user-circle" style="color: #4a90e2;"></i> Username</div>
             </div>
+        </div> 
+        ${isTargetCurrentUser ? '<i class="fas fa-pen" style="color: #999; font-size: 0.8rem;"></i>' : ''}
+    </div>
+
+    <div class="item">
+        <div class="left">
+            <div class="info-wrapper">
+                <div class="user-name">${targetProfile.deviceName || 'No Name'}</div>
+                <div class="authStatus"> <i class="fas fa-laptop-code" style="color: #6772e5;"></i> Device Name</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="item">
+        <div class="left">
+            <div class="info-wrapper">
+                <div class="user-name">${formatTimestamp(targetProfile.createdAt)}</div>
+                <div class="authStatus"> <i class="fas fa-history" style="color: #24b47e;"></i>  Created On</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="item">
+        <div class="left">
+            <div class="info-wrapper">
+                 <div class="user-name">  ${syncingDisplay}</div>
+                <div class="authStatus"> <i class="fas fa-cloud-upload-alt" style="color: #f6a000;"></i> Syncing with</div>
+            </div>
+        </div>
+    </div>
+</div>
+
         `;
 
         let securityOptionsVisible = isCurrentUserAdmin || isTargetCurrentUser || forceSecurity;
 
         modalHtml += `
-            <div class="section-title">SECURITY</div>
-            <div class="list">
-                <div class="item ${!securityOptionsVisible ? 'disabled-item' : ''}">
-                    <div class="left">
-                        <div class="user-name">${isTargetAdmin ? 'Admin Device' : 'Standard Device'}</div>
-                        <div class="authStatus">Authorization Status</div>
-                    </div>
-                </div>
-        `;
-
-        if (securityOptionsVisible) {
-            if (!isTargetCurrentUser) {
-                modalHtml += `<div class="item safe-action" data-action="log-in-as" data-profile="${targetProfileName}"><div class="safe">Log into this profile</div></div>`;
-            }
-
-            if (isTargetAdmin) {
-                if (!isTargetCurrentUser && isCurrentUserAdmin) {
-                    modalHtml += `<div class="item danger-action" data-action="demote" data-profile="${targetProfileName}"><div class="danger">Remove Admin Status</div></div>`;
-                }
-                if (!isTargetCurrentUser) {
-                    modalHtml += `
-                        <div class="item danger-action" data-action="remove-device" data-profile="${targetProfileName}" data-is-current="${isTargetCurrentUser}" data-is-admin="${isTargetAdmin}">
-                            <div class="danger">Remove Device</div>
-                        </div>`;
-                }
-            } else {
-                if (isCurrentUserAdmin) {
-                    modalHtml += `<div class="item safe-action" data-action="promote" data-profile="${targetProfileName}"><div class="safe">Make Admin Device</div></div>`;
-                }
-                modalHtml += `
-                    <div class="item danger-action" data-action="remove-device" data-profile="${targetProfileName}" data-is-current="${isTargetCurrentUser}" data-is-admin="${isTargetAdmin}">
-                        <div class="danger">Remove Device</div>
-                    </div>
-                `;
-            }
-
-        } else if (CURRENT_AUTH_STATUS.toLowerCase() === 'standard' && !isCurrentUserAdmin && !isTargetCurrentUser) {
-            modalHtml += `
-                <div class="item safe-action" id="unlock-security-btn">
-                    <div class="safe">Unlock Security Options</div>
-                    <div class="chevron">›</div>
-                </div>
-            `;
-        }
-
-        modalHtml += `</div>`;
-
-        const syncItemClass = syncDisabled ? 'disabled-item' : '';
-
-        modalHtml += `
-            <div class="section-title">Action</div>
-            <div class="list">
-                <div class="item ${syncItemClass}">
-                    <div class="left"><div class="safe">Sync data</div></div>
-                    <label class="ios-toggle">
-                        <input type="checkbox" id="sync-switch" ${isCurrentlySyncedByMe ? 'checked' : ''} ${syncDisabled ? 'disabled' : ''}>
-                        <span class="slider"></span>
-                    </label>
+    <div class="section-title">SECURITY</div>
+    <div class="list">
+        <div class="item ${!securityOptionsVisible ? 'disabled-item' : ''}">
+            <div class="left">
+                
+                <div class="info-container">
+                    <div class="user-name">${isTargetAdmin ? 'Admin Device' : 'Standard Device'}</div>
+                    <div class="authStatus"><i class="fas ${isTargetAdmin ? 'fa-shield-check' : 'fa-user-shield'}" style="color: #6772e5;  width: 20px; text-align: center;"></i> Authorization Status</div>
                 </div>
             </div>
+        </div>
+`;
+
+if (securityOptionsVisible) {
+    if (!isTargetCurrentUser) {
+        modalHtml += `
+            <div class="item safe-action" data-action="log-in-as" data-profile="${targetProfileName}">
+                <div class="safe"><i class="fas fa-sign-in-alt" style="margin-right: 10px;"></i> Log into this profile</div>
+            </div>`;
+    }
+
+    if (isTargetAdmin) {
+        if (!isTargetCurrentUser && isCurrentUserAdmin) {
+            modalHtml += `
+                <div class="item danger-action" data-action="demote" data-profile="${targetProfileName}">
+                    <div class="danger"><i class="fas fa-user-minus" style="margin-right: 10px;"></i> Remove Admin Status</div>
+                </div>`;
+        }
+        if (!isTargetCurrentUser) {
+            modalHtml += `
+                <div class="item danger-action" data-action="remove-device" data-profile="${targetProfileName}" data-is-current="${isTargetCurrentUser}" data-is-admin="${isTargetAdmin}">
+                    <div class="danger"><i class="fas fa-trash-alt" style="margin-right: 10px;"></i> Remove Device</div>
+                </div>`;
+        }
+    } else {
+        if (isCurrentUserAdmin) {
+            modalHtml += `
+                <div class="item safe-action" data-action="promote" data-profile="${targetProfileName}">
+                    <div class="safe"><i class="fas fa-user-plus" style="margin-right: 10px;"></i> Make Admin Device</div>
+                </div>`;
+        }
+        modalHtml += `
+            <div class="item danger-action" data-action="remove-device" data-profile="${targetProfileName}" data-is-current="${isTargetCurrentUser}" data-is-admin="${isTargetAdmin}">
+                <div class="danger"><i class="fas fa-trash-alt" style="margin-right: 10px;"></i> Remove Device</div>
+            </div>
         `;
+    }
+
+} else if (CURRENT_AUTH_STATUS.toLowerCase() === 'standard' && !isCurrentUserAdmin && !isTargetCurrentUser) {
+    modalHtml += `
+        <div class="item safe-action" id="unlock-security-btn">
+            <div class="safe"><i class="fas fa-lock-open" style="margin-right: 10px;"></i> Unlock Security Options</div>
+            <div class="chevron">›</div>
+        </div>
+    `;
+}
+
+modalHtml += `</div>`;
+
+const syncItemClass = syncDisabled ? 'disabled-item' : '';
+
+modalHtml += `
+    <div class="section-title">Action</div>
+    <div class="list">
+        <div class="item ${syncItemClass}">
+            <div class="left">
+              
+                <div class="safe">  <i class="fas fa-sync" style="color: #24b47e; margin-right: 12px; width: 20px; text-align: center;"></i> Sync data</div>
+            </div>
+            <label class="ios-toggle">
+                <input type="checkbox" id="sync-switch" ${isCurrentlySyncedByMe ? 'checked' : ''} ${syncDisabled ? 'disabled' : ''}>
+                <span class="slider"></span>
+            </label>
+        </div>
+    </div>
+`;
+
 
         modalContent.innerHTML = modalHtml;
 
