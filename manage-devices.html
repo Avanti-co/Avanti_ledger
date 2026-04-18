@@ -1,5 +1,3 @@
-
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -578,41 +576,39 @@ padding-bottom: env(safe-area-inset-bottom, 25px);
     /**
      * Toggle reciprocity: this writes both sides so A<->B are consistent.
      */
-    async function toggleSync(targetProfileName, isChecked) {
-        if (!CURRENT_ACCOUNT_KEY || !CURRENT_PROFILE_NAME) {
-            toast('Error', 'Current profile not authenticated.', false);
-            return;
+    async function toggleSync(targetProfileName, isChecked, mode) {
+    const currentUserPath = `accounts/${CURRENT_ACCOUNT_KEY}/profiles/${CURRENT_PROFILE_NAME}`;
+    const targetUserPath = `accounts/${CURRENT_ACCOUNT_KEY}/profiles/${targetProfileName}`;
+    const updates = {};
+
+    if (mode === 'broadcast') {
+        if (isChecked) {
+            updates[`${currentUserPath}/syncingTo/${targetProfileName}`] = true;
+            updates[`${targetUserPath}/syncingWith/${CURRENT_PROFILE_NAME}`] = true;
+        } else {
+            updates[`${currentUserPath}/syncingTo/${targetProfileName}`] = null;
+            updates[`${targetUserPath}/syncingWith/${CURRENT_PROFILE_NAME}`] = null;
         }
-
-        const currentUserPath = `accounts/${CURRENT_ACCOUNT_KEY}/profiles/${CURRENT_PROFILE_NAME}`;
-        const targetUserPath = `accounts/${CURRENT_ACCOUNT_KEY}/profiles/${targetProfileName}`;
-
-        const updates = {};
-        const value = isChecked ? true : null;
-
-        // Current user's outbound and "with" fields
-        updates[`${currentUserPath}/syncingTo/${targetProfileName}`] = value;
-        updates[`${currentUserPath}/syncingWith/${targetProfileName}`] = value;
-
-        // Target user's reciprocal fields
-        updates[`${targetUserPath}/syncingWith/${CURRENT_PROFILE_NAME}`] = value;
-        updates[`${targetUserPath}/syncingTo/${CURRENT_PROFILE_NAME}`] = value;
-
-        try {
-            await db.ref().update(updates);
-            toast('Sync Updated', `Mutual data sync ${isChecked ? 'enabled' : 'disabled'} with ${targetProfileName}.`);
-            // fetchAndRenderDevices will be triggered by the 'value' listener and will refresh UI.
-            // But force a local refresh now to minimize latency:
-            fetchAndRenderDevices();
-
-        } catch (error) {
-            console.error("Error toggling sync:", error);
-            toast('Error', 'Failed to update sync status.', false);
-            // Revert switch if present
-            const switchEl = document.getElementById('sync-switch');
-            if (switchEl) switchEl.checked = !isChecked;
+    } else if (mode === 'receive') {
+        if (isChecked) {
+            updates[`${currentUserPath}/syncingWith/${targetProfileName}`] = true;
+            updates[`${targetUserPath}/syncingTo/${CURRENT_PROFILE_NAME}`] = true;
+        } else {
+            updates[`${currentUserPath}/syncingWith/${targetProfileName}`] = null;
+            updates[`${targetUserPath}/syncingTo/${CURRENT_PROFILE_NAME}`] = null;
         }
     }
+
+    try {
+        await db.ref().update(updates);
+        toast('Success', `Sync ${isChecked ? 'enabled' : 'disabled'}.`);
+        fetchAndRenderDevices(); 
+    } catch (err) {
+        toast('Error', 'Update failed.', false);
+    }
+}
+
+
 
     // --- NAME EDIT & UPDATE LOGIC (unchanged, kept for completeness) ---
     async function handleNameEdit(e) {
@@ -1182,186 +1178,229 @@ profilesRef.on('value', (snapshot) => {
     }
 
     function openModal(e, forceSecurity = false) {
-        const btn = e.currentTarget;
-        const targetProfileName = btn.dataset.profileName;
-        const targetProfile = allProfiles[targetProfileName];
+    const btn = e.currentTarget;
+    const targetProfileName = btn.dataset.profileName;
+    const targetProfile = allProfiles[targetProfileName];
 
-        if (!targetProfile || !currentUserProfile) return;
+    if (!targetProfile || !currentUserProfile) return;
 
-        const isCurrentUserAdmin = CURRENT_AUTH_STATUS.toLowerCase() === 'admin';
-        const isTargetAdmin = (targetProfile.authStatus || 'Standard').toLowerCase() === 'admin';
-        const isTargetCurrentUser = btn.dataset.isCurrentUser === 'true';
+    const isCurrentUserAdmin = CURRENT_AUTH_STATUS.toLowerCase() === 'admin';
+    const isTargetAdmin = (targetProfile.authStatus || 'Standard').toLowerCase() === 'admin';
+    const isTargetCurrentUser = btn.dataset.isCurrentUser === 'true';
 
-        const syncingWith = targetProfile.syncingWith ? Object.keys(targetProfile.syncingWith).filter(name => targetProfile.syncingWith[name] === true) : [];
-        const syncingTo = targetProfile.syncingTo ? Object.keys(targetProfile.syncingTo).filter(name => targetProfile.syncingTo[name] === true) : [];
+    // --- SYNC STATE ---
+    const amISendingToThem = currentUserProfile.syncingTo && currentUserProfile.syncingTo[targetProfileName] === true;
+    const amIReceivingFromThem = currentUserProfile.syncingWith && currentUserProfile.syncingWith[targetProfileName] === true;
 
-        const allSyncedProfilesSet = new Set([...syncingWith, ...syncingTo]);
-        allSyncedProfilesSet.delete(targetProfileName);
-
-        const syncingDisplay = allSyncedProfilesSet.size > 0 ? Array.from(allSyncedProfilesSet).join(', ') : 'None';
-
-        // Determine whether current user has this target in their syncingTo (outbound)
-        const isCurrentlySyncedByMe = currentUserProfile && currentUserProfile.syncingTo && currentUserProfile.syncingTo[targetProfileName] === true;
-
-        // Disable the switch only when viewing own profile (can't toggle self)
-        const syncDisabled = isTargetCurrentUser;
-
-        modalName.textContent = targetProfileName;
-
-        let modalHtml = `
-          <div class="section-title">DEVICE INFO</div>
-<div class="list">
-    <div class="item profile-name-item">
-        <div class="left">
-            <div class="info-wrapper">
-                <div class="user-name"> 
-                    <span data-profile="${targetProfileName}" ${isTargetCurrentUser ? 'contenteditable="false" class="editable-name"' : ''}>
-                        ${targetProfileName}
-                    </span>
-                </div>
-                <div class="authStatus"><i class="fas fa-user-circle" style="color: #4a90e2;"></i> Username</div>
-            </div>
-        </div> 
-        ${isTargetCurrentUser ? '<i class="fas fa-pen" style="color: #999; font-size: 0.8rem;"></i>' : ''}
-    </div>
-
-    <div class="item">
-        <div class="left">
-            <div class="info-wrapper">
-                <div class="user-name">${targetProfile.deviceName || 'No Name'}</div>
-                <div class="authStatus"> <i class="fas fa-laptop-code" style="color: #6772e5;"></i> Device Name</div>
-            </div>
-        </div>
-    </div>
-
-    <div class="item">
-        <div class="left">
-            <div class="info-wrapper">
-                <div class="user-name">${formatTimestamp(targetProfile.createdAt)}</div>
-                <div class="authStatus"> <i class="fas fa-history" style="color: #24b47e;"></i>  Created On</div>
-            </div>
-        </div>
-    </div>
-
-    <div class="item">
-        <div class="left">
-            <div class="info-wrapper">
-                 <div class="user-name">  ${syncingDisplay}</div>
-                <div class="authStatus"> <i class="fas fa-cloud-upload-alt" style="color: #f6a000;"></i> Syncing with</div>
-            </div>
-        </div>
-    </div>
-</div>
-
-        `;
-
-        let securityOptionsVisible = isCurrentUserAdmin || isTargetCurrentUser || forceSecurity;
-
-        modalHtml += `
-    <div class="section-title">SECURITY</div>
-    <div class="list">
-        <div class="item ${!securityOptionsVisible ? 'disabled-item' : ''}">
-            <div class="left">
-                
-                <div class="info-container">
-                    <div class="user-name">${isTargetAdmin ? 'Admin Device' : 'Standard Device'}</div>
-                    <div class="authStatus"><i class="fas ${isTargetAdmin ? 'fa-shield-check' : 'fa-user-shield'}" style="color: #6772e5;  width: 20px; text-align: center;"></i> Authorization Status</div>
-                </div>
-            </div>
-        </div>
-`;
-
-if (securityOptionsVisible) {
-    if (!isTargetCurrentUser) {
-        modalHtml += `
-            <div class="item safe-action" data-action="log-in-as" data-profile="${targetProfileName}">
-                <div class="safe"><i class="fas fa-sign-in-alt" style="margin-right: 10px;"></i> Log into this profile</div>
-            </div>`;
+    // --- DIRECTIONAL DISPLAY ---
+    let syncingDisplay = 'None';
+    if (targetProfile.syncingTo) {
+        const receivers = Object.keys(targetProfile.syncingTo).filter(k => targetProfile.syncingTo[k] === true);
+        if (receivers.length > 0) syncingDisplay = `Broadcasting to: ${receivers.join(', ')}`;
+    } else if (targetProfile.syncingWith) {
+        const source = Object.keys(targetProfile.syncingWith).find(k => targetProfile.syncingWith[k] === true);
+        if (source) syncingDisplay = `Receiving from: ${source}`;
     }
 
-    if (isTargetAdmin) {
-        if (!isTargetCurrentUser && isCurrentUserAdmin) {
+    // --- SYNC LOGIC: BROADCAST TO THEM ---
+    let broadcastDisabled = isTargetCurrentUser;
+    let broadcastReason = "";
+    if (!amISendingToThem && !isTargetCurrentUser) {
+        if (currentUserProfile.syncingWith) {
+            broadcastDisabled = true;
+            broadcastReason = "You are receiving; cannot broadcast.";
+        } else if (targetProfile.syncingWith || targetProfile.syncingTo) {
+            broadcastDisabled = true;
+            broadcastReason = "Target device is busy.";
+        }
+    }
+
+    // --- SYNC LOGIC: RECEIVE FROM THEM ---
+    let receiveDisabled = isTargetCurrentUser;
+    let receiveReason = "";
+    if (!amIReceivingFromThem && !isTargetCurrentUser) {
+        if (currentUserProfile.syncingTo || currentUserProfile.syncingWith) {
+            receiveDisabled = true;
+            receiveReason = "You are already in a sync session.";
+        } else if (targetProfile.syncingWith) {
+            receiveDisabled = true;
+            receiveReason = "Target is a receiver; cannot broadcast.";
+        }
+    }
+
+    modalName.textContent = targetProfileName;
+
+    // --- RENDER INFO SECTION ---
+    let modalHtml = `
+        <div class="section-title">DEVICE INFO</div>
+        <div class="list">
+            <div class="item profile-name-item">
+                <div class="left">
+                    <div class="info-wrapper">
+                        <div class="user-name"> 
+                            <span data-profile="${targetProfileName}" ${isTargetCurrentUser ? 'contenteditable="false" class="editable-name"' : ''}>
+                                ${targetProfileName}
+                            </span>
+                        </div>
+                        <div class="authStatus"><i class="fas fa-user-circle" style="color: #4a90e2;"></i> Username</div>
+                    </div>
+                </div> 
+                ${isTargetCurrentUser ? '<i class="fas fa-pen" style="color: #999; font-size: 0.8rem;"></i>' : ''}
+            </div>
+
+            <div class="item">
+                <div class="left">
+                    <div class="info-wrapper">
+                        <div class="user-name">${targetProfile.deviceName || 'No Name'}</div>
+                        <div class="authStatus"> <i class="fas fa-laptop-code" style="color: #6772e5;"></i> Device Name</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="item">
+                <div class="left">
+                    <div class="info-wrapper">
+                        <div class="user-name">${formatTimestamp(targetProfile.createdAt)}</div>
+                        <div class="authStatus"> <i class="fas fa-history" style="color: #24b47e;"></i> Created On</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="item">
+                <div class="left">
+                    <div class="info-wrapper">
+                         <div class="user-name" style="font-size: 13px; color: #3f72af;">${syncingDisplay}</div>
+                        <div class="authStatus"> <i class="fas fa-exchange-alt" style="color: #f6a000;"></i> Current Sync Status</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+
+    // --- RENDER SECURITY SECTION ---
+    let securityOptionsVisible = isCurrentUserAdmin || isTargetCurrentUser || forceSecurity;
+
+    modalHtml += `
+        <div class="section-title">SECURITY</div>
+        <div class="list">
+            <div class="item ${!securityOptionsVisible ? 'disabled-item' : ''}">
+                <div class="left">
+                    <div class="info-container">
+                        <div class="user-name">${isTargetAdmin ? 'Admin Device' : 'Standard Device'}</div>
+                        <div class="authStatus"><i class="fas ${isTargetAdmin ? 'fa-shield-check' : 'fa-user-shield'}" style="color: #6772e5; width: 20px; text-align: center;"></i> Authorization Status</div>
+                    </div>
+                </div>
+            </div>
+    `;
+
+    if (securityOptionsVisible) {
+        if (!isTargetCurrentUser) {
             modalHtml += `
-                <div class="item danger-action" data-action="demote" data-profile="${targetProfileName}">
-                    <div class="danger"><i class="fas fa-user-minus" style="margin-right: 10px;"></i> Remove Admin Status</div>
+                <div class="item safe-action" data-action="log-in-as" data-profile="${targetProfileName}">
+                    <div class="safe"><i class="fas fa-sign-in-alt" style="margin-right: 10px;"></i> Log into this profile</div>
                 </div>`;
         }
-        if (!isTargetCurrentUser) {
+
+        if (isTargetAdmin) {
+            if (!isTargetCurrentUser && isCurrentUserAdmin) {
+                modalHtml += `
+                    <div class="item danger-action" data-action="demote" data-profile="${targetProfileName}">
+                        <div class="danger"><i class="fas fa-user-minus" style="margin-right: 10px;"></i> Remove Admin Status</div>
+                    </div>`;
+            }
+            if (!isTargetCurrentUser) {
+                modalHtml += `
+                    <div class="item danger-action" data-action="remove-device" data-profile="${targetProfileName}" data-is-current="${isTargetCurrentUser}" data-is-admin="${isTargetAdmin}">
+                        <div class="danger"><i class="fas fa-trash-alt" style="margin-right: 10px;"></i> Remove Device</div>
+                    </div>`;
+            }
+        } else {
+            if (isCurrentUserAdmin) {
+                modalHtml += `
+                    <div class="item safe-action" data-action="promote" data-profile="${targetProfileName}">
+                        <div class="safe"><i class="fas fa-user-plus" style="margin-right: 10px;"></i> Make Admin Device</div>
+                    </div>`;
+            }
             modalHtml += `
                 <div class="item danger-action" data-action="remove-device" data-profile="${targetProfileName}" data-is-current="${isTargetCurrentUser}" data-is-admin="${isTargetAdmin}">
                     <div class="danger"><i class="fas fa-trash-alt" style="margin-right: 10px;"></i> Remove Device</div>
-                </div>`;
+                </div>
+            `;
         }
-    } else {
-        if (isCurrentUserAdmin) {
-            modalHtml += `
-                <div class="item safe-action" data-action="promote" data-profile="${targetProfileName}">
-                    <div class="safe"><i class="fas fa-user-plus" style="margin-right: 10px;"></i> Make Admin Device</div>
-                </div>`;
-        }
+    } else if (CURRENT_AUTH_STATUS.toLowerCase() === 'standard' && !isCurrentUserAdmin && !isTargetCurrentUser) {
         modalHtml += `
-            <div class="item danger-action" data-action="remove-device" data-profile="${targetProfileName}" data-is-current="${isTargetCurrentUser}" data-is-admin="${isTargetAdmin}">
-                <div class="danger"><i class="fas fa-trash-alt" style="margin-right: 10px;"></i> Remove Device</div>
+            <div class="item safe-action" id="unlock-security-btn">
+                <div class="safe"><i class="fas fa-lock-open" style="margin-right: 10px;"></i> Unlock Security Options</div>
+                <div class="chevron">›</div>
             </div>
         `;
     }
 
-} else if (CURRENT_AUTH_STATUS.toLowerCase() === 'standard' && !isCurrentUserAdmin && !isTargetCurrentUser) {
+    modalHtml += `</div>`;
+
+    // --- RENDER DUAL ACTION SECTION ---
     modalHtml += `
-        <div class="item safe-action" id="unlock-security-btn">
-            <div class="safe"><i class="fas fa-lock-open" style="margin-right: 10px;"></i> Unlock Security Options</div>
-            <div class="chevron">›</div>
+        <div class="section-title">ACTIONS</div>
+        <div class="list">
+            <div class="item ${broadcastDisabled ? 'disabled-item' : ''}">
+                <div class="left">
+                    <div class="safe">
+                        <i class="fas fa-cloud-upload-alt" style="color: #4a90e2; margin-right: 12px; width: 20px; text-align: center;"></i> 
+                        Broadcast to ${targetProfileName}
+                    </div>
+                    ${broadcastDisabled && broadcastReason ? `<div style="font-size: 10px; color: #ff3b30; margin-left: 32px;">${broadcastReason}</div>` : ''}
+                </div>
+                <label class="ios-toggle">
+                    <input type="checkbox" id="broadcast-switch" ${amISendingToThem ? 'checked' : ''} ${broadcastDisabled ? 'disabled' : ''}>
+                    <span class="slider"></span>
+                </label>
+            </div>
+
+            <div class="item ${receiveDisabled ? 'disabled-item' : ''}">
+                <div class="left">
+                    <div class="safe">
+                        <i class="fas fa-cloud-download-alt" style="color: #24b47e; margin-right: 12px; width: 20px; text-align: center;"></i> 
+                        Receive from ${targetProfileName}
+                    </div>
+                    ${receiveDisabled && receiveReason ? `<div style="font-size: 10px; color: #ff3b30; margin-left: 32px;">${receiveReason}</div>` : ''}
+                </div>
+                <label class="ios-toggle">
+                    <input type="checkbox" id="receive-switch" ${amIReceivingFromThem ? 'checked' : ''} ${receiveDisabled ? 'disabled' : ''}>
+                    <span class="slider"></span>
+                </label>
+            </div>
         </div>
     `;
+
+    modalContent.innerHTML = modalHtml;
+
+    // --- EVENT LISTENERS ---
+    const broadcastSwitch = document.getElementById('broadcast-switch');
+    if (broadcastSwitch && !broadcastDisabled) {
+        broadcastSwitch.onchange = (e) => toggleSync(targetProfileName, e.target.checked, 'broadcast');
+    }
+
+    const receiveSwitch = document.getElementById('receive-switch');
+    if (receiveSwitch && !receiveDisabled) {
+        receiveSwitch.onchange = (e) => toggleSync(targetProfileName, e.target.checked, 'receive');
+    }
+
+    const editableNameSpan = document.querySelector(".modal .user-name span.editable-name");
+    if (editableNameSpan) {
+        editableNameSpan.setAttribute('contenteditable', 'false');
+        editableNameSpan.onclick = handleNameEdit;
+    }
+
+    document.querySelectorAll(".modal .danger-action, .modal .safe-action").forEach(item => {
+        item.onclick = (e) => handleModalSecurityAction(e.currentTarget);
+    });
+
+    const unlockBtn = document.getElementById('unlock-security-btn');
+    if (unlockBtn) unlockBtn.onclick = unlockModalSecurity;
+
+    deviceModal.classList.add("active");
 }
 
-modalHtml += `</div>`;
-
-const syncItemClass = syncDisabled ? 'disabled-item' : '';
-
-modalHtml += `
-    <div class="section-title">Action</div>
-    <div class="list">
-        <div class="item ${syncItemClass}">
-            <div class="left">
-              
-                <div class="safe">  <i class="fas fa-sync" style="color: #24b47e; margin-right: 12px; width: 20px; text-align: center;"></i> Sync data</div>
-            </div>
-            <label class="ios-toggle">
-                <input type="checkbox" id="sync-switch" ${isCurrentlySyncedByMe ? 'checked' : ''} ${syncDisabled ? 'disabled' : ''}>
-                <span class="slider"></span>
-            </label>
-        </div>
-    </div>
-`;
-
-
-        modalContent.innerHTML = modalHtml;
-
-        const syncSwitch = document.getElementById('sync-switch');
-        if (syncSwitch && !syncDisabled) {
-            syncSwitch.onchange = (e) => {
-                toggleSync(targetProfileName, e.target.checked);
-            };
-        }
-
-        const editableNameSpan = document.querySelector(".modal .user-name span.editable-name");
-        if (editableNameSpan) {
-            editableNameSpan.setAttribute('contenteditable', 'false');
-            editableNameSpan.onclick = handleNameEdit;
-        }
-
-        document.querySelectorAll(".modal .danger-action, .modal .safe-action").forEach(item => {
-            item.onclick = (e) => handleModalSecurityAction(e.currentTarget);
-        });
-
-        const unlockBtn = document.getElementById('unlock-security-btn');
-        if (unlockBtn) {
-            unlockBtn.onclick = unlockModalSecurity;
-        }
-
-        deviceModal.classList.add("active");
-    }
 
     async function handleModalSecurityAction(btn) {
         const action = btn.dataset.action;
