@@ -423,27 +423,41 @@ padding-bottom: env(safe-area-inset-bottom, 25px);
         left: 0;
         width: 100vw;
         height: 100%;
-        background-color: rgba(0,0,0,0.35);
+        background-color: rgba(0,0,0,0.4);
         display: none;
         justify-content: center;
-        align-items: flex-end; /* bottom sheet */
-        z-index: 100;
-        transition: opacity 0.25s ease;
+        align-items: flex-end; 
+        z-index: 10000; /* High z-index to stay above nav */
+        transition: opacity 0.3s ease;
     }
 
     /* Bottom-sheet modal content */
     #sync-modal .modal-content {
         width: 100vw;
+        height: 90vh; /* Fixed height */
         background-color: #fff;
-        border-radius: 18px 18px 0 0; /* iOS rounded top */
-        padding: 20px;
-        min-height: 70vh;
-        overflow-y: auto;
-        margin: -15px;
-
-        /* Start below screen */
+        border-radius: 20px 20px 0 0;
+        padding: 0 20px 20px 20px; /* Padding adjustment */
+        display: flex;
+        flex-direction: column;
+        overflow: hidden; /* Important: parent doesn't scroll, list does */
+        margin: 0; 
+        
+        box-shadow: 0 -5px 15px rgba(0,0,0,0.1);
         transform: translateY(100%);
-        transition: transform 0.35s cubic-bezier(.25,.8,.25,1);
+        transition: transform 0.4s cubic-bezier(0.32, 1, 0.23, 1);
+    }
+
+    /* Handle bar at top */
+    .modal-content::before {
+        content: "";
+        display: block;
+        width: 36px;
+        height: 5px;
+        background: #ced4da;
+        border-radius: 10px;
+        margin: 12px auto;
+        flex-shrink: 0;
     }
 
     /* Show state */
@@ -456,7 +470,7 @@ padding-bottom: env(safe-area-inset-bottom, 25px);
         transform: translateY(0);
     }
 
-    /* Hide (slide down) */
+    /* Hide state */
     #sync-modal.hide {
         opacity: 0;
     }
@@ -465,28 +479,34 @@ padding-bottom: env(safe-area-inset-bottom, 25px);
         transform: translateY(100%);
     }
 
-    /* Item list styling */
+    /* Header styling inside modal */
+    #sync-modal h3 {
+        flex-shrink: 0;
+        padding-bottom: 15px;
+        margin-bottom: 10px;
+    }
+
+    /* The scrollable list area */
+    .modal-item-list {
+        flex: 1; /* Takes up all available space */
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+        padding-bottom: 20px;
+    }
+
+    /* Cancel button at the bottom */
+    #sync-modal button {
+        flex-shrink: 0;
+        margin-top: 10px;
+        margin-bottom: env(safe-area-inset-bottom, 10px); /* Respects iPhone home bar */
+    }
+
     #sync-modal .modal-item-list div {
-        padding: 14px 0;
-        cursor: pointer;
+        padding: 16px 0;
         font-size: 16px;
     }
-
-    #sync-modal .modal-item-list div:not(:last-child) {
-        
-
-    }
-.modal-content::before {
-    content: "";
-    display: block;
-    width: 40px;
-    height: 4px;
-    background: #c7c7cc;
-    border-radius: 2px;
-    margin: 6px auto 12px auto;
-}
-
 </style>
+
 
 <div id="sync-modal" class="modal" onclick="closeSyncModal()">
     <div class="modal-content">
@@ -496,7 +516,7 @@ padding-bottom: env(safe-area-inset-bottom, 25px);
             Select a profile to sync with. syncing lets you share the same accounting information with other devices.
         </p>
 
-        <div id="sync-profile-list" class="modal-item-list max-h-60 overflow-y-auto"></div>
+        <div id="sync-profile-list" class="modal-item-list max-h-100 overflow-y-auto"></div>
 
         <button 
             onclick="closeSyncModal()" 
@@ -597,43 +617,68 @@ function openSyncModal() {
     listContainer.innerHTML = '';
 
     for (const profileKey in allProfiles) {
-        const profile = allProfiles[profileKey];
         if (profileKey === username) continue;
 
-        const isCurrentlySyncingToThem = !!allProfiles[username]?.syncingTo?.[profileKey];
-        
-        // Circular Logic: Only check busy status if we are NOT already syncing to them
-        const targetIsSyncingToOthers = profile.syncingTo && Object.keys(profile.syncingTo).length > 0;
-        const targetIsSyncedWithByOthers = profile.syncingWith && Object.keys(profile.syncingWith).length > 0;
+        const targetProfile = allProfiles[profileKey];
+        const myProfile = allProfiles[username];
 
-        const statusText = profile.authStatus || 'Standard';
-        let availabilityNote = "";
-        let isDisabled = false;
+        // --- DIRECTIONAL STATE ---
+        const amISendingToThem = myProfile.syncingTo && myProfile.syncingTo[profileKey] === true;
+        const amIReceivingFromThem = myProfile.syncingWith && myProfile.syncingWith[profileKey] === true;
 
-        if (!isCurrentlySyncingToThem) {
-            if (targetIsSyncingToOthers) {
-                availabilityNote = " (Busy: Syncing elsewhere)";
-                isDisabled = true;
-            } else if (targetIsSyncedWithByOthers) {
-                availabilityNote = " (Busy: In use)";
-                isDisabled = true;
+        // --- DISABLITY LOGIC (The Rules) ---
+        // 1. Logic for "Broadcast to"
+        let broadcastDisabled = false;
+        let broadcastNote = "";
+        if (!amISendingToThem) {
+            if (myProfile.syncingWith) {
+                broadcastDisabled = true;
+                broadcastNote = " (You are receiving; cannot send)";
+            } else if (targetProfile.syncingWith || targetProfile.syncingTo) {
+                broadcastDisabled = true;
+                broadcastNote = " (Target is busy)";
+            }
+        }
+
+        // 2. Logic for "Receive from"
+        let receiveDisabled = false;
+        let receiveNote = "";
+        if (!amIReceivingFromThem) {
+            if (myProfile.syncingTo || myProfile.syncingWith) {
+                receiveDisabled = true;
+                receiveNote = " (You are already syncing)";
+            } else if (targetProfile.syncingWith) {
+                receiveDisabled = true;
+                receiveNote = " (Target cannot broadcast)";
             }
         }
 
         const listItem = document.createElement('div');
-        listItem.className = `flex justify-between items-center text-gray-800 p-2 ${isDisabled ? 'opacity-40' : 'hover:bg-gray-50'}`;
+        listItem.className = "border-bottom border-gray-100 py-4";
         listItem.innerHTML = `
-            <div>
-                <p class="font-medium">${profileKey} <span class="text-xs text-gray-500">(${statusText})${availabilityNote}</span></p>
-                <p class="text-xs ${isCurrentlySyncingToThem ? 'text-green-500' : 'text-blue-500'}">
-                    ${isCurrentlySyncingToThem ? 'Connected' : 'Available'}
-                </p>
+            <div class="flex justify-between items-center mb-2">
+                <p class="font-bold text-gray-800">${profileKey} <span class="text-xs font-normal text-gray-400">(${targetProfile.authStatus || 'Standard'})</span></p>
             </div>
-            <button class="text-sm px-4 py-1 rounded-full ${isCurrentlySyncingToThem ? 'bg-red-500 text-white' : 'bg-blue-500 text-white'}" 
-                    ${isDisabled ? 'disabled' : ''}
-                    onclick="toggleSync('${profileKey}')">
-                ${isCurrentlySyncingToThem ? 'Unsync' : 'Sync'}
-            </button>
+            
+            <div class="space-y-3">
+                <div class="flex justify-between items-center ${broadcastDisabled ? 'opacity-40' : ''}">
+                    <span class="text-sm text-gray-600"><i class="fas fa-upload mr-2"></i> Broadcast to this device ${broadcastNote}</span>
+                    <label class="ios-toggle">
+                        <input type="checkbox" ${amISendingToThem ? 'checked' : ''} ${broadcastDisabled ? 'disabled' : ''} 
+                               onchange="toggleSync('${profileKey}', this.checked, 'broadcast')">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+
+                <div class="flex justify-between items-center ${receiveDisabled ? 'opacity-40' : ''}">
+                    <span class="text-sm text-gray-600"><i class="fas fa-download mr-2"></i> Receive from this device ${receiveNote}</span>
+                    <label class="ios-toggle">
+                        <input type="checkbox" ${amIReceivingFromThem ? 'checked' : ''} ${receiveDisabled ? 'disabled' : ''} 
+                               onchange="toggleSync('${profileKey}', this.checked, 'receive')">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+            </div>
         `;
         listContainer.appendChild(listItem);
     }
@@ -644,6 +689,7 @@ function openSyncModal() {
     setTimeout(() => modal.classList.add('show'), 10);
 }
 
+
 function closeSyncModal() {
     const modal = document.getElementById('sync-modal');
     modal.classList.remove('show');
@@ -652,24 +698,38 @@ function closeSyncModal() {
 }
 
 // --- Toggle Sync ---
-async function toggleSync(targetProfileKey) {
+async function toggleSync(targetProfileKey, isChecked, mode) {
     if (adminSyncAllActive) return;
 
-    const isCurrentlySyncing = !!allProfiles[username]?.syncingTo?.[targetProfileKey];
-    const myPath = `accounts/${accountName}/profiles/${username}/syncingTo/${targetProfileKey}`;
-    const targetPath = `accounts/${accountName}/profiles/${targetProfileKey}/syncingWith/${username}`;
+    const myPath = `accounts/${accountName}/profiles/${username}`;
+    const targetPath = `accounts/${accountName}/profiles/${targetProfileKey}`;
+    const updates = {};
 
-    if (isCurrentlySyncing) {
-        if (!confirm(`Stop syncing with ${targetProfileKey}?`)) return;
-        await removeFirebaseData(myPath);
-        await removeFirebaseData(targetPath);
-    } else {
-        // Multi-sync allowed, no password required for Admins
-        await setFirebaseData(myPath, true);
-        await setFirebaseData(targetPath, true);
-        alert(`Sync established with ${targetProfileKey}.`);
+    if (mode === 'broadcast') {
+        if (isChecked) {
+            updates[`${myPath}/syncingTo/${targetProfileKey}`] = true;
+            updates[`${targetPath}/syncingWith/${username}`] = true;
+        } else {
+            updates[`${myPath}/syncingTo/${targetProfileKey}`] = null;
+            updates[`${targetPath}/syncingWith/${username}`] = null;
+        }
+    } else if (mode === 'receive') {
+        if (isChecked) {
+            updates[`${myPath}/syncingWith/${targetProfileKey}`] = true;
+            updates[`${targetPath}/syncingTo/${username}`] = true;
+        } else {
+            updates[`${myPath}/syncingWith/${targetProfileKey}`] = null;
+            updates[`${targetPath}/syncingTo/${username}`] = null;
+        }
     }
-    closeSyncModal();
+
+    try {
+        await database.ref().update(updates);
+        // We don't close the modal immediately so the user can see the status change
+    } catch (error) {
+        console.error("Sync update failed:", error);
+        alert("Failed to update sync settings.");
+    }
 }
 
 // --- Admin Global Controls ---
@@ -716,66 +776,98 @@ async function disableAdminAllSync() {
 function applyAdminLockUI(locked) {
     const container = document.getElementById('sync-data-standard-link-container');
     const display = document.getElementById('sync-status-display');
+    
     if (locked) {
         container.classList.add('disabled-link');
         display.innerText = 'Managed by Admin';
+        display.style.color = "#8E8E93";
         container.onclick = null;
     } else {
         container.classList.remove('disabled-link');
-        const count = Object.keys(allProfiles[username]?.syncingTo || {}).length;
-        display.innerText = count ? `${count} devices syncing` : 'None';
         container.onclick = openSyncModal;
+        
+        // This part is now handled by the main profile listener above 
+        // to ensure it stays reactive to both sending and receiving.
     }
 }
+
 
 function loadSettingsData() {
     if (!accountName || !username) return;
 
-    // 1. Profiles & UI Status (Fixes double status and device counts)
+    // 1. Profiles & UI Status Listener
     database.ref(`accounts/${accountName}/profiles`).on('value', (snap) => {
         allProfiles = snap.val() || {};
         const me = allProfiles[username];
-        currentAuthStatus = me?.authStatus || 'Standard';
+        if (!me) return;
+
+        currentAuthStatus = me.authStatus || 'Standard';
         
+        // --- Calculate Device Counts ---
         let admins = 0, standards = 0;
         Object.values(allProfiles).forEach(p => (p.authStatus === 'Admin' ? admins++ : standards++));
 
-// Color logic for both icons based on the status
-const iconColorClass = currentAuthStatus === 'Admin' ? 'text-blue-600' : 'text-slate-400';
+        // --- Update Profile Header ---
+        const iconColorClass = currentAuthStatus === 'Admin' ? 'text-blue-600' : 'text-slate-400';
+        const userIcon = `<i class="fas fa-user-circle ${iconColorClass} mr-1"></i>`;
+        const statusIcon = `<i class="fas fa-shield-alt ${iconColorClass} mr-1"></i>`;
 
-// Icons
-const userIcon = `<i class="fas fa-user-circle ${iconColorClass} mr-1"></i>`;
-const statusIcon = `<i class="fas fa-shield-alt ${iconColorClass} mr-1"></i>`;
+        document.getElementById('profile-info-display').innerHTML = `
+            ${userIcon}${username} 
+            <span class="mx-1 text-slate-300">|</span> 
+            ${statusIcon}${currentAuthStatus}
+        `;
 
-// Injects User Icon -> Username -> Separator -> Shield Icon -> Status
-document.getElementById('profile-info-display').innerHTML = `
-    ${userIcon}${username} 
-    <span class="mx-1 text-slate-300">|</span> 
-    ${statusIcon}${currentAuthStatus}
-`;
+        // --- Update Manage Devices Subtitle ---
+        const adminIcon = `<i class="fas fa-crown text-yellow-500 mr-1"></i>`;
+        const deviceIcon = `<i class="fas fa-laptop text-blue-500 mr-1"></i>`;
 
+        document.getElementById('device-counts').innerHTML = `
+            ${adminIcon}${admins} admin(s)
+            <span class="mx-1 text-gray-300">•</span> 
+            ${deviceIcon}${standards} standard device(s)
+        `;
 
+        // --- DIRECTIONAL SYNC STATUS LOGIC ---
+        let syncStatusText = "None";
+        let statusColor = "#8E8E93"; // Muted gray
 
-        // Define the icons
-const adminIcon = `<i class="fas fa-crown text-yellow-500 mr-1"></i>`;
-const deviceIcon = `<i class="fas fa-laptop text-blue-500 mr-1"></i>`;
-
-// Inject into the device-counts element
-document.getElementById('device-counts').innerHTML = `
-    ${adminIcon}${admins} admin(s)
-    <span class="mx-1 text-gray-300">•</span> 
-    ${deviceIcon}${standards} standard device(s)
-`;
-
+        if (me.syncingTo) {
+            // Find keys where value is explicitly true
+            const receivers = Object.keys(me.syncingTo).filter(k => me.syncingTo[k] === true);
+            if (receivers.length > 0) {
+                syncStatusText = `Broadcasting to ${receivers.length} device${receivers.length > 1 ? 's' : ''}`;
+                statusColor = "#007AFF"; // iOS Blue
+            }
+        } 
         
-        document.getElementById('sync-data-admin-switch-container').style.display = (currentAuthStatus === 'Admin' ? 'flex' : 'none');
+        // If not broadcasting, check if we are receiving
+        if (syncStatusText === "None" && me.syncingWith) {
+            const sourceDevice = Object.keys(me.syncingWith).find(k => me.syncingWith[k] === true);
+            if (sourceDevice) {
+                syncStatusText = `Receiving from ${sourceDevice}`;
+                statusColor = "#34c759"; // iOS Green
+            }
+        }
+
+        const statusDisplay = document.getElementById('sync-status-display');
+        if (statusDisplay) {
+            statusDisplay.innerText = syncStatusText;
+            statusDisplay.style.color = statusColor;
+        }
+
+        // --- Admin/Standard Visibility ---
+        const adminContainer = document.getElementById('sync-data-admin-switch-container');
+        if (adminContainer) {
+            adminContainer.style.display = (currentAuthStatus === 'Admin' ? 'flex' : 'none');
+        }
         document.getElementById('sync-data-standard-link-container').style.display = 'flex';
 
         applyAdminLockUI(adminSyncAllActive);
         applyAuthorizationRestrictions();
     });
 
-    // 2. Load Account Description (Stored under account/description)
+    // 2. Load Account Description
     database.ref(`accounts/${accountName}/description`).on('value', (snap) => {
         const desc = snap.val();
         const descDisplay = document.getElementById('profile-description-display');
@@ -804,7 +896,7 @@ document.getElementById('device-counts').innerHTML = `
         applyAdminLockUI(adminSyncAllActive);
     });
 
-    // 4. Profile Image (Fixed logic for SVG/Image toggle)
+    // 4. Profile Image
     database.ref(`accounts/${accountName}/url`).on('value', (snap) => {
         const url = snap.val();
         const img = document.getElementById('profile-icon');
@@ -827,6 +919,7 @@ document.getElementById('device-counts').innerHTML = `
         }
     });
 }
+
 
 // --- Event Handlers & Init ---
 function filterSettings() {
@@ -1087,4 +1180,4 @@ loadSettingsData();
 
 
 </body>
-</html>mk
+</html>
