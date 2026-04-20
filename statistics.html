@@ -912,7 +912,7 @@ function getTarget(syncObject) {
     if (typeof syncObject === 'object' && syncObject !== null) {
         const targets = Object.keys(syncObject);
         if (targets.length > 0 && syncObject[targets[0]] === true) {
-            return { username: targets[0], status: targets.length > 1 ? `${targets.length} Profiles (view devices in settings)` : targets[0] };
+            return { username: targets[0], status: targets.length > 1 ? `${targets.length} Other Profiles (view devices in settings)` : targets[0] };
         }
     }
     return null;
