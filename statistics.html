@@ -49,7 +49,7 @@
     color:var(--text-color);
     margin-top: 50px;
     padding-bottom: 200px;
-    padding-top: 25px;
+    padding-top: 125px;
     margin-bottom: 100px;
   }
   .container{
@@ -61,68 +61,7 @@
     box-sizing:border-box;
   }
   /* Header - Tall Navigation Bar Style */
-  .header{
-    display:flex;
-    align-items:center;
-    justify-content:space-between;
-    padding:30px 16px 17px;
-    background:#3f72af; /* White header background */
-    border-bottom:1px solid var(--border-color);
-    position:fixed; top:0; z-index:10;
- width: 100%;
-  }
-  .header a{
-    color:#a3c9f1;
-    text-decoration:none;
-    font-size:1.4rem;
-    font-weight:500;
-    text-align: left;
 
-  }
-  .header-title{
-    font-weight:550; /* Bold title */
-    font-size:1.6rem;
-    text-align:center;
-    flex:1;
-    color: white;
-    margin-left: 38%;
-position: fixed;
-  }
-  /* Date nav */
-  .date-nav-row{
-    display:flex;
-    gap:8px;
-    align-items:center;
-    margin:12px 16px; /* Padding applied here */
-  }
-  .date-nav-pill{
-    display:flex;
-    flex:1;
-    align-items:center;
-    border:1px solid var(--border-color);
-    border-radius:10px; /* More standard iOS rounding */
-    overflow:hidden;
-    background:var(--card);
-border: 1px solid var(--border-color);
-  }
-  .date-nav-btn{
-    padding:8px 12px;
-    border:0;
-    background:#3f72af;
-    cursor:pointer;
-    font-size:1.5rem;
-    color:white;
-    font-weight:400;
-    margin: 0;
-
-  }
-  .date-display{
-    flex:1;
-    text-align:center;
-    padding:8px 6px;
-    font-weight:700;
-    color:var(--text-color);
-  }
   .more-btn{
     width:45px;
     height:45px;
@@ -133,7 +72,7 @@ border: 1px solid var(--border-color);
     align-items:center;
     justify-content:center;
     cursor:pointer;
-    background:var(--card);
+    background:rgba(63, 114, 175, 0.2);
     position:relative;
     box-shadow:none; /* No shadow for iOS style */
 border: 1px solid var(--border-color);
@@ -229,7 +168,7 @@ border: 1px solid #d1d5db;
     font-size:0.84rem;
     
     border:1px solid var(--border-color);
-    border-radius:10px;
+    border-radius:5px;
     overflow:hidden; /* Needed to respect table border-radius */
   }
   table.stats-table th, table.stats-table td{
@@ -242,14 +181,15 @@ border: 1px solid #d1d5db;
     border-bottom: 1px solid var(--border-color);
   }
   table.stats-table thead th {
-    border-bottom: 1px solid var(--border-color);
+    ;
   }
 
   table.stats-table th{
-    background:var(--card); /* White header background */
+    background:rgba(63, 114, 175, 0.15); /* White header background */
     font-size:0.78rem;
     font-weight:600;
     color: #3f72af;
+   border: solid 1px rgba(63, 114, 175, 0.1);
   }
   td.editable{ cursor:text; background:#F9F9F9; }
   td[data-col="orders"]{ cursor:pointer; color:var(--system-blue); }
@@ -417,24 +357,76 @@ text-align: left;
 </head>
 <body>
 
-    <div class="header">
-      <a href="#" onclick="history.back(); return false;" title="Go back"><i class="fas fa-chevron-left"></i> Back</a>
-      <div class="header-title ">Statistics</div>
-       <span id="sync" style="
-        display: inline-block;
-        background-color: rgba(255, 255, 255, 0.2);
-        color: #ffffff;
-        padding: 6px 20px;
-        border-radius: 50px;
-        font-family: system-ui, sans-serif;
-        font-size: 14px;
-        font-weight: 500;
-        border: 1px solid rgba(255, 255, 255, 0.4);
-        letter-spacing: 0.5px;
-    ">
-        Online...
-    </span>
+    <div class="header" style="z-index: 1000;position: fixed;  width: 100vw; top:0; right: 0; background-color: #4676b1 !important; padding: 10px 0 0 0 !important; font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', Helvetica, sans-serif !important; color: #ffffff !important; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1) !important;">
+    
+    <div style="display: flex !important; align-items: center !important; justify-content: space-between !important; padding: 10px 16px !important; margin-bottom: 10px !important;">
+          <h1 class="text-3xl font-black tracking-tight text-white"> 
+                 <a onClick="window.history.back()">
+                    <i class="fas fa-chevron-left"></i> </a>Avanti<span class="text-blue-300">.ledger</span>
+                
+            </h1>
+
+ <div class="more-btn border border-blue-100" id="moreBtn" title="More">
+        <i class="fas fa-ellipsis-h" id="moreIcon"></i>
+        <div class="dropdown" id="moreDropdown">
+          <div onclick="enterSelectMode()">Select</div>
+        <div onclick="window.location.href='accounting-report.html'">Open reports</div>
+<div onclick="window.location.href='notes.html'">Notes</div>
+</div>
+      </div>
+  
+
+
     </div>
+
+    <div class="date-nav-row" style="background-color: #3b6295 !important; display: flex !important; align-items: center !important; justify-content: space-between !important; padding: 14px 20px !important;">
+        <button class="date-nav-btn" id="prevDateBtn" style="background: none !important; border: none !important; color: #ffffff !important; font-size: 18px !important; cursor: pointer !important; padding: 5px !important; opacity: 0.8 !important;">
+            <i class="fas fa-chevron-left"></i>
+        </button>
+        
+        <div class="date-nav-pill" id="dateNavPill" style="text-align: center !important; flex-grow: 1 !important;">
+            <div class="date-display" id="dateDisplay" style="font-size: 16px !important; font-weight: 600 !important; color: #ffffff !important; letter-spacing: 0.2px !important;">2026-04-13 to 2026-04-19</div>
+            <div style="font-size: 11px !important; color: rgba(255,255,255,0.5) !important; text-transform: uppercase !important; font-weight: 700 !important; letter-spacing: 0.8px !important; margin-top: 3px !important;">Reporting Period</div>
+        </div>
+
+        <button class="date-nav-btn" id="nextDateBtn" style="background: none !important; border: none !important; color: #ffffff !important; font-size: 18px !important; cursor: pointer !important; padding: 5px !important; opacity: 0.8 !important;">
+            <i class="fas fa-chevron-right"></i>
+        </button>
+    </div>
+
+    <div style="padding: 16px !important;">
+        <div class="relative" style="position: relative !important; margin-bottom: 12px !important;">
+            <input type="text" id="searchItemInput" placeholder="Search Items" onkeyup="filterSettings()" 
+                style="width: 100% !important; padding: 12px 12px 12px 44px !important; font-size: 16px !important; border-radius: 12px !important; border: none !important; background: rgba(255, 255, 255, 0.12) !important; color: #ffffff !important; outline: none !important; box-sizing: border-box !important; backdrop-filter: blur(5px) !important;" />
+            <style>
+                #searchItemInput::placeholder { color: rgba(255, 255, 255, 0.6) !important; font-weight: 400 !important; }
+            </style>
+            <svg class="absolute" style="position: absolute !important; left: 14px !important; top: 50% !important; transform: translateY(-50%) !important; width: 20px !important; height: 20px !important; color: rgba(255, 255, 255, 0.6) !important;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+            </svg>
+        </div>
+
+        <div style="display: flex !important; justify-content: center !important;">
+            <span id="sync" style="
+                background: rgba(255, 255, 255, 0.08) !important;
+                color: #ffffff !important;
+                padding: 5px 14px !important;
+                border-radius: 20px !important;
+                font-size: 11px !important;
+                font-weight: 600 !important;
+                border: 1px solid rgba(255, 255, 255, 0.15) !important;
+                text-transform: uppercase !important;
+                letter-spacing: 1px !important;
+                display: flex !important;
+                align-items: center !important;
+                gap: 6px !important;
+            ">
+                <span style="width: 6px !important; height: 6px !important; background: #4ade80 !important; border-radius: 50% !important; box-shadow: 0 0 8px #4ade80 !important;"></span>
+                Online
+            </span>
+        </div>
+    </div>
+</div>
 
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600&display=swap" rel="stylesheet">
 
@@ -503,29 +495,7 @@ padding-bottom: env(safe-area-inset-bottom, 50px);
 </nav>
 
 
-    <div class="date-nav-row " >
-      <div class="date-nav-pill border border-blue-100" id="dateNavPill">
-        <button class="date-nav-btn" id="prevDateBtn" title="Previous date"><i class="fas fa-chevron-left"></i></button>
-        <div class="date-display" id="dateDisplay"></div>
-        <button class="date-nav-btn " id="nextDateBtn" title="Next date"><i class="fas fa-chevron-right"></i></button>
-      </div>
-
-      <div class="more-btn border border-blue-100" id="moreBtn" title="More">
-        <i class="fas fa-ellipsis-h" id="moreIcon"></i>
-        <div class="dropdown" id="moreDropdown">
-          <div onclick="enterSelectMode()">Select</div>
-        <div onclick="window.location.href='accounting-report.html'">Open reports</div>
-<div onclick="window.location.href='notes.html'">Notes</div>
-</div>
-      </div>
-    </div>
-
-        <div class="px-2 mb-6 m-2">
-        <div class="relative">
-            <input type="text" id="searchItemInput" placeholder="Search Items" class="w-full py-3 pl-10 pr-4 text-base rounded-lg border border-blue-100 focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white" onkeyup="filterSettings()" />
-            <svg class="absolute left-3 top-1/2 transform -translate-y-1/2 w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-        </div>
-    </div>
+ 
 
     <div class="stats-table-container">
 
@@ -547,7 +517,7 @@ padding-bottom: env(safe-area-inset-bottom, 50px);
         <tbody id="statsTableBody"></tbody>
         <tfoot >
           <tr style="background:#F9F9F9;">
-            <th  style="border-top:1px solid var(--border-color); padding-right: 2em;" colspan="2"> <button class="more1-btn" onclick="addRow()" title="Add new item" style=" min-width: 100%; text-align: left;"><i class="fas fa-plus" ></i> New Item</button></th>
+            <th  style="border-top:1px solid var(--border-color); padding-right: 2em;" colspan="2"> <button class="more1-btn" onclick="addRow()" title="Add new item" style=" min-width: 100%; text-align: left; background-color: transparent; border: solid 1px #3f72af;"><i class="fas fa-plus" ></i> New Item</button></th>
  <th class="table-controls" colspan="4" style="border-top:1px solid var(--border-color);">  </th>
             <th style="border-top:1px solid var(--border-color); color:var(--text-color);">Total Sales:</th>
             <th id="totalSalesAmount" style="border-top:1px solid var(--border-color); font-weight:600; color:var(--system-blue);">K0</th>
@@ -563,12 +533,15 @@ padding-bottom: env(safe-area-inset-bottom, 50px);
 
 
    
-    <div class="section-container">
-        <div class="financial-summary">
+    <div class="section-container" >
+        <div class="financial-summary" >
           <div class="finance-grid">
             <div class="expenses-section">
               <div class="finance-header">
-                <span>Expenses</span>
+                <span style="font-weight: bold;">
+    
+
+Expenses</span>
                 <div class="edit-btn1" id="edit-btn"><button class="more1-btn" id="addExpenseBtn" onclick="addExpense()" title="Add Expense"><i class="fas fa-plus"></i></button></div>
               </div>
               <div id="expensesList">
@@ -580,7 +553,7 @@ padding-bottom: env(safe-area-inset-bottom, 50px);
 
             <div class="incomes-section">
               <div class="finance-header">
-                <span>Incomes</span>
+                <span style="font-weight: bold;">Incomes</span>
                 <div class="edit-btn1" id="edit-btn-inc"><button class="more1-btn" id="addIncomeBtn" onclick="addIncome()" title="Add Income"><i class="fas fa-plus"></i></button></div>
               </div>
               <div id="incomesList">
@@ -1573,44 +1546,166 @@ function renderExpensesIncomes(){
 }
 
 /* ---------- Selection / Select Mode ---------- */
-function enterSelectMode(){
-const dd = document.getElementById('moreDropdown'); if(dd) dd.classList.remove('active');
+function enterSelectMode() {
+    // Correctly check the balanced status for the date currently in view
+    const currentDateData = state.dates[state.currentDate];
+    const isActuallyBalanced = currentDateData && (currentDateData.balanced === true || String(currentDateData.balanced).toLowerCase() === 'true');
+
+    if (isActuallyBalanced) {
+        alert("You cannot select  an item while 'balanced' is on; turn off balanced to edit this ledger.");
+        return;
+    }
+
+    const dd = document.getElementById('moreDropdown');
+    if (dd) dd.classList.remove('active');
+
     state.selectMode = true;
     state.selectedForDelete.clear();
-    document.querySelectorAll('.select-col').forEach(td=>td.classList.remove('hidden'));
+
+    document.querySelectorAll('.select-col').forEach(td => td.classList.remove('hidden'));
+
+    const prevBtn = document.getElementById('prevDateBtn');
+    if (prevBtn) {
+        prevBtn.innerHTML = '<i class="fas fa-check-double"></i>';
+        prevBtn.onclick = selectAllItems;
+        prevBtn.title = "Select All";
+    }
+
+    const nextBtn = document.getElementById('nextDateBtn');
+    if (nextBtn) {
+        nextBtn.innerHTML = '<i class="fas fa-trash"></i>';
+        nextBtn.onclick = deleteSelectedItems;
+        nextBtn.title = "Delete Selected";
+    }
+
     const pill = document.getElementById('dateNavPill');
-    if(pill){
+    if (pill) {
         pill.innerHTML = `
-            <button style="background: none; color: var(--system-blue);"class="date-nav-btn" onclick="selectAllItems()"><i class="fas fa-check-double"></i> Select all</button>
-            <div class="date-display" id="dateDisplaySmall" style="font-size:0.9rem; text-align:center;">Select items</div>
-            <button style="background: none; color: var(--system-blue); " class="date-nav-btn" onclick="deleteSelectedItems()"><i class="fas fa-trash"></i> Delete</button>
+            <div class="date-display" id="dateDisplaySmall" style="font-size: 16px; font-weight: 600; color: #ffffff;">Select Items</div>
+            <div style="font-size: 11px; color: rgba(255,255,255,0.5); text-transform: uppercase; font-weight: 700; margin-top: 3px;">Editing Mode</div>
         `;
     }
-    document.getElementById('moreIcon').className = 'fas fa-times';
-    document.getElementById('moreBtn').onclick = exitSelectMode;
-    document.querySelector('.table-controls').setAttribute('colspan', '5');
+
+    const moreBtn = document.getElementById('moreBtn');
+    const icon = document.getElementById('moreIcon');
+    if (icon) icon.className = 'fas fa-times';
+    if (moreBtn) moreBtn.onclick = exitSelectMode;
+
+    const tableControls = document.querySelector('.table-controls');
+    if (tableControls) tableControls.setAttribute('colspan', '5');
+
     renderTable();
 }
+
+function deleteSelectedItems() {
+    // Check if the current day is balanced before allowing deletion
+    const currentDateData = state.dates[state.currentDate];
+    const isActuallyBalanced = currentDateData && (currentDateData.balanced === true || String(currentDateData.balanced).toLowerCase() === 'true');
+
+    if (isActuallyBalanced) {
+        alert("Action blocked: You cannot delete items from a balanced ledger.");
+        return;
+    }
+
+    const selectedCount = state.selectedForDelete.size;
+    if (selectedCount === 0) {
+        exitSelectMode();
+        return;
+    }
+
+    const toDel = Array.from(state.selectedForDelete);
+    const dateObj = state.dates[state.currentDate] || { items: {} };
+    
+    // Resolve names for the confirmation prompt
+    let itemDisplay = "";
+    if (selectedCount === Object.keys(dateObj.items).length && selectedCount > 0) {
+        itemDisplay = "all items";
+    } else if (selectedCount <= 3) {
+        const names = toDel.map(id => dateObj.items[id] ? dateObj.items[id].name : "Item");
+        itemDisplay = names.join(", ");
+    } else {
+        itemDisplay = `${selectedCount} items`;
+    }
+
+    if (!window.confirm(`Are you sure you want to delete ${itemDisplay}? This will affect future dates.`)) {
+        return;
+    }
+
+    // Execute Deletion across this date and future dates
+    toDel.forEach(id => {
+        deleteItemFromDateAndFuture(id, state.currentDate);
+    });
+
+    state.selectedForDelete.clear();
+    saveState();
+    renderAll();
+    exitSelectMode();
+}
+
+/* ---------- Add New Row ---------- */
+function addRow() {
+    ensureDateExists(state.currentDate);
+    
+    // Safety check for adding rows to balanced days
+    const dateObj = state.dates[state.currentDate];
+    if (dateObj && (dateObj.balanced === true || String(dateObj.balanced).toLowerCase() === 'true')) {
+        alert("Cannot add items to a balanced day. Please uncheck 'balanced' first.");
+        return;
+    }
+
+    const id = `itm${Date.now()}`;
+    const item = makeItem(id, 'new item', 0, 0, 0, 0);
+    
+    if (!state.dates[state.currentDate]) state.dates[state.currentDate] = makeEmptyDate();
+    if (!state.dates[state.currentDate].items) state.dates[state.currentDate].items = {};
+    
+    state.dates[state.currentDate].items[item.id] = item;
+    
+    // Propagate the new item to future days
+    propagateItemToFuture(item, state.currentDate);
+    saveState(); 
+    renderAll();
+}
+
+
 function exitSelectMode(){
     state.selectMode = false;
     state.selectedForDelete.clear();
+
+    // 1. Restore the Left Arrow (<)
+    const prevBtn = document.getElementById('prevDateBtn');
+    prevBtn.innerHTML = '<i class="fas fa-chevron-left"></i>';
+    prevBtn.onclick = prevDate;
+    prevBtn.title = "Previous date";
+
+    // 2. Restore the Right Arrow (>)
+    const nextBtn = document.getElementById('nextDateBtn');
+    nextBtn.innerHTML = '<i class="fas fa-chevron-right"></i>';
+    nextBtn.onclick = nextDate;
+    nextBtn.title = "Next date";
+
+    // 3. Restore the Center Display (Reporting Period)
     const pill = document.getElementById('dateNavPill');
     if(pill){
         pill.innerHTML = `
-            <button class="date-nav-btn" id="prevDateBtn" title="Previous date"><i class="fas fa-chevron-left"></i></button>
-            <div class="date-display" id="dateDisplay"></div>
-            <button class="date-nav-btn" id="nextDateBtn" title="Next date"><i class="fas fa-chevron-right"></i></button>
+            <div class="date-display" id="dateDisplay" style="font-size: 16px !important; font-weight: 600 !important; color: #ffffff !important; letter-spacing: 0.2px !important;"></div>
+            <div style="font-size: 11px !important; color: rgba(255,255,255,0.5) !important; text-transform: uppercase !important; font-weight: 700 !important; letter-spacing: 0.8px !important; margin-top: 3px !important;">Reporting Period</div>
         `;
-        document.getElementById('prevDateBtn').onclick = prevDate;
-        document.getElementById('nextDateBtn').onclick = nextDate;
     }
+
+    // 4. Restore the "More" button icon and function
+    const moreBtn = document.getElementById('moreBtn');
     document.getElementById('moreIcon').className = 'fas fa-ellipsis-h';
-    document.getElementById('moreBtn').onclick = toggleMoreDropdown;
-    
-document.querySelector('.table-controls').setAttribute('colspan', '4');
-    document.querySelectorAll('.select-col').forEach(td=>td.classList.add('hidden'));
+    moreBtn.onclick = toggleMoreDropdown;
+
+    // 5. Hide the selection column and reset footer
+    document.querySelectorAll('.select-col').forEach(td => td.classList.add('hidden'));
+    const tableControls = document.querySelector('.table-controls');
+    if(tableControls) tableControls.setAttribute('colspan', '4');
+
     renderAll();
 }
+
 function toggleMoreDropdown(e){
     e && e.stopPropagation();
     const dd = document.getElementById('moreDropdown');
@@ -1623,15 +1718,8 @@ function selectAllItems(){
     Object.keys(dateObj.items || {}).forEach(id=>state.selectedForDelete.add(id));
     renderTable();
 }
-function deleteSelectedItems(){
-    if(state.selectedForDelete.size===0){ exitSelectMode(); return; }
-    const toDel = Array.from(state.selectedForDelete);
-    toDel.forEach(id=>{
-        deleteItemFromDateAndFuture(id, state.currentDate);
-    });
-    state.selectedForDelete.clear();
-    saveState(); renderAll(); exitSelectMode();
-}
+
+
 function updateSelectionUI(){
     const count = state.selectedForDelete.size;
     const disp = document.querySelector('#dateDisplaySmall');
