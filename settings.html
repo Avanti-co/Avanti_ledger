@@ -1179,5 +1179,251 @@ loadSettingsData();
 </script>
 
 
+<style>
+    :root { 
+        --av-blue: #007aff; 
+        --av-red: #ff3b30;
+        --av-bg: rgba(255, 255, 255, 0.94);
+        --av-text-sec: #8e8e93;
+        --av-spring: cubic-bezier(0.32, 0.72, 0, 1);
+    }
+    
+    #avanti-approval-overlay {
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(0,0,0,0.35); z-index: 9998;
+        display: none; opacity: 0; transition: opacity 0.5s ease;
+        backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+    }
+
+    #avanti-download-sheet {
+        position: fixed; bottom: 0; left: 0; right: 0; height: auto;
+        background: var(--av-bg); 
+        backdrop-filter: saturate(180%) blur(25px); -webkit-backdrop-filter: saturate(180%) blur(25px);
+        border-radius: 32px 32px 0 0; z-index: 9999;
+        transform: translateY(100%); 
+        transition: transform 0.65s var(--av-spring);
+        box-shadow: 0 -15px 45px rgba(0,0,0,0.15);
+        display: flex; flex-direction: column; 
+        padding: 16px 20px calc(env(safe-area-inset-bottom) + 24px);
+        font-family: -apple-system, system-ui, sans-serif;
+    }
+
+    #avanti-download-sheet.active { transform: translateY(0); }
+    #avanti-approval-overlay.active { display: block; opacity: 1; }
+
+    .av-handle { width: 36px; height: 5px; background: #d1d1d6; border-radius: 10px; margin: 0 auto 24px; }
+
+    /* Redesigned Visual Stage */
+    .av-visual-container {
+        flex: 1; display: flex; align-items: center; justify-content: center;
+        gap: 15px; padding: 10px 0 30px;
+    }
+
+    .av-device { text-align: center; width: 85px; transition: transform 0.4s var(--av-spring); }
+    .av-device.active { transform: scale(1.1); }
+    
+    .av-icon { 
+        font-size: 48px; color: #c7c7cc; margin-bottom: 12px; 
+        transition: color 0.4s, text-shadow 0.4s;
+    }
+    .av-icon.active { 
+        color: var(--av-blue); 
+        text-shadow: 0 0 20px rgba(0,122,255,0.25); 
+    }
+
+    .av-device-name { font-size: 11px; font-weight: 700; color: #3a3a3c; text-transform: uppercase; letter-spacing: 0.8px; }
+
+    /* Animated Sync Path */
+    .av-sync-path { 
+        flex: 1; height: 4px; background: #e5e5ea; border-radius: 4px; 
+        position: relative; overflow: hidden; max-width: 120px;
+    }
+    
+    .av-pulse {
+        position: absolute; width: 40px; height: 100%;
+        background: linear-gradient(90deg, transparent, var(--av-blue), transparent);
+        animation: avFlow 1.6s infinite ease-in-out;
+        filter: blur(1px);
+    }
+    
+    @keyframes avFlow { 
+        0% { left: -50%; } 
+        100% { left: 150%; } 
+    }
+
+    /* Content Area */
+    .av-content { text-align: center; }
+    .av-title { font-size: 26px; font-weight: 800; color: #000; margin-bottom: 10px; letter-spacing: -0.5px; }
+    .av-subtitle { font-size: 16px; color: #636366; line-height: 1.45; margin-bottom: 30px; padding: 0 10px; }
+    .av-subtitle strong { color: #000; font-weight: 700; }
+
+    /* Button Actions */
+    .av-actions { display: flex; flex-direction: column; gap: 12px; }
+    .av-btn { 
+        height: 58px; border-radius: 16px; font-size: 17px; font-weight: 700; 
+        border: none; cursor: pointer; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        display: flex; align-items: center; justify-content: center;
+    }
+    .av-btn:active { transform: scale(0.96); opacity: 0.85; }
+    
+    .av-btn-main { 
+        background: var(--av-blue); color: white; 
+        box-shadow: 0 4px 12px rgba(0,122,255,0.2);
+    }
+    .av-btn-sec { background: transparent; color: var(--av-red); }
+</style>
+
+<div id="avanti-approval-overlay"></div>
+<div id="avanti-download-sheet">
+    <div class="av-handle"></div>
+    <div class="av-visual-container">
+        <div class="av-device" id="av-node-src">
+            <i id="av-source-ico" class="fas fa-mobile-alt av-icon active"></i>
+            <div id="av-source-txt" class="av-device-name">Current</div>
+        </div>
+        <div class="av-sync-path"><div class="av-pulse" id="av-stream-pulse"></div></div>
+        <div class="av-device" id="av-node-trg">
+            <i id="av-target-ico" class="fas fa-mobile-alt av-icon"></i>
+            <div id="av-target-txt" class="av-device-name">Remote</div>
+        </div>
+    </div>
+    <div class="av-content">
+        <div class="av-title">Download Request</div>
+        <p id="av-desc" class="av-subtitle">Securely transfer statistics to another device.</p>
+        <div class="av-actions">
+            <button class="av-btn av-btn-main" id="av-approve-btn" onclick="processDownloadApproval(true)">Approve Download</button>
+            <button class="av-btn av-btn-sec" onclick="processDownloadApproval(false)">Deny Access</button>
+        </div>
+    </div>
+</div>
+
+<script>
+(function() {
+    let currentRequestData = null;
+
+    function getLocalInfo() {
+        return {
+            acc: localStorage.getItem('AV_ledger_account_key'),
+            user: localStorage.getItem('AV_ledger_username')
+        };
+    }
+
+    function bootstrapDownloadListener() {
+        const info = getLocalInfo();
+        const database = window.db || (window.firebase && firebase.database());
+
+        if (database && info.acc && info.user) {
+            startListeningForDownloads(database, info.acc, info.user);
+        } else {
+            setTimeout(bootstrapDownloadListener, 1000);
+        }
+    }
+
+    function getIconForDevice(deviceName) {
+        if (!deviceName) return 'fa-mobile-alt';
+        const nameToTest = deviceName.toString().toLowerCase();
+        const pcMatch = ['pc', 'mac', 'laptop', 'desktop', 'windows', 'computer', 'server'];
+        return pcMatch.some(word => nameToTest.includes(word)) ? 'fa-laptop' : 'fa-mobile-alt';
+    }
+
+    function startListeningForDownloads(database, acc, user) {
+        const requestsPath = `accounts/${acc}/profiles/${user}/pendingRequests`;
+        
+        database.ref(requestsPath).on('value', async (snapshot) => {
+            const requests = snapshot.val();
+            if (!requests) { 
+                toggleDownloadSheet(false); 
+                return; 
+            }
+
+            const requesterId = Object.keys(requests)[0];
+            const req = requests[requesterId];
+
+            if (req && req.type === 'download' && req.status === 'pending') {
+                currentRequestData = { id: requesterId, ...req, acc, user, db: database };
+
+                const profileSnapshot = await database.ref(`accounts/${acc}/profiles/${requesterId}/deviceName`).once('value');
+                const actualDeviceName = profileSnapshot.val() || "Unknown Device";
+                
+                const myProfileSnapshot = await database.ref(`accounts/${acc}/profiles/${user}/deviceName`).once('value');
+                const myDeviceName = myProfileSnapshot.val() || "My Device";
+
+                document.getElementById('av-source-ico').className = `fas ${getIconForDevice(myDeviceName)} av-icon active`;
+                document.getElementById('av-target-ico').className = `fas ${getIconForDevice(actualDeviceName)} av-icon`;
+                
+                document.getElementById('av-source-txt').innerText = user;
+                document.getElementById('av-target-txt').innerText = requesterId;
+                document.getElementById('av-desc').innerHTML = `<strong>${requesterId}</strong> wants to download your ledger information.`;
+                
+                toggleDownloadSheet(true);
+            } else {
+                toggleDownloadSheet(false);
+            }
+        });
+    }
+
+    function toggleDownloadSheet(show) {
+        const sheet = document.getElementById('avanti-download-sheet');
+        const overlay = document.getElementById('avanti-approval-overlay');
+        const targetNode = document.getElementById('av-node-trg');
+        const targetIco = document.getElementById('av-target-ico');
+
+        if (show) {
+            overlay.style.display = 'block';
+            setTimeout(() => {
+                overlay.classList.add('active');
+                sheet.classList.add('active');
+                // Animation sequence
+                setTimeout(() => {
+                    targetNode.classList.add('active');
+                    targetIco.classList.add('active');
+                }, 400);
+            }, 10);
+        } else {
+            sheet.classList.remove('active');
+            overlay.classList.remove('active');
+            targetNode.classList.remove('active');
+            targetIco.classList.remove('active');
+            setTimeout(() => { overlay.style.display = 'none'; }, 400);
+        }
+    }
+
+    window.processDownloadApproval = async function(isApproved) {
+        if (!currentRequestData) return;
+        
+        const path = `accounts/${currentRequestData.acc}/profiles/${currentRequestData.user}/pendingRequests/${currentRequestData.id}`;
+        const btn = document.getElementById('av-approve-btn');
+        const pulse = document.getElementById('av-stream-pulse');
+        
+        try {
+            if (isApproved) {
+                btn.innerText = "Approving...";
+                btn.style.pointerEvents = "none";
+                
+                // Acceleration effect
+                pulse.style.animationDuration = "0.5s";
+
+                await currentRequestData.db.ref(`${path}/status`).set('approved');
+                
+                setTimeout(() => {
+                    btn.style.background = "#34c759";
+                    btn.innerText = "Authorized";
+                    setTimeout(() => toggleDownloadSheet(false), 800);
+                }, 600);
+            } else {
+                await currentRequestData.db.ref(path).remove();
+                toggleDownloadSheet(false);
+            }
+        } catch (err) {
+            console.error("Sync Error:", err);
+            btn.innerText = "Approve Download";
+            btn.style.pointerEvents = "all";
+        }
+    };
+
+    bootstrapDownloadListener();
+})();
+</script>
+
 </body>
 </html>
