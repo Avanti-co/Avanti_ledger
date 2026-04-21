@@ -1704,5 +1704,236 @@ const totalWorkingExpenses = salesData.reduce(
 })();
 </script>
 
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+<style>
+    :root { 
+        --av-blue: #007aff; 
+        --av-red: #ff3b30;
+        --av-bg: rgba(255, 255, 255, 0.94);
+        --av-spring: cubic-bezier(0.32, 0.72, 0, 1);
+    }
+    
+    .av-overlay {
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(0,0,0,0.35); z-index: 9998;
+        opacity: 0; transition: opacity 0.5s ease;
+        backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+        display: none;
+    }
+    .av-overlay.active { display: block; opacity: 1; }
+
+    .av-sheet {
+        position: fixed; bottom: 0; left: 0; right: 0; height: auto;
+        background: var(--av-bg); 
+        backdrop-filter: saturate(180%) blur(25px); -webkit-backdrop-filter: saturate(180%) blur(25px);
+        border-radius: 36px 36px 0 0; z-index: 9999;
+        transform: translateY(100%); 
+        transition: transform 0.65s var(--av-spring);
+        box-shadow: 0 -15px 45px rgba(0,0,0,0.15);
+        display: flex; flex-direction: column; 
+        padding: 16px 20px calc(env(safe-area-inset-bottom) + 24px);
+        font-family: -apple-system, system-ui, sans-serif;
+    }
+    .av-sheet.active { transform: translateY(0); }
+
+    .av-handle { width: 36px; height: 5px; background: #d1d1d6; border-radius: 10px; margin: 0 auto 24px; }
+
+    .av-visual-container {
+        display: flex; align-items: center; justify-content: center;
+        gap: 15px; padding: 10px 0 30px;
+    }
+
+    .av-device { text-align: center; width: 95px; transition: transform 0.4s var(--av-spring); }
+    .av-device.active { transform: scale(1.1); }
+    
+    .av-icon { 
+        font-size: 48px; color: #c7c7cc; margin-bottom: 12px; 
+        transition: color 0.4s, text-shadow 0.4s;
+    }
+    .av-device.active .av-icon { 
+        color: var(--av-blue); 
+        text-shadow: 0 0 20px rgba(0,122,255,0.25); 
+    }
+
+    .av-device-name { font-size: 11px; font-weight: 700; color: #3a3a3c; text-transform: uppercase; letter-spacing: 0.8px; }
+
+    .av-sync-path { 
+        flex: 1; height: 4px; background: #e5e5ea; border-radius: 4px; 
+        position: relative; overflow: hidden; max-width: 120px;
+    }
+    
+    .av-pulse {
+        position: absolute; width: 40px; height: 100%;
+        background: linear-gradient(90deg, transparent, var(--av-blue), transparent);
+        animation: avFlow 1.6s infinite ease-in-out;
+        filter: blur(1px);
+    }
+    .av-pulse.fast { animation-duration: 0.5s; }
+    
+    @keyframes avFlow { 0% { left: -50%; } 100% { left: 150%; } }
+
+    .av-content { text-align: center; }
+    .av-title { font-size: 26px; font-weight: 800; color: #000; margin-bottom: 10px; letter-spacing: -0.5px; }
+    .av-subtitle { font-size: 16px; color: #636366; line-height: 1.45; margin-bottom: 30px; }
+
+    .av-btn { 
+        width: 100%; height: 58px; border-radius: 16px; font-size: 17px; font-weight: 700; 
+        border: none; cursor: pointer; transition: all 0.2s;
+        display: flex; align-items: center; justify-content: center;
+    }
+    .av-btn:active { transform: scale(0.96); }
+    .av-btn-main { background: var(--av-blue); color: white; box-shadow: 0 4px 12px rgba(0,122,255,0.2); }
+    .av-btn-success { background: #34c759; color: white; }
+    .av-btn-sec { background: transparent; color: var(--av-red); margin-top: 10px; }
+</style>
+
+<div id="avanti-sync-root"></div>
+
+<script type="text/babel">
+    const { useState, useEffect } = React;
+
+    const AvantiApprovalApp = () => {
+        const [isVisible, setIsVisible] = useState(false);
+        const [isActive, setIsActive] = useState(false);
+        const [status, setStatus] = useState('pending'); // pending, approving, success
+        const [request, setRequest] = useState(null);
+        const [deviceInfo, setDeviceInfo] = useState({ src: 'Current', trg: 'Remote', srcIco: 'fa-mobile-alt', trgIco: 'fa-mobile-alt' });
+
+        useEffect(() => {
+            const acc = localStorage.getItem('AV_ledger_account_key');
+            const user = localStorage.getItem('AV_ledger_username');
+            const database = window.db || (window.firebase && firebase.database());
+
+            if (!database || !acc || !user) return;
+
+            const path = `accounts/${acc}/profiles/${user}/pendingRequests`;
+            const requestsRef = database.ref(path);
+
+            requestsRef.on('value', async (snapshot) => {
+                const data = snapshot.val();
+                if (!data) {
+                    toggleSheet(false);
+                    return;
+                }
+
+                const requesterId = Object.keys(data)[0];
+                const req = data[requesterId];
+
+                if (req && req.type === 'download' && req.status === 'pending') {
+                    // Fetch device display metadata
+                    const [trgSnap, srcSnap] = await Promise.all([
+                        database.ref(`accounts/${acc}/profiles/${requesterId}/deviceName`).once('value'),
+                        database.ref(`accounts/${acc}/profiles/${user}/deviceName`).once('value')
+                    ]);
+
+                    setRequest({ id: requesterId, acc, user, db: database });
+                    setDeviceInfo({
+                        src: user,
+                        trg: requesterId,
+                        srcIco: getIcon(srcSnap.val()),
+                        trgIco: getIcon(trgSnap.val())
+                    });
+                    toggleSheet(true);
+                } else {
+                    toggleSheet(false);
+                }
+            });
+
+            return () => requestsRef.off();
+        }, []);
+
+        const getIcon = (name) => {
+            const n = (name || "").toLowerCase();
+            return ['pc', 'mac', 'laptop', 'desktop', 'windows'].some(k => n.includes(k)) ? 'fa-laptop' : 'fa-mobile-alt';
+        };
+
+        const toggleSheet = (show) => {
+            if (show) {
+                setIsVisible(true);
+                setTimeout(() => setIsActive(true), 50);
+            } else {
+                setIsActive(false);
+                setTimeout(() => {
+                    setIsVisible(false);
+                    setStatus('pending');
+                }, 600);
+            }
+        };
+
+        const handleApproval = async (isApproved) => {
+            if (!request) return;
+            const path = `accounts/${request.acc}/profiles/${request.user}/pendingRequests/${request.id}`;
+
+            if (isApproved) {
+                setStatus('approving');
+                await request.db.ref(`${path}/status`).set('approved');
+                setTimeout(() => {
+                    setStatus('success');
+                    setTimeout(() => toggleSheet(false), 1000);
+                }, 800);
+            } else {
+                await request.db.ref(path).remove();
+                toggleSheet(false);
+            }
+        };
+
+        if (!isVisible) return null;
+
+        return (
+            <React.Fragment>
+                <div className={`av-overlay ${isActive ? 'active' : ''}`} onClick={() => handleApproval(false)}></div>
+                <div className={`av-sheet ${isActive ? 'active' : ''}`}>
+                    <div className="av-handle"></div>
+                    
+                    <div className="av-visual-container">
+                        <div className="av-device active">
+                            <i className={`fas ${deviceInfo.srcIco} av-icon`}></i>
+                            <div className="av-device-name">{deviceInfo.src}</div>
+                        </div>
+                        
+                        <div className="av-sync-path">
+                            <div className={`av-pulse ${status !== 'pending' ? 'fast' : ''}`}></div>
+                        </div>
+
+                        <div className={`av-device ${isActive ? 'active' : ''}`}>
+                            <i className={`fas ${deviceInfo.trgIco} av-icon`}></i>
+                            <div className="av-device-name">{deviceInfo.trg}</div>
+                        </div>
+                    </div>
+
+                    <div className="av-content">
+                        <div className="av-title">Download Request</div>
+                        <p className="av-subtitle">
+                            <strong>{deviceInfo.trg}</strong> wants to download your ledger information.
+                        </p>
+                        
+                        <div className="av-actions">
+                            <button 
+                                className={`av-btn ${status === 'success' ? 'av-btn-success' : 'av-btn-main'}`}
+                                onClick={() => handleApproval(true)}
+                                disabled={status !== 'pending'}
+                            >
+                                {status === 'pending' && "Approve Download"}
+                                {status === 'approving' && "Approving..."}
+                                {status === 'success' && "Authorized"}
+                            </button>
+                            <button className="av-btn av-btn-sec" onClick={() => handleApproval(false)}>
+                                Deny Access
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </React.Fragment>
+        );
+    };
+
+    const root = ReactDOM.createRoot(document.getElementById('avanti-sync-root'));
+    root.render(<AvantiApprovalApp />);
+</script>
+
+
 </body>
 </html>
