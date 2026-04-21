@@ -500,6 +500,43 @@ padding-bottom: env(safe-area-inset-bottom, 25px);
         </div>
     </div>
 </div>
+<div id="transferModal" class="auth-modal" style="display: none; z-index: 2000; background: rgba(0,0,0,0.9); backdrop-filter: blur(15px);">
+    <div class="auth-modal-content" style="max-width: 450px; background: #f2f2f7; border-radius: 24px; padding: 30px;">
+        <h3 class="text-xl font-bold mb-8 text-center">Syncing Data</h3>
+        <div class="flex justify-around items-center mb-10 relative">
+            <div class="text-center">
+                <i class="fas fa-mobile-alt text-5xl text-gray-400"></i>
+                <div id="source-device-label" class="text-xs font-bold mt-2 text-gray-500">Source</div>
+            </div>
+            <div class="flex-1 flex flex-col items-center">
+                <div class="w-full h-1 bg-gray-200 rounded relative overflow-hidden mb-2">
+                    <div id="transfer-progress-bar" class="absolute top-0 left-0 h-full bg-blue-500 transition-all duration-300" style="width: 0%"></div>
+                </div>
+                <i class="fas fa-exchange-alt text-blue-500 animate-pulse"></i>
+            </div>
+            <div class="text-center">
+                <i class="fas fa-mobile-alt text-5xl text-blue-600"></i>
+                <div id="target-device-label" class="text-xs font-bold mt-2 text-blue-600">This Device</div>
+            </div>
+        </div>
+        <p id="transfer-status-text" class="text-center text-sm font-medium text-gray-600">Establishing secure connection...</p>
+    </div>
+</div>
+
+<div id="globalRequestBanner" class="fixed bottom-24 left-4 right-4 bg-white shadow-2xl rounded-2xl p-4 transform translate-y-40 transition-all duration-500 border border-gray-100 z-50" style="display: none;">
+    <div class="flex items-center gap-4">
+        <div class="bg-blue-100 p-3 rounded-full text-blue-600"><i class="fas fa-file-export animate-bounce"></i></div>
+        <div class="flex-1">
+            <div class="text-sm font-bold" id="banner-title">Request Pending</div>
+            <div class="text-xs text-gray-500" id="banner-desc">User wants to transfer data.</div>
+        </div>
+        <div class="flex gap-2">
+            <button onclick="respondToRequest(false)" class="px-3 py-2 bg-gray-100 rounded-lg text-xs font-bold">Deny</button>
+            <button onclick="respondToRequest(true)" class="px-3 py-2 bg-blue-600 text-white rounded-lg text-xs font-bold">Approve</button>
+        </div>
+    </div>
+</div>
+
 
 
 <script>
@@ -1287,7 +1324,7 @@ profilesRef.on('value', (snapshot) => {
                 <div class="left">
                     <div class="info-container">
                         <div class="user-name">${isTargetAdmin ? 'Admin Device' : 'Standard Device'}</div>
-                        <div class="authStatus"><i class="fas ${isTargetAdmin ? 'fa-shield-check' : 'fa-user-shield'}" style="color: #6772e5; width: 20px; text-align: center;"></i> Authorization Status</div>
+                        <div class="authStatus"><i class="fas ${isTargetAdmin ? 'fa-user-shield' : 'fa-user-shield'}" style="color: #6772e5; width: 20px; text-align: center;"></i> Authorization Status</div>
                     </div>
                 </div>
             </div>
@@ -1339,40 +1376,68 @@ profilesRef.on('value', (snapshot) => {
     modalHtml += `</div>`;
 
     // --- RENDER DUAL ACTION SECTION ---
-    modalHtml += `
-        <div class="section-title">ACTIONS</div>
-        <div class="list">
-            <div class="item ${broadcastDisabled ? 'disabled-item' : ''}">
-                <div class="left">
-                    <div class="safe">
-                        <i class="fas fa-cloud-upload-alt" style="color: #4a90e2; margin-right: 12px; width: 20px; text-align: center;"></i> 
-                        Broadcast to ${targetProfileName}
-                    </div>
-                    ${broadcastDisabled && broadcastReason ? `<div style="font-size: 10px; color: #ff3b30; margin-left: 32px;">${broadcastReason}</div>` : ''}
-                </div>
-                <label class="ios-toggle">
-                    <input type="checkbox" id="broadcast-switch" ${amISendingToThem ? 'checked' : ''} ${broadcastDisabled ? 'disabled' : ''}>
-                    <span class="slider"></span>
-                </label>
-            </div>
+       // --- RENDER DUAL ACTION SECTION ---
+    const targetPendingReqs = targetProfile.pendingRequests || {};
+    const myRequestToThem = targetPendingReqs[CURRENT_PROFILE_NAME];
+    
+    modalHtml += `<div class="section-title">ACTIONS</div><div class="list">`;
 
-            <div class="item ${receiveDisabled ? 'disabled-item' : ''}">
+    // 1. Download Request Item
+    if (myRequestToThem && myRequestToThem.type === 'download') {
+        modalHtml += `
+            <div class="item" onclick="cancelRequest('${targetProfileName}')">
                 <div class="left">
-                    <div class="safe">
-                        <i class="fas fa-cloud-download-alt" style="color: #24b47e; margin-right: 12px; width: 20px; text-align: center;"></i> 
-                        Receive from ${targetProfileName}
-                    </div>
-                    ${receiveDisabled && receiveReason ? `<div style="font-size: 10px; color: #ff3b30; margin-left: 32px;">${receiveReason}</div>` : ''}
+                    <div class="user-name" style="color: #f6a000;"><i class="fas fa-clock mr-2"></i> Awaiting Approval...</div>
+                    <div class="authStatus">Tap to cancel download request</div>
                 </div>
-                <label class="ios-toggle">
-                    <input type="checkbox" id="receive-switch" ${amIReceivingFromThem ? 'checked' : ''} ${receiveDisabled ? 'disabled' : ''}>
-                    <span class="slider"></span>
-                </label>
+                <div class="danger" style="font-size: 12px;">Cancel</div>
+            </div>`;
+    } else if (!isTargetCurrentUser) {
+        modalHtml += `
+            <div class="item" onclick="requestDownload('${targetProfileName}')">
+                <div class="left">
+                    <div class="safe"><i class="fas fa-file-download mr-2"></i> Request Download</div>
+                    <div class="authStatus">Copy statistics from this device</div>
+                </div>
+                <div class="chevron">›</div>
+            </div>`;
+    }
+
+    // 2. Broadcast Toggle (Now checks for approval)
+    modalHtml += `
+        <div class="item ${broadcastDisabled ? 'disabled-item' : ''}">
+            <div class="left">
+                <div class="safe">
+                    <i class="fas fa-cloud-upload-alt" style="color: #4a90e2; margin-right: 12px; width: 20px; text-align: center;"></i> 
+                    Broadcast to ${targetProfileName}
+                </div>
+                ${broadcastDisabled && broadcastReason ? `<div style="font-size: 10px; color: #ff3b30; margin-left: 32px;">${broadcastReason}</div>` : ''}
             </div>
+            <label class="ios-toggle">
+                <input type="checkbox" id="broadcast-switch" ${amISendingToThem ? 'checked' : ''} ${broadcastDisabled ? 'disabled' : ''}>
+                <span class="slider"></span>
+            </label>
+        </div>`;
+
+    // 3. Receive Toggle
+    modalHtml += `
+        <div class="item ${receiveDisabled ? 'disabled-item' : ''}">
+            <div class="left">
+                <div class="safe">
+                    <i class="fas fa-cloud-download-alt" style="color: #24b47e; margin-right: 12px; width: 20px; text-align: center;"></i> 
+                    Receive from ${targetProfileName}
+                </div>
+                ${receiveDisabled && receiveReason ? `<div style="font-size: 10px; color: #ff3b30; margin-left: 32px;">${receiveReason}</div>` : ''}
+            </div>
+            <label class="ios-toggle">
+                <input type="checkbox" id="receive-switch" ${amIReceivingFromThem ? 'checked' : ''} ${receiveDisabled ? 'disabled' : ''}>
+                <span class="slider"></span>
+            </label>
         </div>
-    `;
+    </div>`;
 
     modalContent.innerHTML = modalHtml;
+
 
     // --- EVENT LISTENERS ---
     const broadcastSwitch = document.getElementById('broadcast-switch');
@@ -1708,6 +1773,125 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 })();
 </script>
+
+<script>
+let currentActiveRequest = null;
+
+// --- UNIVERSAL LISTENER ---
+function startUniversalListener() {
+    // 1. Listen for requests TO ME
+    db.ref(`accounts/${CURRENT_ACCOUNT_KEY}/profiles/${CURRENT_PROFILE_NAME}/pendingRequests`).on('value', (snap) => {
+        const requests = snap.val();
+        const banner = document.getElementById('globalRequestBanner');
+        if (requests) {
+            const requester = Object.keys(requests)[0];
+            const data = requests[requester];
+            currentActiveRequest = { requester, ...data };
+            
+            document.getElementById('banner-title').innerText = `${data.type.toUpperCase()} Request`;
+            document.getElementById('banner-desc').innerText = `${requester} wants access to your statistics.`;
+            banner.style.display = 'block';
+            setTimeout(() => banner.style.transform = 'translateY(0)', 100);
+        } else {
+            banner.style.transform = 'translateY(150%)';
+            setTimeout(() => banner.style.display = 'none', 500);
+        }
+    });
+
+    // 2. Listen for approval of MY requests
+    db.ref(`accounts/${CURRENT_ACCOUNT_KEY}/profiles`).on('value', async (snap) => {
+        const profiles = snap.val();
+        if(!profiles) return;
+        for (const [targetName, data] of Object.entries(profiles)) {
+            const myReq = data.pendingRequests ? data.pendingRequests[CURRENT_PROFILE_NAME] : null;
+            if (myReq && myReq.status === 'approved') {
+                if (myReq.type === 'download') {
+                    executeDataTransfer(targetName);
+                }
+            }
+        }
+    });
+}
+
+async function requestDownload(targetName) {
+    // Check if already requesting someone else
+    const alreadyRequesting = Object.values(allProfiles).some(p => p.pendingRequests && p.pendingRequests[CURRENT_PROFILE_NAME]);
+    if (alreadyRequesting) {
+        return toast('Limit Reached', 'You can only have one active request at a time.', false);
+    }
+
+    const warn = confirm(`⚠️ WARNING: Downloading data from ${targetName} will PERMANENTLY OVERWRITE and DELETE all your current statistics. Proceed?`);
+    if (!warn) return;
+
+    await db.ref(`accounts/${CURRENT_ACCOUNT_KEY}/profiles/${targetName}/pendingRequests/${CURRENT_PROFILE_NAME}`).set({
+        status: 'pending',
+        type: 'download',
+        timestamp: Date.now()
+    });
+    toast('Request Sent', 'Awaiting approval from ' + targetName);
+    closeModal('deviceModal');
+}
+
+async function cancelRequest(targetName) {
+    await db.ref(`accounts/${CURRENT_ACCOUNT_KEY}/profiles/${targetName}/pendingRequests/${CURRENT_PROFILE_NAME}`).remove();
+    toast('Cancelled', 'Request withdrawn.');
+    closeModal('deviceModal');
+}
+
+async function respondToRequest(approved) {
+    if (!currentActiveRequest) return;
+    const { requester } = currentActiveRequest;
+    const path = `accounts/${CURRENT_ACCOUNT_KEY}/profiles/${CURRENT_PROFILE_NAME}/pendingRequests/${requester}/status`;
+    
+    if (approved) {
+        await db.ref(path).set('approved');
+        toast('Approved', 'Transfer authorized.');
+    } else {
+        await db.ref(`accounts/${CURRENT_ACCOUNT_KEY}/profiles/${CURRENT_PROFILE_NAME}/pendingRequests/${requester}`).remove();
+        toast('Rejected', 'Request denied.');
+    }
+}
+
+async function executeDataTransfer(sourceName) {
+    const modal = document.getElementById('transferModal');
+    const bar = document.getElementById('transfer-progress-bar');
+    const status = document.getElementById('transfer-status-text');
+    
+    document.getElementById('source-device-label').innerText = sourceName;
+    modal.style.display = 'flex';
+    
+    try {
+        status.innerText = "Connecting to source...";
+        bar.style.width = "20%";
+        
+        const snapshot = await db.ref(`accounts/${CURRENT_ACCOUNT_KEY}/profiles/${sourceName}/avanti_stats`).once('value');
+        const data = snapshot.val();
+        
+        status.innerText = "Syncing statistics...";
+        bar.style.width = "60%";
+        
+        await db.ref(`accounts/${CURRENT_ACCOUNT_KEY}/profiles/${CURRENT_PROFILE_NAME}/avanti_stats`).set(data);
+        
+        status.innerText = "Transfer Complete!";
+        bar.style.width = "100%";
+        
+        // Clean up request
+        await db.ref(`accounts/${CURRENT_ACCOUNT_KEY}/profiles/${sourceName}/pendingRequests/${CURRENT_PROFILE_NAME}`).remove();
+
+        setTimeout(() => {
+            modal.style.display = 'none';
+            window.location.reload(); 
+        }, 2000);
+    } catch (e) {
+        modal.style.display = 'none';
+        toast('Error', 'Transfer failed.', false);
+    }
+}
+
+// Start listener on boot
+document.addEventListener('DOMContentLoaded', startUniversalListener);
+</script>
+
 
 
 </body>
