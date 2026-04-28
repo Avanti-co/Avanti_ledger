@@ -352,6 +352,18 @@ text-align: left;
       box-shadow: 0 4px 12px rgba(0,0,0,.08);
     }
   }
+  
+  /* When the select column is hidden → Item is 1st */
+.stats-table th.select-col.hidden + th,
+.stats-table td:nth-child(1) {
+    font-weight: bold;
+}
+
+/* When the select column is visible → Item is 2nd */
+.stats-table th.select-col:not(.hidden) + th,
+.stats-table td:nth-child(2) {
+    font-weight: bold;
+}
 </style>
 
 </head>
