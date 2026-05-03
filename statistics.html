@@ -156,41 +156,7 @@ border: 1px solid #d1d5db;
     color:var(--muted-color);
   }
 
-  /* Table Container */
-  .stats-table-container{
-    overflow:auto;
-    margin:0 0 16px 0;
-    padding:0 16px; /* Apply horizontal padding */
-  }
-  table.stats-table{
-    width:100%;
-    border-collapse:collapse;
-    font-size:0.84rem;
-    
-    border:1px solid var(--border-color);
-    border-radius:5px;
-    overflow:hidden; /* Needed to respect table border-radius */
-  }
-  table.stats-table th, table.stats-table td{
-    border:none; /* Remove cell borders */
-    padding:8px;
-    text-align:center;
-    vertical-align:middle;
-  }
-  table.stats-table tbody tr:not(:last-child) td {
-    border-bottom: 1px solid var(--border-color);
-  }
-  table.stats-table thead th {
-    ;
-  }
-
-  table.stats-table th{
-    background:rgba(63, 114, 175, 0.15); /* White header background */
-    font-size:0.78rem;
-    font-weight:600;
-    color: #3f72af;
-   border: solid 1px rgba(63, 114, 175, 0.1);
-  }
+  
   td.editable{ cursor:text; background:#F9F9F9; }
   td[data-col="orders"]{ cursor:pointer; color:var(--system-blue); }
   .select-col{ width:36px; }
@@ -364,6 +330,74 @@ text-align: left;
 .stats-table td:nth-child(2) {
     font-weight: bold;
 }
+
+
+/* 1. Set the container height and scroll behavior */
+.stats-table-container {
+  max-height: 55vh; 
+  overflow-y: auto;
+  margin: 0 0 16px 0;
+  padding: 0 16px;
+  /* Important: use border-separate to ensure sticky borders work correctly */
+  display: block; 
+}
+
+/* 2. Setup table for sticky behavior */
+table.stats-table {
+  width: 100%;
+  border-collapse: separate; /* Required for sticky positioning */
+  border-spacing: 0;
+  font-size: 0.84rem;
+  border: 1px solid var(--border-color);
+  border-radius: 5px;
+}
+
+/* 3. Sticky Header */
+table.stats-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  
+  /* The "Frosted" Logic */
+      background:rgba(63, 114, 175, 0.3);/* Increased alpha slightly for better readability */
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px); /* Essential for Safari support */
+  
+  /* Styling & Borders */
+  border-bottom: 2px solid var(--border-color);
+  padding: 8px;
+  font-weight: 600;
+  color: #3f72af; /* Changed to white for better contrast against the darker blue tint */
+}
+
+
+/* 4. Sticky Footer */
+table.stats-table tfoot {
+  position: sticky;
+  bottom: 0;
+  z-index: 10;
+}
+
+
+
+table.stats-table tfoot tr {
+  background: #F9F9F9; /* Solid background */
+}
+
+table.stats-table tfoot th, 
+table.stats-table tfoot td {
+  border-top: 2px solid var(--border-color);
+  padding: 8px;
+background:rgba(63, 114, 175, 0.3);
+}
+
+/* Ensure table cells still look clean with border-separate */
+table.stats-table td {
+  border-bottom: 1px solid var(--border-color);
+  padding: 8px;
+
+}
+
 </style>
 
 </head>
@@ -515,7 +549,7 @@ padding-bottom: env(safe-area-inset-bottom, 50px);
       <table class="stats-table" id="statisticsTable">
         <thead>
           <tr class="border border-blue-100">
-            <th class="select-col hidden"></th>
+            <th style="max-width: 2px;"class="select-col hidden"></th>
             <th >Item</th>
             <th>Opening Stock</th>
             <th>Orders</th>
@@ -529,12 +563,38 @@ padding-bottom: env(safe-area-inset-bottom, 50px);
         <tbody id="statsTableBody"></tbody>
         <tfoot >
           <tr style="background:#F9F9F9;">
-            <th  style="border-top:1px solid var(--border-color); padding-right: 2em;" colspan="2"> <button class="more1-btn" onclick="addRow()" title="Add new item" style=" min-width: 100%; text-align: left; background-color: transparent; border: solid 1px #3f72af;"><i class="fas fa-plus" ></i> New Item</button></th>
- <th class="table-controls" colspan="4" style="border-top:1px solid var(--border-color);">  </th>
-            <th style="border-top:1px solid var(--border-color); color:var(--text-color);">Total Sales:</th>
+            <th  class="table-controls"  style="border-top:1px solid var(--border-color); " colspan=""> <button class="" onclick="addRow()" title="Add new item" style=" background: #3f72af; /* WhatsApp Green */
+    color: white;
+    border: none;
+    padding: 13px 30px;
+    border-radius: 0px;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
+
+    font-size: 28px;
+    font-weight: 800;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    box-shadow: 0 4px 15px rgba(37, 211, 102, 0.3);
+    -webkit-tap-highlight-color: transparent;
+width: 160%;
+height: 100%;" > <i style="font-size: 16px;
+    font-weight: 600;" class="fas fa-plus" ></i></button></th>
+ <th class="table-controls2" colspan="5" style="border-top:1px solid var(--border-color);">  <!-- WhatsApp Share Button -->
+<button id="whatsappShareBtn" class="ios-action-btn" onclick="sendToWhatsApp()">
+    <div class="btn-content">
+        <i class="fab fa-whatsapp"></i>
+        <span>Send Report</span>
+    </div>
+</button></th>
+            <th class="table-controls3"  style="border-top:1px solid var(--border-color); color:var(--text-color);">Total Sales:</th>
             <th id="totalSalesAmount" style="border-top:1px solid var(--border-color); font-weight:600; color:var(--system-blue);">K0</th>
           </tr>
+
         </tfoot>
+
       </table>
 
 
@@ -543,13 +603,7 @@ padding-bottom: env(safe-area-inset-bottom, 50px);
 
     </div>
 
-<!-- WhatsApp Share Button -->
-<button id="whatsappShareBtn" class="ios-action-btn" onclick="sendToWhatsApp()">
-    <div class="btn-content">
-        <i class="fab fa-whatsapp"></i>
-        <span>Send Report</span>
-    </div>
-</button>
+
 
 <style>
 .ios-action-btn {
@@ -557,7 +611,7 @@ padding-bottom: env(safe-area-inset-bottom, 50px);
     color: white;
     border: none;
     padding: 12px 24px;
-    border-radius: 12px;
+    border-radius: 0px;
     font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
     font-size: 16px;
     font-weight: 600;
@@ -568,6 +622,8 @@ padding-bottom: env(safe-area-inset-bottom, 50px);
     transition: all 0.2s ease;
     box-shadow: 0 4px 15px rgba(37, 211, 102, 0.3);
     -webkit-tap-highlight-color: transparent;
+width: 100%;
+height: 100%;
 }
 
 .ios-action-btn:active {
@@ -1647,7 +1703,14 @@ function enterSelectMode() {
     if (moreBtn) moreBtn.onclick = exitSelectMode;
 
     const tableControls = document.querySelector('.table-controls');
-    if (tableControls) tableControls.setAttribute('colspan', '5');
+const tableControls2 = document.querySelector('.table-controls2');
+const tableControls3 = document.querySelector('.table-controls3');
+   if (tableControls) {
+    tableControls.hidden = true;
+if (tableControls) tableControls2.setAttribute('colspan', '6');
+if (tableControls) tableControls3.setAttribute('colspan', '2');
+}
+
 
     renderTable();
 }
@@ -1756,7 +1819,15 @@ function exitSelectMode(){
     // 5. Hide the selection column and reset footer
     document.querySelectorAll('.select-col').forEach(td => td.classList.add('hidden'));
     const tableControls = document.querySelector('.table-controls');
-    if(tableControls) tableControls.setAttribute('colspan', '4');
+const tableControls2 = document.querySelector('.table-controls2');
+const tableControls3 = document.querySelector('.table-controls3');
+   
+if (tableControls) tableControls2.setAttribute('colspan', '5');
+if (tableControls) tableControls3.setAttribute('colspan', '1');
+    if (tableControls) {
+    tableControls.hidden = false;
+}
+
 
     renderAll();
 }
