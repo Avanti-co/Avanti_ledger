@@ -2186,14 +2186,15 @@ function sendToWhatsApp() {
     const expenses = dateObj.expenses || [];
     const incomes = dateObj.incomes || [];
 
-    let message = `*📊 AVANTI LEDGER: FULL REPORT*\n`;
-    message += `*Period:* ${formattedDate}\n`;
-    message += `*Status:* ${dateObj.balanced ? "✅ BALANCED" : "❌UNBALANCED"}\n`;
-    message += `--------------------------------\n\n`;
+    let message = `*📊 AVANTI LEDGER: CONSOLIDATED DAILY REPORT*\n\n`;
+    message += `*▣ DATE:* ${formattedDate}\n`;
+    message += `*▣ STATUS:* ${dateObj.balanced ? "✅ BALANCED" : "❌ UNBALANCED"}\n`;
+    message += `*▣ TOTAL ITEMS:* ${items.length}\n`;
+    message += `-------------------------------\n\n`;
 
     let totalSalesVal = 0;
     
-    items.forEach(item => {
+    items.forEach((item, index) => {
         const opening = Number(item.opening || 0);
         const orders = Number(item.orders || 0);
         const totalStock = opening + orders;
@@ -2204,22 +2205,22 @@ function sendToWhatsApp() {
         totalSalesVal += subtotal;
 
         // Fetch cost price from the latest batch or lastOrderCost
-        let costPriceDisplay = " ";
+        let costPriceDisplay = "";
         if (item.lastOrderCost && item.lastOrderCost > 0) {
-            costPriceDisplay = `(Cost:K${item.lastOrderCost} per unit)`;
+            costPriceDisplay = ` (Cost: K${item.lastOrderCost})`;
         } else if (item.batches && item.batches.length > 0) {
-            costPriceDisplay = `( Cost: K${item.batches[item.batches.length - 1].cost} per unit)`;
+            costPriceDisplay = ` (Cost: K${item.batches[item.batches.length - 1].cost})`;
         }
 
-        message += `*${item.name.toUpperCase()}*\n`;
+        message += `*${index + 1}. ${item.name.toUpperCase()}*\n`;
         message += `• Opening Stock: ${opening}\n`;
-        message += `• Orders: ${orders} ${costPriceDisplay}\n`;
+        message += `• Orders: ${orders}${costPriceDisplay}\n`;
         message += `• Total Stock: ${totalStock}\n`;
         message += `• Sell Price: K${price}\n`;
         message += `• Closing Stock: ${closing}\n`;
         message += `• Sales: *${salesQty}*\n`;
         message += `• Subtotal: *K${subtotal.toLocaleString()}*\n`;
-        message += `--------------------------------\n`;
+        message += `-------------------------------\n`;
     });
 
     // Totals Calculation
@@ -2228,15 +2229,16 @@ function sendToWhatsApp() {
     const finalRevenue = totalSalesVal + netIncome - netExpenses;
 
     message += `\n*💰 FINAL RECONCILIATION*\n`;
-    message += `Gross Sales: K${totalSalesVal.toLocaleString()}\n`;
+    message += `Net Sales: K${totalSalesVal.toLocaleString()}\n`;
     message += `Other Income: +K${netIncome.toLocaleString()}\n`;
     message += `Expenses: -K${netExpenses.toLocaleString()}\n`;
     message += `*NET REVENUE: K${finalRevenue.toLocaleString()}*\n\n`;
-    message += `_Portal:Powered by Avanti Ledger v1.0_`;
+    message += `_Powered by Avanti Ledger v1.0_`;
 
     const encodedMessage = encodeURIComponent(message);
     window.open(`https://wa.me/?text=${encodedMessage}`, '_blank');
 }
+
 
 
 async function init(){
