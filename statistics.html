@@ -721,103 +721,73 @@ Expenses</span>
             Generate Reports
         </a>
         
-<script src="https://js.puter.com/v2/"></script>
+    </div>
 
-<style>
-    /* AI Animated Tip Container */
-    .ai-tip-container {
-        display: flex;
-        align-items: center;
-        background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
-        color: white;
-        padding: 12px 20px;
-        border-radius: 12px;
-        margin: 15px 0;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    }
-    .ai-pulse-icon {
-        width: 16px; height: 16px;
-        background-color: #00ffcc;
-        border-radius: 50%;
-        margin-right: 15px;
-        box-shadow: 0 0 0 0 rgba(0, 255, 204, 0.7);
-        animation: pulse 1.5s infinite;
-    }
-    @keyframes pulse {
-        0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(0, 255, 204, 0.7); }
-        70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(0, 255, 204, 0); }
-        100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(0, 255, 204, 0); }
-    }
+<div class="ai-dashboard-card">
+    <div class="ai-header">
+        <div class="ai-title">
+            <i class="fas fa-robot"></i>
+            <span>Puter AI Integrity Monitor</span>
+        </div>
+        <label class="switch">
+            <input type="checkbox" onchange="toggleInsightMode()">
+            <span class="slider round"></span>
+        </label>
+    </div>
+    
+    <div id="aiAlertBox" class="ai-alerts-container">
+        <div class="tip-card">
+            <div class="animated-icon">📊</div>
+            <div>
+                <strong>Accounting Tip:</strong>
+                <p>Ensure your selling price is at least **1.3x** your cost to cover overhead and GFA variances.</p>
+            </div>
+        </div>
+    </div>
 
-    /* iOS Standard Modal */
-    .ios-modal-backdrop {
-        position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-        background: rgba(0,0,0,0.4); backdrop-filter: blur(5px);
-        display: none; justify-content: center; align-items: center; z-index: 9999;
-    }
-    .ios-modal-backdrop.show { display: flex; }
-    .ios-modal-content {
-        background: rgba(255, 255, 255, 0.95);
-        width: 90%; max-width: 400px; max-height: 80vh; overflow-y: auto;
-        border-radius: 14px; text-align: center;
-        box-shadow: 0 20px 40px rgba(0,0,0,0.2);
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-        padding: 20px;
-    }
-    .ios-modal-title { font-size: 18px; font-weight: 600; margin-bottom: 10px; color: #000; }
-    .ios-modal-body { font-size: 14px; color: #333; line-height: 1.5; text-align: left; }
-    .ios-modal-btn {
-        margin-top: 20px; width: 100%; padding: 12px;
-        background: none; border: none; border-top: 1px solid #ddd;
-        color: #007aff; font-size: 17px; font-weight: 600; cursor: pointer;
-    }
-
-    /* Deep Audit Modal Specifics */
-    .audit-modal-content { max-width: 700px; text-align: left; }
-    .ai-highlight-red { background-color: rgba(255, 59, 48, 0.1); border-left: 4px solid #ff3b30; }
-    .ai-warning-icon { color: #ff3b30; margin-left: 5px; cursor: pointer; }
-    .insight-mode-row { cursor: pointer !important; transition: background 0.2s; }
-    .insight-mode-row:hover { background-color: rgba(0, 122, 255, 0.1) !important; }
-</style>
-
-<div class="ai-controls" style="display: flex; gap: 15px; margin: 10px 0; align-items: center;">
-    <label style="font-family: sans-serif; font-weight: bold; display: flex; align-items: center; gap: 5px;">
-        <input type="checkbox" id="insightToggleBtn" onchange="toggleInsightMode()"> 
-        🧠 Insight Mode
-    </label>
-    <button onclick="openDeepAuditModal()" style="padding: 8px 15px; background: #000; color: #fff; border-radius: 8px; border: none; cursor: pointer; font-weight: bold;">
-        <i class="fas fa-search-dollar"></i> Deep Audit
+    <button class="deep-audit-btn" onclick="openDeepAuditModal()">
+        <i class="fas fa-microscope"></i> Deep Audit Period
     </button>
 </div>
 
-<div class="ai-tip-container" id="aiTipBox">
-    <div class="ai-pulse-icon"></div>
-    <div id="aiTipText">Puter AI is actively monitoring your accounting integrity.</div>
-</div>
+<style>
+.discrepancy-red { background-color: #ffcccc !important; color: #b71c1c; font-weight: bold; }
+.row-threat { border-left: 5px solid #ff1744; background: rgba(255, 23, 68, 0.05); }
+.pulse-icon { color: #ff1744; animation: pulse 1.5s infinite; }
 
-<div class="ios-modal-backdrop" id="iosInsightModal">
-    <div class="ios-modal-content">
-        <div class="ios-modal-title" id="iosModalTitle">AI Analysis</div>
-        <div class="ios-modal-body" id="iosModalBody">Loading insights...</div>
-        <button class="ios-modal-btn" onclick="document.getElementById('iosInsightModal').classList.remove('show')">Close</button>
-    </div>
-</div>
+@keyframes pulse {
+    0% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.2); opacity: 0.7; }
+    100% { transform: scale(1); opacity: 1; }
+}
 
-<div class="ios-modal-backdrop" id="deepAuditModal">
-    <div class="ios-modal-content audit-modal-content">
-        <div class="ios-modal-title">Comprehensive Deep Audit</div>
-        <div style="margin-bottom: 15px;">
-            <label>Days to Audit: <input type="number" id="auditDays" value="7" style="width: 50px; text-align: center;"></label>
-            <button onclick="runDeepAudit()" style="background: #007aff; color: white; border:none; padding: 5px 10px; border-radius: 5px;">Generate</button>
-        </div>
-        <div class="ios-modal-body" id="auditModalBody">Select days and click generate to audit your ledger's health.</div>
-        <button class="ios-modal-btn" onclick="document.getElementById('deepAuditModal').classList.remove('show')">Close</button>
-    </div>
-</div>
+.ios-modal-overlay {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.4); backdrop-filter: blur(10px);
+    display: flex; align-items: flex-end; z-index: 9999;
+}
 
+.ios-modal {
+    background: #f2f2f7; width: 100%; border-radius: 20px 20px 0 0;
+    padding: 20px; box-shadow: 0 -5px 15px rgba(0,0,0,0.1);
+    animation: slideUp 0.3s ease-out;
+}
 
-    </div>
+@keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+
+.ai-dashboard-card {
+    background: white; margin: 15px; border-radius: 15px; padding: 15px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+}
+
+.ai-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+
+.deep-audit-btn {
+    width: 100%; padding: 12px; border-radius: 10px; border: none;
+    background: #007aff; color: white; font-weight: 600; margin-top: 10px;
+}
+</style>
+
 <div class="section-container mb-100"></div>
 </div>
 
@@ -1398,17 +1368,6 @@ function setupDataListener() {
     datesRef.on('child_changed', snap => {
         const dateKey = snap.key;
         state.dates[dateKey] = snap.val();
-
-// Add this inside the currentDataRef.child('currentDate').on('value', snap => { ... }) block
-if (newDate !== state.currentDate) {
-    state.currentDate = newDate;
-    ensureDateExists(state.currentDate);
-    renderAll();
-    
-    // Trigger background audit when the date changes
-    setTimeout(runBackgroundAudit, 1500); // 1.5s delay to let UI render first
-}
-
         
         // Only re-render the UI if the modified date is the one currently being viewed
         if (dateKey === state.currentDate) {
@@ -1417,7 +1376,6 @@ if (newDate !== state.currentDate) {
             updateTotalsNumbers();
         }
     });
-
 
     // Handle deletion of date entries
     datesRef.on('child_removed', snap => {
@@ -1709,164 +1667,6 @@ function renderTable(){
     if(totEl) totEl.textContent = "K"+totalSales;
     updateTotalsNumbers();
 }
-
-/* ---------- AI State & Config ---------- */
-let isInsightMode = false;
-let cachedInsights = {}; // Stores insights for the current date
-
-function toggleInsightMode() {
-    isInsightMode = document.getElementById('insightToggleBtn').checked;
-    
-    const tipText = document.getElementById('aiTipText');
-    if(isInsightMode) {
-        tipText.innerHTML = "<strong>Insight Mode Active:</strong> Click any row to view its cached AI analysis.";
-    } else {
-        tipText.innerHTML = "Puter AI is actively monitoring your accounting integrity.";
-    }
-    
-    renderTable(); // Re-render to lock/unlock editable cells
-}
-
-/* ---------- Advanced AI Batching & Caching ---------- */
-
-/**
- * Creates a simple hash/snapshot of an item's critical financial data.
- */
-function createItemSnapshot(item) {
-    return `${item.opening}_${item.orders}_${item.closing}_${item.price}_${item.lastOrderCost || 0}`;
-}
-
-/**
- * Runs automatically to audit items that have changed or have no cached insight.
- */
-async function runBackgroundAudit() {
-    if (!firebaseDB || !isOnline) return;
-    
-    // 1. Guard against future dates
-    const today = new Date().toISOString().split('T')[0];
-    if (state.currentDate > today) {
-        console.log("Future date detected. AI analysis skipped to save resources.");
-        return;
-    }
-
-    const dateObj = state.dates[state.currentDate];
-    if (!dateObj || !dateObj.items) return;
-
-    const items = Object.values(dateObj.items);
-    if (items.length === 0) return;
-
-    const path = `${REMOTE_DB_PATH}/ai_insights/${state.currentDate}`;
-    let dbCache = {};
-
-    try {
-        const snap = await firebaseDB.ref(path).once('value');
-        if (snap.exists()) dbCache = snap.val();
-    } catch (e) {
-        console.warn("Could not fetch AI cache", e);
-    }
-
-    cachedInsights = dbCache; // Update local state
-    let itemsToAudit = [];
-
-    // 2. System Level Check: Does the discrepancy still apply?
-    items.forEach(item => {
-        const currentSnapshot = createItemSnapshot(item);
-        const cachedItem = dbCache[item.id];
-
-        // If it doesn't exist, OR the snapshot changed (user edited the data), queue it.
-        if (!cachedItem || cachedItem.snapshot !== currentSnapshot) {
-            itemsToAudit.push(item);
-        }
-    });
-
-    // 3. Batch the AI Request if needed
-    if (itemsToAudit.length > 0) {
-        document.getElementById('aiTipText').innerHTML = `<span class="ai-pulse-icon" style="display:inline-block; width:10px; height:10px;"></span> AI is auditing ${itemsToAudit.length} updated items...`;
-        
-        await fetchBatchedInsights(itemsToAudit, path, dbCache);
-        
-        document.getElementById('aiTipText').innerHTML = "Puter AI audit complete and cached.";
-    } else {
-        console.log("All items are up to date with AI cache. No request sent.");
-    }
-}
-
-async function fetchBatchedInsights(items, dbPath, currentCache) {
-    // Construct a dense payload for the AI
-    let payloadStr = items.map(i => {
-        const total = Number(i.opening) + Number(i.orders);
-        const sales = Math.max(0, total - Number(i.closing));
-        return `ID: ${i.id} | Name: ${i.name} | Opening: ${i.opening} | Orders: ${i.orders} | Closing: ${i.closing} | Sales: ${sales} | Price: K${i.price} | Cost: K${i.lastOrderCost || 0}`;
-    }).join("\n");
-
-    const prompt = `
-        You are an automated accounting auditor. Analyze these items for discrepancies.
-        Rules: 
-        1. Check if Price is at least 130% of Cost.
-        2. Check for negative sales or mathematical impossibilities.
-        3. Note any concerning stock behaviors.
-        
-        RETURN STRICTLY JSON in this exact format (no markdown, no extra text):
-        {
-          "itemID": { "flags": ["List of issues"], "analysis": "Detailed HTML formatted advice" }
-        }
-
-        Data to analyze:
-        ${payloadStr}
-    `;
-
-    try {
-        const response = await puter.ai.chat(prompt);
-        let textResponse = response.message.content;
-        
-        // Clean up markdown formatting if the AI ignores instructions
-        textResponse = textResponse.replace(/```json/g, '').replace(/```/g, '').trim();
-        const aiResults = JSON.parse(textResponse);
-
-        // Update cache with new results and current snapshots
-        items.forEach(item => {
-            if (aiResults[item.id]) {
-                currentCache[item.id] = {
-                    snapshot: createItemSnapshot(item),
-                    flags: aiResults[item.id].flags || [],
-                    analysis: aiResults[item.id].analysis || "No issues detected."
-                };
-            }
-        });
-
-        // Save back to Firebase
-        await firebaseDB.ref(dbPath).set(currentCache);
-        cachedInsights = currentCache;
-        renderTable(); // Re-render to show new warning icons
-
-    } catch (e) {
-        console.error("Batched AI Fetch Error or JSON Parse Error", e);
-    }
-}
-
-/* ---------- UI Override for Insight Mode ---------- */
-function openItemInsightModal(itemId) {
-    if (!isInsightMode) return;
-    
-    const item = state.dates[state.currentDate].items[itemId];
-    document.getElementById('iosModalTitle').textContent = `${item.name} - AI Analysis`;
-    const bodyEl = document.getElementById('iosModalBody');
-    
-    const cachedData = cachedInsights[itemId];
-    
-    if (cachedData) {
-        let flagHtml = cachedData.flags.length > 0 
-            ? `<div style="color: #ff3b30; margin-bottom: 10px;"><strong>Flags:</strong> ${cachedData.flags.join(", ")}</div>` 
-            : `<div style="color: #34c759; margin-bottom: 10px;"><strong>Status:</strong> Clear</div>`;
-            
-        bodyEl.innerHTML = flagHtml + cachedData.analysis;
-    } else {
-        bodyEl.innerHTML = "Analysis pending or no discrepancies found requiring a deep audit.";
-    }
-    
-    document.getElementById('iosInsightModal').classList.add('show');
-}
-
 
 /* ---------- Utility render helpers ---------- */
 function updateTotalsNumbers(){
@@ -2192,6 +1992,41 @@ function propagateNameAcrossDates(itemId, newName){
     saveState();
     renderAll();
 }
+
+
+async function openDeepAuditModal() {
+    const start = prompt("Enter Start Date (YYYY-MM-DD):", addDays(state.currentDate, -7));
+    const end = state.currentDate;
+    
+    const auditData = {};
+    // Compile range
+    for (let d = new Date(start); d <= new Date(end); d.setDate(d.getDate() + 1)) {
+        const key = d.toISOString().split('T')[0];
+        if (state.dates[key]) auditData[key] = state.dates[key];
+    }
+
+    const auditModal = document.createElement('div');
+    auditModal.className = 'ios-modal-overlay';
+    auditModal.innerHTML = `
+        <div class="ios-modal" style="height: 80%; overflow-y: auto;">
+            <h3>Robust Audit Report (${start} to ${end})</h3>
+            <div id="auditContent">Analyzing deep patterns...</div>
+            <button onclick="this.closest('.ios-modal-overlay').remove()">Close Report</button>
+        </div>
+    `;
+    document.body.appendChild(auditModal);
+
+    const res = await puter.ai.chat(`
+        Perform a comprehensive financial audit on this data: ${JSON.stringify(auditData)}.
+        1. Identify trend anomalies.
+        2. Verify stock continuity across the period.
+        3. Flag margin erosions.
+        Use Markdown formatting with tables and bold headers.
+    `);
+    
+    document.getElementById('auditContent').innerHTML = res.message.content.replace(/\n/g, '<br>');
+}
+
 
 /**
  * Propagates price changes forward from the current date.
@@ -2529,16 +2364,6 @@ async function init(){
     updateSyncDisplay(); // Initial load for sync status
 
     // renderAll() is now called by the real-time listener (setupDataListener)
-// Add this inside the currentDataRef.child('currentDate').on('value', snap => { ... }) block
-if (newDate !== state.currentDate) {
-    state.currentDate = newDate;
-    ensureDateExists(state.currentDate);
-    renderAll();
-    
-    // Trigger background audit when the date changes
-    setTimeout(runBackgroundAudit, 1500); // 1.5s delay to let UI render first
-}
-
 }
 
 function setupModalCloseOnBackdropClick() {
@@ -2977,5 +2802,178 @@ renderAll();
     bootstrapDownloadListener();
 })();
 </script>
+
+
+<script src="https://js.puter.com/v2/"></script>
+<script>
+/* =======================================================
+    AVANTI AI - AUDIT & INTEGRITY ENGINE
+   ======================================================= */
+const AI_STATE = {
+    insightMode: false,
+    analyses: {}, // Cached analyses from Firebase
+    isAnalyzing: false
+};
+
+/**
+ * BATCH ANALYSIS: Compiles all items and sends one request to Puter
+ * to prevent rate-limiting and ensure cross-item context.
+ */
+async function runDailyAudit() {
+    if (!state.currentDate || state.currentDate > todayKey()) return;
+    
+    const dateData = state.dates[state.currentDate];
+    if (!dateData || Object.keys(dateData.items).length === 0) return;
+
+    // 1. Check Firebase for existing valid analysis
+    const analysisRef = firebaseDB.ref(`accounts/${AV_LEDGER_ACCOUNT_KEY}/analyses/${state.currentDate}`);
+    const snapshot = await analysisRef.once('value');
+    const existing = snapshot.val();
+
+    // Generate a simple hash of the data to see if it changed
+    const currentDataHash = btoa(JSON.stringify(dateData.items));
+    
+    if (existing && existing.hash === currentDataHash) {
+        AI_STATE.analyses = existing.results;
+        applyHighlights();
+        return;
+    }
+
+    // 2. Data is new or changed - Call Puter AI
+    if (AI_STATE.isAnalyzing) return;
+    AI_STATE.isAnalyzing = true;
+
+    // Prepare context for Puter
+    const prevDate = addDays(state.currentDate, -1);
+    const prevData = state.dates[prevDate] || { items: {} };
+    
+    const prompt = `
+        As an expert accountant, analyze this ledger for ${state.currentDate}.
+        Standard: Selling Price should be ~130% of Cost (GFA Rule).
+        Data: ${JSON.stringify(dateData.items)}
+        Previous Day Closing: ${JSON.stringify(Object.values(prevData.items).map(i => ({id: i.id, closing: i.closing})))}
+        
+        Return a JSON object where keys are item IDs. Each value must include:
+        - status: "clear" | "warning" | "error"
+        - type: "mismatch" | "margin_low" | "anomaly"
+        - message: "Short explanation"
+        - advice: "Actionable tip based on 130% cost standard"
+    `;
+
+    try {
+        const response = await puter.ai.chat(prompt);
+        const results = JSON.parse(response.message.content);
+        
+        // 3. Save to Firebase to prevent redundant calls
+        await analysisRef.set({
+            hash: currentDataHash,
+            results: results,
+            timestamp: Date.now()
+        });
+
+        AI_STATE.analyses = results;
+        applyHighlights();
+    } catch (err) {
+        console.error("Puter AI Audit failed:", err);
+    } finally {
+        AI_STATE.isAnalyzing = false;
+    }
+}
+
+/**
+ * VISUAL INTEGRITY: Highlights cells based on AI results
+ */
+function applyHighlights() {
+    const rows = document.querySelectorAll('#statsTableBody tr');
+    rows.forEach(row => {
+        const id = row.dataset.itemId;
+        const analysis = AI_STATE.analyses[id];
+        const item = state.dates[state.currentDate].items[id];
+        
+        // Manual check: Previous Day Mismatch
+        const prevClosing = getPrevDayClosing(id);
+        const openingCell = row.querySelector('[data-col="openingStock"]');
+        if (prevClosing !== null && Number(item.opening) !== prevClosing) {
+            openingCell.classList.add('discrepancy-red');
+            openingCell.innerHTML += ` <i class="fas fa-exclamation-triangle pulse-icon"></i>`;
+        }
+
+        // AI-driven highlights
+        if (analysis && analysis.status !== 'clear') {
+            row.classList.add(analysis.status === 'error' ? 'row-threat' : 'row-warning');
+        }
+    });
+}
+
+function getPrevDayClosing(id) {
+    const prevDate = addDays(state.currentDate, -1);
+    const prevData = state.dates[prevDate];
+    return prevData && prevData.items[id] ? Number(prevData.items[id].closing) : null;
+}
+
+/**
+ * INSIGHT TOGGLE: Locks table and enables AI modals
+ */
+function toggleInsightMode() {
+    AI_STATE.insightMode = !AI_STATE.insightMode;
+    document.body.classList.toggle('insight-active', AI_STATE.insightMode);
+    
+    const editables = document.querySelectorAll('.editable');
+    editables.forEach(el => {
+        el.contentEditable = !AI_STATE.insightMode;
+    });
+
+    const rows = document.querySelectorAll('#statsTableBody tr');
+    rows.forEach(row => {
+        row.onclick = AI_STATE.insightMode ? () => showAnalysisModal(row.dataset.itemId) : null;
+    });
+
+    alert(AI_STATE.insightMode ? "Insight Mode ON: Click items for AI Audit." : "Insight Mode OFF: Editing enabled.");
+}
+
+function showAnalysisModal(id) {
+    const item = state.dates[state.currentDate].items[id];
+    const report = AI_STATE.analyses[id] || { message: "No discrepancies found.", advice: "Maintain current records." };
+    
+    const modalHtml = `
+        <div class="ios-modal-overlay" onclick="this.remove()">
+            <div class="ios-modal" onclick="event.stopPropagation()">
+                <div class="modal-header">
+                    <h3>${item.name} Audit</h3>
+                    <span class="close-pill" onclick="this.closest('.ios-modal-overlay').remove()">Done</span>
+                </div>
+                <div class="modal-body">
+                    <div class="stat-card">
+                        <label>AI Status</label>
+                        <p class="${report.status}">${report.status?.toUpperCase() || 'VALID'}</p>
+                    </div>
+                    <div class="analysis-text">
+                        <h4>Findings</h4>
+                        <p>${report.message}</p>
+                    </div>
+                    <div class="advice-box">
+                        <h4>Accounting Tip</h4>
+                        <p>${report.advice}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+}
+
+// Hook into existing renderTable to re-apply highlights
+const originalRenderTable = renderTable;
+renderTable = function() {
+    originalRenderTable();
+    if (AI_STATE.analyses) applyHighlights();
+};
+
+// Auto-run on load
+window.addEventListener('load', () => {
+    setTimeout(runDailyAudit, 2000); // Wait for Firebase sync
+});
+</script>
+
 </body>
 </html>
