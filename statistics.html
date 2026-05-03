@@ -6,7 +6,7 @@
 <title>Statistics Table</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 
-
+<script src="[https://js.puter.com/v2/](https://js.puter.com/v2/)"></script>
 <!-- Firebase SDKs (place before the script below) -->
 <script src="https://cdn.tailwindcss.com/"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
@@ -397,75 +397,91 @@ table.stats-table td {
   padding: 8px;
 
 }
-
-
-
-/* Insights Dashboard Card */
-.ai-insights-dashboard {
-    margin: 20px 15px;
-    padding: 20px;
-    background: black;
-    backdrop-filter: blur(20px);
-    border: 1px solid var(--glass-border);
-    border-radius: 20px;
-    color: white;
+:root {
+    --oled-black: #000000;
+    --dark-surface: #1c1c1e;
+    --glass-bg: rgba(28, 28, 30, 0.7);
+    --ios-red: #ff3b30;
+    --ios-blue: #0a84ff;
+    --text-primary: #ffffff;
+    --text-muted: #ebebf599;
 }
 
-.insight-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 15px;
-}
+body { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
 
-.health-pill {
-    padding: 4px 12px;
-    border-radius: 20px;
-    font-size: 11px;
-    font-weight: 700;
-    text-transform: uppercase;
-}
-
-.health-pill.good { background: var(--ios-green); }
-.health-pill.warning { background: #FF9500; }
-.health-pill.critical { background: var(--ios-red); }
-
-/* Report Overlays */
-.full-screen-report {
-    position: fixed;
-    top: 0; left: 0; width: 100%; height: 100%;
-    background: #000;
-    z-index: 3000;
-    overflow-y: auto;
-    padding: 20px;
-    display: none;
-}
-
-.report-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-    gap: 20px;
-    margin-top: 30px;
-}
-
-.audit-card {
-    background: rgba(255, 255, 255, 0.05);
-    border-radius: 18px;
-    padding: 20px;
+/* Glass Panels */
+.glass-panel {
+    background: var(--glass-bg);
+    backdrop-filter: saturate(180%) blur(20px);
+    -webkit-backdrop-filter: saturate(180%) blur(20px);
+    border-radius: 14px;
     border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 16px;
+    margin-bottom: 20px;
 }
 
 /* Animations */
-@keyframes pulseRed {
-    0% { box-shadow: 0 0 0 0 rgba(255, 59, 48, 0.4); }
-    70% { box-shadow: 0 0 0 10px rgba(255, 59, 48, 0); }
-    100% { box-shadow: 0 0 0 0 rgba(255, 59, 48, 0); }
+.pulse-anim { animation: pulse 2s infinite; }
+@keyframes pulse {
+    0% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.2); opacity: 0.7; }
+    100% { transform: scale(1); opacity: 1; }
 }
 
-.ai-flagged-row {
-    background: rgba(255, 59, 48, 0.1) !important;
-    animation: pulseRed 2s infinite;
+.slide-up { animation: slideUp 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
+@keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+
+/* iOS Modals */
+.ios-modal-backdrop {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0, 0, 0, 1);
+    backdrop-filter: blur(5px);
+    z-index: 9999;
+    display: none;
+    align-items: flex-end;
+    justify-content: center;
 }
+.ios-modal-backdrop.show { display: flex; }
+.ios-modal-backdrop.full-screen { align-items: center; }
+
+.ios-modal-sheet {
+    background: var(--dark-surface);
+    width: 100%; max-width: 600px;
+    border-radius: 20px 20px 0 0;
+    padding: 20px;
+    box-shadow: 0 -10px 40px rgba(0,0,0,0.5);
+    transform: translateY(100%);
+    transition: transform 0.3s ease;
+}
+.ios-modal-backdrop.show .ios-modal-sheet { transform: translateY(0); }
+.full-screen .ios-modal-sheet { height: 90vh; border-radius: 20px; display: flex; flex-direction: column; }
+
+.sheet-handle {
+    width: 40px; height: 5px;
+    background: rgba(255,255,255,0.3);
+    border-radius: 3px; margin: 0 auto 15px auto;
+}
+
+/* AI Alerts */
+.ai-alert-icon {
+    color: var(--ios-red); margin-left: 8px; cursor: pointer;
+    text-shadow: 0 0 10px rgba(255, 59, 48, 0.5);
+}
+
+/* Buttons */
+.ios-btn {
+    width: 100%; padding: 14px; border-radius: 12px;
+    font-size: 16px; font-weight: 600; border: none; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+}
+.ios-btn.primary { background: var(--ios-blue); color: #fff; }
+.ios-btn.secondary { background: rgba(255,255,255,0.1); color: #fff; margin-top: 10px; }
+
+/* Markdown Formatting inside Modals */
+.modal-body { overflow-y: auto; max-height: 60vh; line-height: 1.5; font-size: 15px; color: var(--text-primary); }
+.modal-body h4 { color: var(--ios-red); margin-top: 15px; }
+.modal-body ul { padding-left: 20px; }
+.modal-body li { margin-bottom: 8px; }
 
 
 </style>
@@ -790,58 +806,59 @@ Expenses</span>
         <a href="accounting-report.html" class="generate-reports" style="display: block; text-align: center; padding: 18px; background-color: #3f72af; color: #ffffff; font-weight: 600; text-decoration: none; font-size: 0.95rem; transition: background 0.3s;">
             Generate Reports
         </a>
-        
+        <!-- AI Daily Insights Card -->
+<div id="aiDailyCard" class="glass-panel ai-insights-card hidden">
+    <div class="ai-header">
+        <i class="fas fa-sparkles ai-icon pulse-anim"></i>
+        <h3>Daily AI Insights</h3>
     </div>
-<!-- 1. Reporting Dashboard -->
-<div class="ai-insights-dashboard" id="dailyInsightCard">
-    <div class="insight-header">
-        <span class="health-pill" id="healthStatus">Analyzing...</span>
-        <small style="opacity: 0.6;"><i class="fas fa-robot"></i> Puter AI Guardian</small>
+    <div id="aiDailyContent" class="ai-content">
+        <div class="skeleton-loader"></div>
     </div>
-    <h3 id="insightBrief">Scanning daily records for integrity...</h3>
-    <div id="anomalyList" style="margin-top: 10px;"></div>
 </div>
 
-<!-- 2. Deep Audit Button -->
-<div style="padding: 0 15px; margin-bottom: 20px;">
-    <button class="ios-btn-secondary" style="width: 100%;" onclick="openAuditRangePicker()">
-        <i class="fas fa-microscope"></i> Run Forensic Deep Audit
+<!-- Deep Audit Action -->
+<div class="audit-action-container">
+    <button id="deepAuditBtn" class="ios-btn primary" onclick="openDeepAuditModal()">
+        <i class="fas fa-shield-alt"></i> Run Deep Audit
     </button>
 </div>
 
-<!-- 3. Audit Range Picker Modal -->
-<div id="auditRangeModal" class="modal">
-    <div class="modal-content ios-modal">
-        <div class="ios-drag-handle"></div>
-        <h3>Select Audit Period</h3>
-        <div class="modal-body">
-            <input type="date" id="auditStart" class="ios-input" style="margin-bottom: 10px;">
-            <input type="date" id="auditEnd" class="ios-input">
-            <p style="font-size: 12px; opacity: 0.7; margin-top: 15px;">AI will verify stock carry-overs, expense-to-income ratios, and margin integrity.</p>
+<!-- iOS Bottom-Sheet Modal: Item Analysis -->
+<div id="itemAiModal" class="ios-modal-backdrop" onclick="closeItemAiModal(event)">
+    <div class="ios-modal-sheet">
+        <div class="sheet-handle"></div>
+        <h3 id="itemAiTitle">Item Analysis</h3>
+        <div id="itemAiContent" class="modal-body">
+            <div class="loader-spinner"></div>
         </div>
-        <div class="modal-footer">
-            <button class="ios-btn-primary" onclick="executeDeepAudit()">Start Analysis</button>
-            <button class="ios-btn-ghost" onclick="closeModal('auditRangeModal')">Cancel</button>
+        <button class="ios-btn secondary" onclick="closeItemAiModal(true)">Close</button>
+    </div>
+</div>
+
+<!-- Full-Screen Modal: Deep Audit -->
+<div id="deepAuditModal" class="ios-modal-backdrop full-screen" onclick="closeDeepAuditModal(event)">
+    <div class="ios-modal-sheet">
+        <div class="sheet-header">
+            <h3>Comprehensive Ledger Audit</h3>
+            <button class="icon-btn" onclick="closeDeepAuditModal(true)"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="audit-controls">
+            <label>Start Date:</label>
+            <input type="date" id="auditStartDate" class="ios-input">
+            <label>End Date:</label>
+            <input type="date" id="auditEndDate" class="ios-input">
+            <button class="ios-btn primary" onclick="generateDeepAudit()"><i class="fas fa-bolt"></i> Analyze Period</button>
+        </div>
+        <div id="deepAuditContent" class="modal-body">
+            <p class="text-muted">Select a period and run the audit to detect anomalies, track health, and verify accounting integrity.</p>
         </div>
     </div>
 </div>
 
-<!-- 4. Comprehensive Audit Report Overlay -->
-<div id="auditReportOverlay" class="full-screen-report">
-    <div style="max-width: 800px; margin: 0 auto;">
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-            <button class="ios-btn-ghost" onclick="closeAuditReport()"><i class="fas fa-times"></i> Close</button>
-            <h2 id="reportTitle">Forensic Audit</h2>
-            <button class="ios-btn-ghost" onclick="window.print()"><i class="fas fa-print"></i></button>
-        </div>
-        <div id="auditReportContent"></div>
     </div>
-</div>
-
-
 <div class="section-container mb-100"></div>
 </div>
-
 
 
     <div class="modal" id="ordersModal" role="dialog" aria-modal="true">
@@ -2290,136 +2307,6 @@ window.switchUser = async function(newAccountKey, newUsername) {
     await init();
 }
 
-/* =======================================================
-    Avanti Ledger - Puter AI Intelligence Engine
-   ======================================================= */
-
-/**
- * 1. DAILY INTEGRITY CHECK
- * Triggered on renderAll(). Analyzes the current date.
- */
-async function refreshDailyAI() {
-    const dateKey = state.currentDate;
-    const dateObj = state.dates[dateKey];
-    if (!dateObj || !isOnline) return;
-
-    const cachePath = `${REMOTE_DB_PATH}/ai_cache/${dateKey}`;
-    const snapshot = await firebaseDB.ref(cachePath).once('value');
-
-    if (snapshot.exists()) {
-        renderDailyDashboard(snapshot.val());
-    } else {
-        const payload = {
-            items: Object.values(dateObj.items),
-            expenses: dateObj.expenses,
-            incomes: dateObj.incomes,
-            prevClosing: getPreviousDayClosing()
-        };
-
-        const prompt = `Analyze this daily ledger for ${dateKey}: ${JSON.stringify(payload)}. 
-        Check: 1. Stock carry-over errors. 2. Selling price < 130% of cost. 3. High expense/income ratio.
-        Return JSON: { health: "good"|"warning"|"critical", brief: "string", anomalies: [{id: "itemId", msg: "string"}] }`;
-
-        const response = await puter.ai.chat(prompt);
-        const data = JSON.parse(response.message.content);
-        await firebaseDB.ref(cachePath).set(data);
-        renderDailyDashboard(data);
-    }
-}
-
-/**
- * 2. INDIVIDUAL ITEM REPORT
- * Drill-down analysis for specific items.
- */
-function showItemAnalysis(itemId) {
-    const item = state.dates[state.currentDate].items[itemId];
-    const cost = item.lastOrderCost || 0;
-    const targetPrice = cost * 1.3;
-    const isPricingThreat = item.price < targetPrice;
-
-    let analysisHtml = `
-        <div class="report-card">
-            <h4>${item.name} Forensic Report</h4>
-            <div style="display: flex; gap: 10px; margin: 15px 0;">
-                <div class="stat-box"><span>Profitability</span><strong style="color: ${isPricingThreat ? '#FF3B30' : '#34C759'}">${isPricingThreat ? 'Low' : 'Healthy'}</strong></div>
-                <div class="stat-box"><span>Stock Turnover</span><strong>${((item.opening + item.orders - item.closing) / (item.opening + item.orders || 1) * 100).toFixed(0)}%</strong></div>
-            </div>
-            <p style="background: rgba(255,255,255,0.05); padding: 10px; border-radius: 10px;">
-                <i class="fas fa-info-circle"></i> 
-                ${isPricingThreat ? 
-                    `THREAT: Your selling price (K${item.price}) is below the 130% standard (K${targetPrice.toFixed(2)}). You are eroding your capital.` : 
-                    `This item is priced correctly according to accounting standards.`}
-            </p>
-        </div>`;
-
-    document.getElementById('aiAdviceText').innerHTML = analysisHtml;
-    document.getElementById('aiAdviceModal').classList.add('show');
-}
-
-/**
- * 3. PERIODIC DEEP AUDIT
- * Cross-date forensic engine.
- */
-async function executeDeepAudit() {
-    const start = document.getElementById('auditStart').value;
-    const end = document.getElementById('auditEnd').value;
-    if (!start || !end) return;
-
-    document.getElementById('auditRangeModal').classList.remove('show');
-    const overlay = document.getElementById('auditReportOverlay');
-    overlay.style.display = 'block';
-    
-    const auditContent = document.getElementById('auditReportContent');
-    auditContent.innerHTML = '<div class="loading-spinner">Performing Forensic Audit...</div>';
-
-    // Aggregate Data across range
-    const periodData = [];
-    let curr = start;
-    while(curr <= end) {
-        if (state.dates[curr]) periodData.push({ date: curr, ...state.dates[curr] });
-        curr = addDays(curr, 1);
-    }
-
-    const prompt = `Perform a full forensic audit from ${start} to ${end} on this data: ${JSON.stringify(periodData)}.
-    Required sections: 1. Overall Account Integrity (0-100 score). 2. Stock Shrinkage Report. 3. Profit Margin Violations. 4. Unusual Cash Movements. 
-    Return a detailed HTML report using iOS-style cards and bold typography.`;
-
-    try {
-        const response = await puter.ai.chat(prompt);
-        auditContent.innerHTML = response.message.content;
-    } catch (e) {
-        auditContent.innerHTML = "<p>Audit failed. Check internet connection.</p>";
-    }
-}
-
-/* --- Helpers --- */
-function getPreviousDayClosing() {
-    const prevDate = addDays(state.currentDate, -1);
-    const prevData = state.dates[prevDate];
-    if (!prevData) return null;
-    const totals = {};
-    Object.values(prevData.items).forEach(it => totals[it.id] = it.closing);
-    return totals;
-}
-
-function renderDailyDashboard(data) {
-    const healthEl = document.getElementById('healthStatus');
-    healthEl.className = `health-pill ${data.health}`;
-    healthEl.textContent = data.health.toUpperCase();
-    document.getElementById('insightBrief').textContent = data.brief;
-    
-    // Highlight items in table
-    document.querySelectorAll('#statsTableBody tr').forEach(tr => tr.classList.remove('ai-flagged-row'));
-    data.anomalies.forEach(a => {
-        const row = document.querySelector(`tr[data-item-id="${a.id}"]`);
-        if (row) row.classList.add('ai-flagged-row');
-    });
-}
-
-function openAuditRangePicker() { document.getElementById('auditRangeModal').classList.add('show'); }
-function closeAuditReport() { document.getElementById('auditReportOverlay').style.display = 'none'; }
-
-
 function sendToWhatsApp() {
     const dateKey = state.currentDate;
     const dateObj = state.dates[dateKey];
@@ -2487,6 +2374,246 @@ function sendToWhatsApp() {
     window.open(`https://wa.me/?text=${encodedMessage}`, '_blank');
 }
 
+/* =======================================================
+    Avanti Ledger AI - Puter.js Integration & Auditing
+    ======================================================= */
+
+const AI_DB_PATH = () => `${REMOTE_DB_PATH}/ai_audits`;
+
+/**
+ * Core AI Request Engine with Firebase Caching.
+ * Ensures a request for a specific period/context is only generated once.
+ */
+async function fetchAICachedResponse(cacheKey, promptText) {
+    if (!firebaseDB || !isOnline) return "AI services require an internet connection.";
+    
+    const refPath = `${AI_DB_PATH()}/${cacheKey}`;
+    try {
+        const snap = await firebaseDB.ref(refPath).once('value');
+        if (snap.exists()) {
+            return snap.val().response; // Return cached response
+        }
+        
+        // Generate new response via Puter
+        const systemInstruction = "You are a senior accounting AI for the Avanti Ledger platform. Analyze the provided financial data. Identify discrepancies, fraud risks, and formatting issues. Output your response in clean HTML using standard tags (<b>, <ul>, <li>, <p>) with no markdown backticks. Be highly professional, direct, and authoritative.";
+        
+        const response = await puter.ai.chat(
+            `${systemInstruction}\n\nDATA:\n${promptText}`
+        );
+        
+        const responseHtml = response.message;
+        
+        // Save to Firebase to prevent duplicate calls
+        await firebaseDB.ref(refPath).set({
+            response: responseHtml,
+            timestamp: Date.now()
+        });
+        
+        return responseHtml;
+    } catch (error) {
+        console.error("AI Generation Error:", error);
+        return "<p style='color:red;'>Failed to generate AI insights. Please try again later.</p>";
+    }
+}
+
+/**
+ * 1. Real-time Discrepancy Highlighting 
+ * Call this function at the very end of your existing `renderTable()` function.
+ */
+function highlightTableDiscrepancies() {
+    const currentDate = state.currentDate;
+    const prevDate = addDays(currentDate, -1);
+    const todayItems = state.dates[currentDate]?.items || {};
+    const yesterdayItems = state.dates[prevDate]?.items || {};
+
+    Object.keys(todayItems).forEach(itemId => {
+        const item = todayItems[itemId];
+        let hasDiscrepancy = false;
+        let warnings = [];
+
+        // Check 1: Opening stock tampered (Doesn't match yesterday's closing)
+        if (yesterdayItems[itemId]) {
+            const yesterdayClosing = Number(yesterdayItems[itemId].closing || 0);
+            const todayOpening = Number(item.opening || 0);
+            if (yesterdayClosing !== todayOpening) {
+                hasDiscrepancy = true;
+                warnings.push(`Opening stock (${todayOpening}) does not match yesterday's closing stock (${yesterdayClosing}).`);
+            }
+        }
+
+        // Check 2: Accounting Standard (130% of cost = selling price) - Only if GFA is ON
+        if (USER_SETTINGS.GFA) {
+            let lastCost = item.lastOrderCost || 0;
+            if (lastCost === 0 && item.batches && item.batches.length > 0) {
+                lastCost = item.batches[item.batches.length - 1].cost || 0;
+            }
+            
+            const sellingPrice = Number(item.price || 0);
+            if (lastCost > 0 && sellingPrice < (lastCost * 1.3)) {
+                hasDiscrepancy = true;
+                warnings.push(`Selling price (K${sellingPrice}) is below the 130% standard of the cost price (K${lastCost}).`);
+            } else if (lastCost > sellingPrice) {
+                hasDiscrepancy = true;
+                warnings.push(`CRITICAL: Cost of item (K${lastCost}) is higher than the selling price (K${sellingPrice}).`);
+            }
+        }
+
+        // Apply visual alert to the table row
+        if (hasDiscrepancy) {
+            const tr = document.querySelector(`tr[data-item-id="${itemId}"]`);
+            if (tr) {
+                const tdItem = tr.querySelector('td[data-col="item"]');
+                // Prevent duplicate icons
+                if (!tdItem.querySelector('.ai-alert-icon')) {
+                    const icon = document.createElement('i');
+                    icon.className = 'fas fa-exclamation-triangle ai-alert-icon pulse-anim';
+                    icon.title = "AI Discrepancy Detected";
+                    icon.onclick = (e) => {
+                        e.stopPropagation();
+                        openItemAiModal(item.name, warnings, item);
+                    };
+                    tdItem.appendChild(icon);
+                }
+            }
+        }
+    });
+}
+
+/**
+ * 2. Item-Level AI Analysis Modal
+ */
+function openItemAiModal(itemName, warnings, itemData) {
+    document.getElementById('itemAiModal').classList.add('show');
+    document.getElementById('itemAiTitle').textContent = `AI Analysis: ${itemName}`;
+    
+    const contentDiv = document.getElementById('itemAiContent');
+    contentDiv.innerHTML = '<div class="loader-spinner"></div><p>Analyzing item integrity...</p>';
+
+    // Build Context for Puter
+    const prompt = `
+        Item Name: ${itemName}
+        Current Date: ${state.currentDate}
+        Stock Stats: Opening=${itemData.opening}, Orders=${itemData.orders}, Closing=${itemData.closing}
+        Pricing: Selling Price=K${itemData.price}, Cost Price=K${itemData.lastOrderCost || 'Unknown'}
+        System Warnings Detected: ${warnings.join(' | ')}
+        
+        Based on the "130% of cost = selling price" accounting standard and general stock integrity principles, advise the user on how to resolve these discrepancies and the threat they pose to the ledger's accuracy.
+    `;
+
+    // Cache key specific to this item on this specific date and its current state stringified
+    const stateHash = btoa(`${itemData.opening}-${itemData.orders}-${itemData.closing}-${itemData.price}`).replace(/=/g, '');
+    const cacheKey = `item_analysis_${state.currentDate}_${itemData.id}_${stateHash}`;
+
+    fetchAICachedResponse(cacheKey, prompt).then(html => {
+        contentDiv.innerHTML = html;
+    });
+}
+
+function closeItemAiModal(force = false) {
+    if (force || event.target.id === 'itemAiModal') {
+        document.getElementById('itemAiModal').classList.remove('show');
+    }
+}
+
+/**
+ * 3. Daily Insight Generation
+ * Call this in your `init()` or `renderAll()` after the table renders.
+ */
+function generateDailyInsights() {
+    const card = document.getElementById('aiDailyCard');
+    const contentDiv = document.getElementById('aiDailyContent');
+    card.classList.remove('hidden');
+    contentDiv.innerHTML = 'Generating daily insights...';
+
+    const dateObj = state.dates[state.currentDate];
+    if (!dateObj) return;
+
+    const dataSnapshot = JSON.stringify({
+        date: state.currentDate,
+        incomes: dateObj.incomes || [],
+        expenses: dateObj.expenses || [],
+        totalItems: Object.keys(dateObj.items || {}).length,
+        isBalanced: dateObj.balanced
+    });
+
+    const prompt = `Analyze today's ledger activity. Look for abnormal expenses or incomes. Highlight anything unusual. Provide 2-3 bullet points of actionable accounting advice for the day based on the data. Keep it concise. Data: ${dataSnapshot}`;
+    
+    const cacheKey = `daily_insight_${state.currentDate}`;
+
+    fetchAICachedResponse(cacheKey, prompt).then(html => {
+        contentDiv.innerHTML = html;
+    });
+}
+
+/**
+ * 4. Deep Audit Functionality
+ */
+function openDeepAuditModal() {
+    document.getElementById('deepAuditModal').classList.add('show');
+    // Default dates
+    document.getElementById('auditEndDate').value = state.currentDate;
+    document.getElementById('auditStartDate').value = addDays(state.currentDate, -7);
+}
+
+function closeDeepAuditModal(force = false) {
+    if (force || event.target.id === 'deepAuditModal') {
+        document.getElementById('deepAuditModal').classList.remove('show');
+    }
+}
+
+function generateDeepAudit() {
+    const start = document.getElementById('auditStartDate').value;
+    const end = document.getElementById('auditEndDate').value;
+    const contentDiv = document.getElementById('deepAuditContent');
+    
+    if (!start || !end || start > end) {
+        alert("Please select a valid date range.");
+        return;
+    }
+
+    contentDiv.innerHTML = '<div style="text-align:center; padding: 40px;"><i class="fas fa-circle-notch fa-spin fa-3x" style="color:var(--ios-blue);"></i><p style="margin-top:20px;">Compiling massive data & executing deep AI audit...</p></div>';
+
+    // Compile period data
+    let periodData = {};
+    let d = start;
+    while (d <= end) {
+        if (state.dates[d]) {
+            periodData[d] = {
+                expenses: state.dates[d].expenses,
+                incomes: state.dates[d].incomes,
+                itemsCount: Object.keys(state.dates[d].items || {}).length,
+                balancedStatus: state.dates[d].balanced
+            };
+        }
+        d = addDays(d, 1);
+    }
+
+    const prompt = `
+        Perform a comprehensive, robust audit on the following accounting period: ${start} to ${end}.
+        Data payload: ${JSON.stringify(periodData)}
+        
+        Focus on:
+        1. Status and Health of the accountancy over this period.
+        2. Financial Integrity (Are days being balanced? Are there sudden spikes in expenses?).
+        3. Actionable insights to improve cash flow and ledger maintenance.
+        
+        Provide a detailed report mixing text and visual formatting (use HTML blockquotes, colored text spans, and lists). This is a comprehensive audit, so be thorough.
+    `;
+
+    const cacheKey = `deep_audit_${start}_to_${end}`;
+
+    fetchAICachedResponse(cacheKey, prompt).then(html => {
+        contentDiv.innerHTML = html;
+    });
+}
+
+// Hook into existing renderTable
+const originalRenderTable = renderTable;
+renderTable = function() {
+    originalRenderTable(); // Render standard rows
+    highlightTableDiscrepancies(); // Inject AI alerts post-render
+    generateDailyInsights(); // Update the daily card
+};
 
 
 async function init(){
