@@ -720,53 +720,103 @@ Expenses</span>
         <a href="accounting-report.html" class="generate-reports" style="display: block; text-align: center; padding: 18px; background-color: #3f72af; color: #ffffff; font-weight: 600; text-decoration: none; font-size: 0.95rem; transition: background 0.3s;">
             Generate Reports
         </a>
-     
-<div id="ai-dashboard-extensions" style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; margin: 20px 0;">
-    
-    <div id="daily-insight-card" class="ios-card" style="background: white; border-radius: 20px; padding: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); margin-bottom: 20px; border: 1px solid #f0f0f0; display: none;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-            <h3 style="margin: 0; font-size: 18px; color: #1c1c1e;">Daily Integrity Report</h3>
-            <span id="ai-status-pulse" class="pulse-icon"></span>
-        </div>
-        <div id="ai-insights-content">
-            </div>
-    </div>
-
-    <div style="display: flex; gap: 10px; margin-bottom: 15px;">
-        <button id="deepAuditBtn" style="background: linear-gradient(135deg, #007AFF, #00C6FF); color: white; border: none; padding: 12px 24px; border-radius: 12px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: transform 0.2s;">
-            <i class="fas fa-shield-check"></i> Run Deep Audit
-        </button>
-        <div id="accounting-tips-ticker" style="flex: 1; background: #f2f2f7; border-radius: 12px; padding: 10px; font-size: 13px; color: #3a3a3c; display: flex; align-items: center; overflow: hidden;">
-            <div class="ticker-wrap"><div class="ticker-item" id="ticker-text">Scanning for discrepancies...</div></div>
-        </div>
-    </div>
-</div>
-
-<div id="ios-modal" class="ios-modal-overlay">
-    <div class="ios-modal-content">
-        <div class="ios-modal-header">
-            <button onclick="closeIosModal()" style="color: #007AFF; background: none; border: none; font-size: 17px; cursor: pointer;">Done</button>
-            <span id="ios-modal-title" style="font-weight: 600;">Item Analysis</span>
-            <div style="width: 40px;"></div>
-        </div>
-        <div id="ios-modal-body" style="padding: 20px; max-height: 70vh; overflow-y: auto;">
-            </div>
-    </div>
-</div>
+        
+<script src="https://js.puter.com/v2/"></script>
 
 <style>
-    .ios-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); backdrop-filter: blur(5px); display: none; z-index: 9999; align-items: flex-end; }
-    .ios-modal-content { background: #f9f9f9; width: 100%; border-radius: 20px 20px 0 0; animation: slideUp 0.3s ease-out; }
-    .ios-modal-header { display: flex; justify-content: space-between; align-items: center; padding: 15px; border-bottom: 1px solid #d1d1d6; background: #fff; border-radius: 20px 20px 0 0; }
-    @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
-    .discrepancy-row { background-color: rgba(255, 59, 48, 0.1) !important; }
-    .alert-icon { color: #ff3b30; margin-left: 5px; animation: bounce 2s infinite; }
-    @keyframes bounce { 0%, 20%, 50%, 80%, 100% {transform: translateY(0);} 40% {transform: translateY(-5px);} 60% {transform: translateY(-3px);} }
-    .pulse-icon { width: 10px; height: 10px; background: #34c759; border-radius: 50%; box-shadow: 0 0 0 rgba(52, 199, 89, 0.4); animation: pulse 2s infinite; }
-    @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(52, 199, 89, 0.4); } 70% { box-shadow: 0 0 0 10px rgba(52, 199, 89, 0); } 100% { box-shadow: 0 0 0 0 rgba(52, 199, 89, 0); } }
+    /* AI Animated Tip Container */
+    .ai-tip-container {
+        display: flex;
+        align-items: center;
+        background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+        color: white;
+        padding: 12px 20px;
+        border-radius: 12px;
+        margin: 15px 0;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+    .ai-pulse-icon {
+        width: 16px; height: 16px;
+        background-color: #00ffcc;
+        border-radius: 50%;
+        margin-right: 15px;
+        box-shadow: 0 0 0 0 rgba(0, 255, 204, 0.7);
+        animation: pulse 1.5s infinite;
+    }
+    @keyframes pulse {
+        0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(0, 255, 204, 0.7); }
+        70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(0, 255, 204, 0); }
+        100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(0, 255, 204, 0); }
+    }
+
+    /* iOS Standard Modal */
+    .ios-modal-backdrop {
+        position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+        background: rgba(0,0,0,0.4); backdrop-filter: blur(5px);
+        display: none; justify-content: center; align-items: center; z-index: 9999;
+    }
+    .ios-modal-backdrop.show { display: flex; }
+    .ios-modal-content {
+        background: rgba(255, 255, 255, 0.95);
+        width: 90%; max-width: 400px; max-height: 80vh; overflow-y: auto;
+        border-radius: 14px; text-align: center;
+        box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        padding: 20px;
+    }
+    .ios-modal-title { font-size: 18px; font-weight: 600; margin-bottom: 10px; color: #000; }
+    .ios-modal-body { font-size: 14px; color: #333; line-height: 1.5; text-align: left; }
+    .ios-modal-btn {
+        margin-top: 20px; width: 100%; padding: 12px;
+        background: none; border: none; border-top: 1px solid #ddd;
+        color: #007aff; font-size: 17px; font-weight: 600; cursor: pointer;
+    }
+
+    /* Deep Audit Modal Specifics */
+    .audit-modal-content { max-width: 700px; text-align: left; }
+    .ai-highlight-red { background-color: rgba(255, 59, 48, 0.1); border-left: 4px solid #ff3b30; }
+    .ai-warning-icon { color: #ff3b30; margin-left: 5px; cursor: pointer; }
+    .insight-mode-row { cursor: pointer !important; transition: background 0.2s; }
+    .insight-mode-row:hover { background-color: rgba(0, 122, 255, 0.1) !important; }
 </style>
 
-   
+<div class="ai-controls" style="display: flex; gap: 15px; margin: 10px 0; align-items: center;">
+    <label style="font-family: sans-serif; font-weight: bold; display: flex; align-items: center; gap: 5px;">
+        <input type="checkbox" id="insightToggleBtn" onchange="toggleInsightMode()"> 
+        🧠 Insight Mode
+    </label>
+    <button onclick="openDeepAuditModal()" style="padding: 8px 15px; background: #000; color: #fff; border-radius: 8px; border: none; cursor: pointer; font-weight: bold;">
+        <i class="fas fa-search-dollar"></i> Deep Audit
+    </button>
+</div>
+
+<div class="ai-tip-container" id="aiTipBox">
+    <div class="ai-pulse-icon"></div>
+    <div id="aiTipText">Puter AI is actively monitoring your accounting integrity.</div>
+</div>
+
+<div class="ios-modal-backdrop" id="iosInsightModal">
+    <div class="ios-modal-content">
+        <div class="ios-modal-title" id="iosModalTitle">AI Analysis</div>
+        <div class="ios-modal-body" id="iosModalBody">Loading insights...</div>
+        <button class="ios-modal-btn" onclick="document.getElementById('iosInsightModal').classList.remove('show')">Close</button>
+    </div>
+</div>
+
+<div class="ios-modal-backdrop" id="deepAuditModal">
+    <div class="ios-modal-content audit-modal-content">
+        <div class="ios-modal-title">Comprehensive Deep Audit</div>
+        <div style="margin-bottom: 15px;">
+            <label>Days to Audit: <input type="number" id="auditDays" value="7" style="width: 50px; text-align: center;"></label>
+            <button onclick="runDeepAudit()" style="background: #007aff; color: white; border:none; padding: 5px 10px; border-radius: 5px;">Generate</button>
+        </div>
+        <div class="ios-modal-body" id="auditModalBody">Select days and click generate to audit your ledger's health.</div>
+        <button class="ios-modal-btn" onclick="document.getElementById('deepAuditModal').classList.remove('show')">Close</button>
+    </div>
+</div>
+
+
     </div>
 <div class="section-container mb-100"></div>
 </div>
@@ -1348,6 +1398,17 @@ function setupDataListener() {
     datesRef.on('child_changed', snap => {
         const dateKey = snap.key;
         state.dates[dateKey] = snap.val();
+
+// Add this inside the currentDataRef.child('currentDate').on('value', snap => { ... }) block
+if (newDate !== state.currentDate) {
+    state.currentDate = newDate;
+    ensureDateExists(state.currentDate);
+    renderAll();
+    
+    // Trigger background audit when the date changes
+    setTimeout(runBackgroundAudit, 1500); // 1.5s delay to let UI render first
+}
+
         
         // Only re-render the UI if the modified date is the one currently being viewed
         if (dateKey === state.currentDate) {
@@ -1356,6 +1417,7 @@ function setupDataListener() {
             updateTotalsNumbers();
         }
     });
+
 
     // Handle deletion of date entries
     datesRef.on('child_removed', snap => {
@@ -1647,6 +1709,164 @@ function renderTable(){
     if(totEl) totEl.textContent = "K"+totalSales;
     updateTotalsNumbers();
 }
+
+/* ---------- AI State & Config ---------- */
+let isInsightMode = false;
+let cachedInsights = {}; // Stores insights for the current date
+
+function toggleInsightMode() {
+    isInsightMode = document.getElementById('insightToggleBtn').checked;
+    
+    const tipText = document.getElementById('aiTipText');
+    if(isInsightMode) {
+        tipText.innerHTML = "<strong>Insight Mode Active:</strong> Click any row to view its cached AI analysis.";
+    } else {
+        tipText.innerHTML = "Puter AI is actively monitoring your accounting integrity.";
+    }
+    
+    renderTable(); // Re-render to lock/unlock editable cells
+}
+
+/* ---------- Advanced AI Batching & Caching ---------- */
+
+/**
+ * Creates a simple hash/snapshot of an item's critical financial data.
+ */
+function createItemSnapshot(item) {
+    return `${item.opening}_${item.orders}_${item.closing}_${item.price}_${item.lastOrderCost || 0}`;
+}
+
+/**
+ * Runs automatically to audit items that have changed or have no cached insight.
+ */
+async function runBackgroundAudit() {
+    if (!firebaseDB || !isOnline) return;
+    
+    // 1. Guard against future dates
+    const today = new Date().toISOString().split('T')[0];
+    if (state.currentDate > today) {
+        console.log("Future date detected. AI analysis skipped to save resources.");
+        return;
+    }
+
+    const dateObj = state.dates[state.currentDate];
+    if (!dateObj || !dateObj.items) return;
+
+    const items = Object.values(dateObj.items);
+    if (items.length === 0) return;
+
+    const path = `${REMOTE_DB_PATH}/ai_insights/${state.currentDate}`;
+    let dbCache = {};
+
+    try {
+        const snap = await firebaseDB.ref(path).once('value');
+        if (snap.exists()) dbCache = snap.val();
+    } catch (e) {
+        console.warn("Could not fetch AI cache", e);
+    }
+
+    cachedInsights = dbCache; // Update local state
+    let itemsToAudit = [];
+
+    // 2. System Level Check: Does the discrepancy still apply?
+    items.forEach(item => {
+        const currentSnapshot = createItemSnapshot(item);
+        const cachedItem = dbCache[item.id];
+
+        // If it doesn't exist, OR the snapshot changed (user edited the data), queue it.
+        if (!cachedItem || cachedItem.snapshot !== currentSnapshot) {
+            itemsToAudit.push(item);
+        }
+    });
+
+    // 3. Batch the AI Request if needed
+    if (itemsToAudit.length > 0) {
+        document.getElementById('aiTipText').innerHTML = `<span class="ai-pulse-icon" style="display:inline-block; width:10px; height:10px;"></span> AI is auditing ${itemsToAudit.length} updated items...`;
+        
+        await fetchBatchedInsights(itemsToAudit, path, dbCache);
+        
+        document.getElementById('aiTipText').innerHTML = "Puter AI audit complete and cached.";
+    } else {
+        console.log("All items are up to date with AI cache. No request sent.");
+    }
+}
+
+async function fetchBatchedInsights(items, dbPath, currentCache) {
+    // Construct a dense payload for the AI
+    let payloadStr = items.map(i => {
+        const total = Number(i.opening) + Number(i.orders);
+        const sales = Math.max(0, total - Number(i.closing));
+        return `ID: ${i.id} | Name: ${i.name} | Opening: ${i.opening} | Orders: ${i.orders} | Closing: ${i.closing} | Sales: ${sales} | Price: K${i.price} | Cost: K${i.lastOrderCost || 0}`;
+    }).join("\n");
+
+    const prompt = `
+        You are an automated accounting auditor. Analyze these items for discrepancies.
+        Rules: 
+        1. Check if Price is at least 130% of Cost.
+        2. Check for negative sales or mathematical impossibilities.
+        3. Note any concerning stock behaviors.
+        
+        RETURN STRICTLY JSON in this exact format (no markdown, no extra text):
+        {
+          "itemID": { "flags": ["List of issues"], "analysis": "Detailed HTML formatted advice" }
+        }
+
+        Data to analyze:
+        ${payloadStr}
+    `;
+
+    try {
+        const response = await puter.ai.chat(prompt);
+        let textResponse = response.message.content;
+        
+        // Clean up markdown formatting if the AI ignores instructions
+        textResponse = textResponse.replace(/```json/g, '').replace(/```/g, '').trim();
+        const aiResults = JSON.parse(textResponse);
+
+        // Update cache with new results and current snapshots
+        items.forEach(item => {
+            if (aiResults[item.id]) {
+                currentCache[item.id] = {
+                    snapshot: createItemSnapshot(item),
+                    flags: aiResults[item.id].flags || [],
+                    analysis: aiResults[item.id].analysis || "No issues detected."
+                };
+            }
+        });
+
+        // Save back to Firebase
+        await firebaseDB.ref(dbPath).set(currentCache);
+        cachedInsights = currentCache;
+        renderTable(); // Re-render to show new warning icons
+
+    } catch (e) {
+        console.error("Batched AI Fetch Error or JSON Parse Error", e);
+    }
+}
+
+/* ---------- UI Override for Insight Mode ---------- */
+function openItemInsightModal(itemId) {
+    if (!isInsightMode) return;
+    
+    const item = state.dates[state.currentDate].items[itemId];
+    document.getElementById('iosModalTitle').textContent = `${item.name} - AI Analysis`;
+    const bodyEl = document.getElementById('iosModalBody');
+    
+    const cachedData = cachedInsights[itemId];
+    
+    if (cachedData) {
+        let flagHtml = cachedData.flags.length > 0 
+            ? `<div style="color: #ff3b30; margin-bottom: 10px;"><strong>Flags:</strong> ${cachedData.flags.join(", ")}</div>` 
+            : `<div style="color: #34c759; margin-bottom: 10px;"><strong>Status:</strong> Clear</div>`;
+            
+        bodyEl.innerHTML = flagHtml + cachedData.analysis;
+    } else {
+        bodyEl.innerHTML = "Analysis pending or no discrepancies found requiring a deep audit.";
+    }
+    
+    document.getElementById('iosInsightModal').classList.add('show');
+}
+
 
 /* ---------- Utility render helpers ---------- */
 function updateTotalsNumbers(){
@@ -2309,6 +2529,16 @@ async function init(){
     updateSyncDisplay(); // Initial load for sync status
 
     // renderAll() is now called by the real-time listener (setupDataListener)
+// Add this inside the currentDataRef.child('currentDate').on('value', snap => { ... }) block
+if (newDate !== state.currentDate) {
+    state.currentDate = newDate;
+    ensureDateExists(state.currentDate);
+    renderAll();
+    
+    // Trigger background audit when the date changes
+    setTimeout(runBackgroundAudit, 1500); // 1.5s delay to let UI render first
+}
+
 }
 
 function setupModalCloseOnBackdropClick() {
@@ -2747,193 +2977,5 @@ renderAll();
     bootstrapDownloadListener();
 })();
 </script>
-
-<script src="https://js.puter.com/v2/"></script>
-
-<script>
-const AvantiAI = {
-    cache: {},
-
-    /**
-     * Initializes the AI engine and attaches to the render loop
-     */
-    async init() {
-        const originalRenderTable = window.renderTable;
-        window.renderTable = () => {
-            originalRenderTable();
-            this.analyzeDataIntegrity();
-        };
-        
-        document.getElementById('deepAuditBtn').onclick = () => this.runDeepAudit();
-        this.updateTicker();
-    },
-
-    /**
-     * Highlights discrepancies and pricing errors in the table
-     */
-    analyzeDataIntegrity() {
-        const dateKey = state.currentDate;
-        const prevDateKey = addDays(dateKey, -1);
-        const currentItems = state.dates[dateKey]?.items || {};
-        const prevItems = state.dates[prevDateKey]?.items || {};
-
-        document.querySelectorAll('#statsTableBody tr').forEach(tr => {
-            const itemId = tr.dataset.itemId;
-            const item = currentItems[itemId];
-            if (!item) return;
-
-            let issues = [];
-
-            // 1. Stock Discrepancy Check
-            if (prevItems[itemId] && prevItems[itemId].closing !== item.opening) {
-                const tdOpening = tr.querySelector('[data-col="openingStock"]');
-                tdOpening.style.color = '#ff3b30';
-                tdOpening.innerHTML += ` <i class="fas fa-exclamation-triangle alert-icon" title="Doesn't match yesterday's closing (${prevItems[itemId].closing})"></i>`;
-                issues.push(`Stock mismatch: Expected ${prevItems[itemId].closing} based on yesterday.`);
-            }
-
-            // 2. Margin Check (130% Rule)
-            if (USER_SETTINGS.GFA && item.lastOrderCost > 0) {
-                const targetPrice = item.lastOrderCost * 1.3;
-                if (item.price < targetPrice) {
-                    const tdPrice = tr.querySelector('[data-col="price"]');
-                    tdPrice.style.backgroundColor = 'rgba(255, 59, 48, 0.1)';
-                    tdPrice.innerHTML += ` <i class="fas fa-arrow-trend-down alert-icon" title="Price below 130% margin"></i>`;
-                    issues.push(`Margin Alert: Price (K${item.price}) is below recommended 130% cost (K${targetPrice.toFixed(2)}).`);
-                }
-            }
-
-            // Click behavior for report
-            tr.style.cursor = 'help';
-            tr.onclick = (e) => {
-                if (e.target.contentEditable === "true" || state.selectMode) return;
-                this.showItemReport(item, issues);
-            };
-        });
-
-        this.generateDailySummary();
-    },
-
-    /**
-     * Fetches AI insights, caching them in Firebase to prevent redundant API calls
-     */
-    async getAIInsight(prompt, cacheKey) {
-        const firebasePath = `${REMOTE_DB_PATH}/ai_analysis/${state.currentDate}/${cacheKey}`;
-        
-        // Check Firebase first
-        const snapshot = await firebaseDB.ref(firebasePath).once('value');
-        if (snapshot.exists()) return snapshot.val();
-
-        // If not in Firebase, call Puter AI
-        const response = await puter.ai.chat(prompt);
-        const result = response.toString();
-
-        // Save to Firebase
-        firebaseDB.ref(firebasePath).set(result);
-        return result;
-    },
-
-    async showItemReport(item, localIssues) {
-        openIosModal(`Report: ${item.name}`);
-        const modalBody = document.getElementById('ios-modal-body');
-        modalBody.innerHTML = `<div class="loading-spinner">Analyzing with Puter AI...</div>`;
-
-        const prompt = `Act as a senior accountant. Analyze this item: 
-        Name: ${item.name}, Price: K${item.price}, Last Cost: K${item.lastOrderCost}, 
-        Opening: ${item.opening}, Orders: ${item.orders}, Closing: ${item.closing}. 
-        Local flags found: ${localIssues.join('. ')}. 
-        Provide advice based on 130% cost-to-selling-price standards. Return 3 bullet points.`;
-
-        const aiAdvice = await this.getAIInsight(prompt, `item_${item.id}`);
-        
-        modalBody.innerHTML = `
-            <div style="background: #fff; padding: 15px; border-radius: 12px; border-left: 5px solid ${localIssues.length > 0 ? '#ff3b30' : '#34c759'};">
-                <h4 style="margin-top:0;">Audit Summary</h4>
-                <p style="font-size:14px; color:#666;">${aiAdvice}</p>
-            </div>
-            <div style="margin-top:20px;">
-                <h5>Visual Integrity Score</h5>
-                <div style="background:#e5e5ea; height:10px; border-radius:5px; overflow:hidden;">
-                    <div style="width:${localIssues.length > 0 ? '40%' : '100%'}; background:#34c759; height:100%;"></div>
-                </div>
-            </div>
-        `;
-    },
-
-    async runDeepAudit() {
-        openIosModal("Comprehensive Deep Audit");
-        const modalBody = document.getElementById('ios-modal-body');
-        modalBody.innerHTML = `<h3>Generating robustness report...</h3><div class="pulse-icon"></div>`;
-
-        const dataSummary = JSON.stringify(state.dates[state.currentDate]);
-        const prompt = `Perform a robust forensic accounting audit on this data: ${dataSummary}. 
-        Check for: 1. Math errors, 2. Abnormal expenses, 3. Revenue leakages, 4. Stock theft indicators. 
-        Structure the response with 'Health Status', 'Anomalies Found', and 'Action Plan'.`;
-
-        const audit = await this.getAIInsight(prompt, 'deep_audit');
-        
-        modalBody.innerHTML = `
-            <div style="font-family: monospace; font-size:13px; background:#1c1c1e; color:#34c759; padding:20px; border-radius:12px;">
-                ${audit.replace(/\n/g, '<br>')}
-            </div>
-            <div style="margin-top:20px; display:flex; justify-content:space-around; text-align:center;">
-                <div><div style="font-size:24px;">🛡️</div><small>Secure</small></div>
-                <div><div style="font-size:24px;">📈</div><small>Verified</small></div>
-                <div><div style="font-size:24px;">⚖️</div><small>Balanced</small></div>
-            </div>
-        `;
-    },
-
-    generateDailySummary() {
-        const card = document.getElementById('daily-insight-card');
-        const content = document.getElementById('ai-insights-content');
-        const dateObj = state.dates[state.currentDate];
-        
-        const abnormalExpenses = (dateObj.expenses || []).filter(e => e.amount > 500); // Example threshold
-        
-        card.style.display = 'block';
-        content.innerHTML = `
-            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
-                <div style="background:#f2f2f7; padding:10px; border-radius:10px;">
-                    <small style="color:#8e8e93;">Abnormal Items</small>
-                    <div style="font-weight:700; color:#ff3b30;">${abnormalExpenses.length} Detected</div>
-                </div>
-                <div style="background:#f2f2f7; padding:10px; border-radius:10px;">
-                    <small style="color:#8e8e93;">Integrity Status</small>
-                    <div style="font-weight:700; color:#34c759;">High Risk</div>
-                </div>
-            </div>
-        `;
-    },
-
-    updateTicker() {
-        const tips = [
-            "Pro Tip: Maintain a 30% margin to cover overhead expenses.",
-            "Integrity Check: Daily opening stock must match prior closing.",
-            "Security: Use the 'Balanced' switch to lock history.",
-            "Audit Hint: Look for round-number expenses; they often signal estimates."
-        ];
-        let i = 0;
-        setInterval(() => {
-            document.getElementById('ticker-text').innerText = tips[i % tips.length];
-            i++;
-        }, 5000);
-    }
-};
-
-// Global Helpers
-function openIosModal(title) {
-    document.getElementById('ios-modal-title').innerText = title;
-    document.getElementById('ios-modal').style.display = 'flex';
-}
-
-function closeIosModal() {
-    document.getElementById('ios-modal').style.display = 'none';
-}
-
-// Trigger initialization
-document.addEventListener('DOMContentLoaded', () => AvantiAI.init());
-</script>
-
 </body>
 </html>
