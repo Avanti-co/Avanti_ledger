@@ -356,7 +356,7 @@ table.stats-table {
 table.stats-table thead th {
   position: sticky;
   top: 0;
-  z-index: 10;
+  z-index: 4;
   
   /* The "Frosted" Logic */
       background:rgba(63, 114, 175, 0.3);/* Increased alpha slightly for better readability */
@@ -375,7 +375,7 @@ table.stats-table thead th {
 table.stats-table tfoot {
   position: sticky;
   bottom: 0;
-  z-index: 10;
+  z-index: 4;
 }
 
 
@@ -2186,55 +2186,56 @@ function sendToWhatsApp() {
     const expenses = dateObj.expenses || [];
     const incomes = dateObj.incomes || [];
 
-    // --- Header ---
-    let message = `*📊 AVANTI LEDGER REPORT*\n`;
-    message += `*Date:* ${formattedDate}\n`;
-    message += `*Status:* ${dateObj.balanced ? "✅ Balanced" : "⚠️ Unbalanced"}\n`;
+    let message = `*📊 AVANTI LEDGER: FULL REPORT*\n`;
+    message += `*Period:* ${formattedDate}\n`;
+    message += `*Status:* ${dateObj.balanced ? "✅ BALANCED" : "⚠️ UNBALANCED"}\n`;
     message += `--------------------------------\n\n`;
 
-    // --- Inventory & Sales ---
-    message += `*📦 INVENTORY & SALES*\n`;
     let totalSalesVal = 0;
     
     items.forEach(item => {
-        const totalStock = Number(item.opening) + Number(item.orders);
-        const salesQty = Math.max(0, totalStock - Number(item.closing));
-        const itemTotal = salesQty * Number(item.price);
-        totalSalesVal += itemTotal;
+        const opening = Number(item.opening || 0);
+        const orders = Number(item.orders || 0);
+        const totalStock = opening + orders;
+        const closing = Number(item.closing || 0);
+        const salesQty = Math.max(0, totalStock - closing);
+        const price = Number(item.price || 0);
+        const subtotal = salesQty * price;
+        totalSalesVal += subtotal;
 
-        if (salesQty > 0 || totalStock > 0) {
-            message += `• *${item.name}*\n`;
-            message += `  Stock: ${totalStock} | Sold: ${salesQty} | Price: K${item.price}\n`;
-            message += `  Subtotal: *K${itemTotal.toLocaleString()}*\n\n`;
+        // Fetch cost price from the latest batch or lastOrderCost
+        let costPriceDisplay = "N/A";
+        if (item.lastOrderCost && item.lastOrderCost > 0) {
+            costPriceDisplay = `K${item.lastOrderCost}`;
+        } else if (item.batches && item.batches.length > 0) {
+            costPriceDisplay = `K${item.batches[item.batches.length - 1].cost}`;
         }
+
+        message += `*${item.name.toUpperCase()}*\n`;
+        message += `• Op. Stock: ${opening}\n`;
+        message += `• Orders: ${orders} (Cost: ${costPriceDisplay})\n`;
+        message += `• Total Stock: ${totalStock}\n`;
+        message += `• Sell Price: K${price}\n`;
+        message += `• Cl. Stock: ${closing}\n`;
+        message += `• Sales: *${salesQty}*\n`;
+        message += `• Subtotal: *K${subtotal.toLocaleString()}*\n`;
+        message += `--------------------------------\n`;
     });
 
-    // --- Financial Summary ---
+    // Totals Calculation
     const netIncome = incomes.reduce((s, i) => s + Number(i.amount || 0), 0);
     const netExpenses = expenses.reduce((s, i) => s + Number(i.amount || 0), 0);
     const finalRevenue = totalSalesVal + netIncome - netExpenses;
 
-    message += `--------------------------------\n`;
-    message += `*💰 FINANCIAL SUMMARY*\n`;
+    message += `\n*💰 FINAL RECONCILIATION*\n`;
     message += `Gross Sales: K${totalSalesVal.toLocaleString()}\n`;
-    
-    if (incomes.length > 0) {
-        message += `Other Income: +K${netIncome.toLocaleString()}\n`;
-    }
-    
-    if (expenses.length > 0) {
-        message += `Total Expenses: -K${netExpenses.toLocaleString()}\n`;
-    }
+    message += `Other Income: +K${netIncome.toLocaleString()}\n`;
+    message += `Expenses: -K${netExpenses.toLocaleString()}\n`;
+    message += `*NET REVENUE: K${finalRevenue.toLocaleString()}*\n\n`;
+    message += `_Portal: Avanti Ledger v1.0_`;
 
-    message += `\n*NET CASH REVENUE: K${finalRevenue.toLocaleString()}*\n`;
-    message += `--------------------------------\n`;
-    message += `_Generated via Avanti Ledger Portal_`;
-
-    // --- Execution ---
     const encodedMessage = encodeURIComponent(message);
-    const whatsappUrl = `https://wa.me/?text=${encodedMessage}`;
-    
-    window.open(whatsappUrl, '_blank');
+    window.open(`https://wa.me/?text=${encodedMessage}`, '_blank');
 }
 
 
