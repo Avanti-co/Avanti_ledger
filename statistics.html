@@ -828,6 +828,8 @@ Expenses</span>
         color: var(--av-text-primary);
         box-shadow: 0 20px 40px rgba(0,0,0,0.8);
         transform: translateY(20px); transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+font-size: calc(1em + 2px) !important;
+
     }
     .ios-modal-overlay.active .ios-modal-content { transform: translateY(0); }
 
@@ -2979,7 +2981,7 @@ const AvantiInsights = {
             <div style="background:var(--av-surface); padding:16px; border-radius:12px; margin-bottom:12px; border-left: 4px solid var(--av-orange);">
                 <h4 style="margin:0 0 8px 0; color:var(--av-orange);"><i class="fas fa-boxes"></i> Stock Reconciliation Error</h4>
                 <p style="margin:0; font-size:14px;">${data.message}</p>
-                <div style="display:flex; justify-content:space-between; margin-top:12px; font-size:12px; color:var(--av-text-secondary);">
+                <div style="display:flex; justify-content:space-between; margin-top:12px; font-size:14px; color:var(--av-text-secondary);">
                     <div>Yesterday Close: <strong style="color:#fff;">${data.prevClosing}</strong></div>
                     <div><i class="fas fa-arrow-right"></i></div>
                     <div>Today Open: <strong style="color:var(--av-red);">${data.currentOpening}</strong></div>
@@ -2990,7 +2992,7 @@ const AvantiInsights = {
             <div style="background:var(--av-surface); padding:16px; border-radius:12px; margin-bottom:12px; border-left: 4px solid var(--av-red);">
                 <h4 style="margin:0 0 8px 0; color:var(--av-red);"><i class="fas fa-tag"></i> Profit Margin Violation</h4>
                 <p style="margin:0; font-size:14px;">${data.message}</p>
-                <div style="margin-top:12px; font-size:12px; color:var(--av-text-secondary); background: rgba(255,69,58,0.1); padding:8px; border-radius:6px;">
+                <div style="margin-top:12px; font-size:14px; color:var(--av-text-secondary); background: rgba(255,69,58,0.1); padding:8px; border-radius:6px;">
                     <strong>Advisory:</strong> Adjust selling price to <strong>K${data.targetPrice.toFixed(2)}</strong> (+30% of cost).
                 </div>
             </div>`,
@@ -3059,7 +3061,7 @@ const AvantiInsights = {
         </div>`;
 
         if (totalExpenses > totalRevenue && totalRevenue > 0) {
-            html += `<div style="color:#FF453A; font-size:12px; margin-top:8px;"><i class="fas fa-exclamation-triangle"></i> Operating at a deficit for this period.</div>`;
+            html += `<div style="color:#FF453A; font-size:14px; margin-top:8px;"><i class="fas fa-exclamation-triangle"></i> Operating at a deficit for this period.</div>`;
         }
 
         body.innerHTML = html;
@@ -3087,7 +3089,7 @@ const AvantiInsights = {
             if (analysis.threats.length > 0) {
                 itemReports += `<div style="border-bottom:1px solid rgba(255,255,255,0.1); padding:10px 0;">
                     <strong style="color:var(--av-text-primary);">${item.name}</strong><br>
-                    <span style="color:#FF453A; font-size:12px;">${analysis.threats.map(t=>t.message).join('<br>')}</span>
+                    <span style="color:#FF453A; font-size:14px;">${analysis.threats.map(t=>t.message).join('<br>')}</span>
                 </div>`;
             }
         });
@@ -3099,11 +3101,11 @@ const AvantiInsights = {
             <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px;">
                 <div style="background:var(--av-surface); padding:16px; border-radius:12px; text-align:center;">
                     <div style="font-size:32px; font-weight:800; color:${healthScore > 80 ? '#32D74B' : (healthScore > 50 ? '#FF9F0A' : '#FF453A')};">${healthScore}%</div>
-                    <div style="font-size:12px; color:var(--av-text-secondary); text-transform:uppercase;">System Health</div>
+                    <div style="font-size:14px; color:var(--av-text-secondary); text-transform:uppercase;">System Health</div>
                 </div>
                 <div style="background:var(--av-surface); padding:16px; border-radius:12px; text-align:center;">
                     <div style="font-size:32px; font-weight:800; color:#FF453A;">${criticalErrors}</div>
-                    <div style="font-size:12px; color:var(--av-text-secondary); text-transform:uppercase;">Critical Violations</div>
+                    <div style="font-size:14px; color:var(--av-text-secondary); text-transform:uppercase;">Critical Violations</div>
                 </div>
                 <div style="background:var(--av-surface); padding:16px; border-radius:12px; text-align:center;">
                     <div style="font-size:32px; font-weight:800; color:#0A84FF;">${Object.keys(dateData.items||{}).length}</div>
@@ -3134,7 +3136,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     /* Targeted Cell Threat Highlighting */
     .cell-threat {
-        background: rgba(255, 69, 58, 0.15) !important; /* var(--av-red-glow) */
+        background: rgba(255, 69, 58, 0.25) !important; /* var(--av-red-glow) */
         
         position: relative;
         border-radius: 0px; /* Soft iOS rounding for the cell */
