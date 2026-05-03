@@ -2853,8 +2853,19 @@ renderAll();
 })();
 </script>
 <script>
+/**
+ * AVANTI INSIGHTS ENGINE - Production v2.5
+ * Core Integrity & Logic Auditor for Avanti Ledger
+ */
 const AvantiInsights = {
+    settings: {
+        targetMargin: 1.30, // 30% Gross Profit Margin standard
+        volatilityThreshold: 1.5, // 50% cost jump triggers warning
+        roundNumberBias: 5 // Detects if entries are consistently multiples of 5
+    },
+
     init() {
+        // Hijack the main render function to apply audit hooks automatically
         if (typeof renderTable === 'function') {
             const originalRenderTable = renderTable;
             window.renderTable = function() {
@@ -2863,6 +2874,7 @@ const AvantiInsights = {
                 AvantiInsights.updateDailyCard();
             };
         }
+        
         const auditBtn = document.getElementById('runAuditBtn');
         if(auditBtn) auditBtn.addEventListener('click', () => this.generateAuditReport());
     },
@@ -2882,27 +2894,25 @@ const AvantiInsights = {
             const item = dateData.items[itemId];
             if (!item) return;
 
-            // 1. Analyze and Target Specific Cells
             const analysis = this.analyzeItem(item, prevDateData);
             
-            if (analysis.threats.length > 0) {
+            // Apply Visual Threats to specific cells
+            if (analysis.status !== 'healthy') {
                 analysis.threats.forEach(threat => {
-                    if (threat.targetFields) {
-                        threat.targetFields.forEach(field => {
-                            // Find the exact cell matching the data-col attribute
-                            const cell = tr.querySelector(`td[data-col="${field}"]`);
-                            if (cell) {
-                                cell.classList.add('cell-threat');
-                            }
-                        });
-                    }
+                    threat.targetFields?.forEach(field => {
+                        const cell = tr.querySelector(`td[data-col="${field}"]`);
+                        if (cell) cell.classList.add('cell-threat', `threat-${threat.severity}`);
+                    });
                 });
             }
 
-            // 2. Attach iOS Native Interaction (Double Click / Long Press)
+            // iOS Native Interaction (Haptic-style Long Press & Double Click)
             let pressTimer;
             tr.addEventListener('touchstart', (e) => {
-                pressTimer = setTimeout(() => this.showItemReport(itemId, item, prevDateData), 600);
+                pressTimer = setTimeout(() => {
+                    if (window.navigator.vibrate) window.navigator.vibrate(10); // Haptic feedback
+                    this.showItemReport(itemId, item, prevDateData);
+                }, 600);
             }, {passive: true});
             tr.addEventListener('touchend', () => clearTimeout(pressTimer));
             tr.addEventListener('touchmove', () => clearTimeout(pressTimer));
@@ -2912,223 +2922,292 @@ const AvantiInsights = {
 
     analyzeItem(item, prevDateData) {
         let threats = [];
-        let status = 'healthy';
+        const opening = Number(item.opening || 0);
+        const orders = Number(item.orders || 0);
+        const closing = Number(item.closing || 0);
+        const totalStockAvailable = opening + orders;
+        const salesVolume = totalStockAvailable - closing;
+        const price = Number(item.price || 0);
+        const cost = Number(item.lastOrderCost || (item.batches?.[0]?.cost || 0));
 
-        // Discrepancy 1: Opening Stock vs Previous Closing
-        if (prevDateData && prevDateData.items && prevDateData.items[item.id]) {
+        // 1. STOCK CONTINUITY ERRORS
+        if (prevDateData?.items?.[item.id]) {
             const prevClosing = Number(prevDateData.items[item.id].closing || 0);
-            if (prevClosing !== Number(item.opening)) {
+            if (prevClosing !== opening) {
                 threats.push({
                     type: 'stock_mismatch',
-                    message: `Opening stock (${item.opening}) differs from yesterday's closing (${prevClosing}).`,
                     severity: 'critical',
-                    targetFields: ['openingStock'], // Maps to data-col="openingStock"
-                    prevClosing, currentOpening: item.opening
+                    message: `Opening stock (K${opening}) differs from yesterday's closing (K${prevClosing}).`,
+                    targetFields: ['openingStock'],
+                    prevClosing, currentOpening: opening
                 });
             }
         }
 
-        // Discrepancy 2: Cost Price vs Selling Price (130% Standard)
-        if (USER_SETTINGS.GFA) {
-            let cost = item.lastOrderCost || (item.batches && item.batches.length > 0 ? item.batches[item.batches.length - 1].cost : 0);
-            cost = Number(cost);
-            const price = Number(item.price);
-            
-            if (cost > 0) {
-                const targetPrice = cost * 1.30;
-                if (price < cost) {
-                    threats.push({
-                        type: 'loss_leader',
-                        message: `Selling price (K${price}) is lower than Cost price (K${cost}).`,
-                        severity: 'critical',
-                        targetFields: ['price'], // Maps to data-col="price"
-                        cost, price, targetPrice
-                    });
-                } else if (price < targetPrice) {
-                    threats.push({
-                        type: 'margin_warning',
-                        message: `Selling price (K${price}) falls below the 130% standard target (K${targetPrice.toFixed(2)}).`,
-                        severity: 'high',
-                        targetFields: ['price'], // Maps to data-col="price"
-                        cost, price, targetPrice
-                    });
-                }
-            }
-        }
-
-        // Discrepancy 3: Negative Stock / Sales
-        const totalStock = Number(item.opening) + Number(item.orders);
-        if (Number(item.closing) > totalStock) {
+        // 2. IMPOSSIBLE LOGIC (REVERSE FLOW)
+        if (salesVolume < 0) {
             threats.push({
-                type: 'impossible_closing',
-                message: `Closing stock (${item.closing}) cannot exceed Total stock (${totalStock}).`,
+                type: 'logic_error',
                 severity: 'critical',
-                targetFields: ['closingStock'] // Maps to data-col="closingStock"
+                message: `Closing stock (${closing}) exceeds total available units (${totalStockAvailable}).`,
+                targetFields: ['closingStock']
             });
         }
 
+        // 3. GHOST SALES (SELLING WITHOUT RECORDED STOCK)
+        if (salesVolume > 0 && totalStockAvailable === 0) {
+            threats.push({
+                type: 'ghost_sales',
+                severity: 'critical',
+                message: "Sales detected on an item with zero recorded stock.",
+                targetFields: ['openingStock', 'orders']
+            });
+        }
+
+        // 4. MARGIN VIOLATIONS (THE 130% RULE)
+        const targetPrice = cost * this.settings.targetMargin;
+        if (cost > 0) {
+            if (price < cost) {
+                threats.push({
+                    type: 'loss_leader',
+                    severity: 'critical',
+                    message: `Selling price (K${price}) is lower than Cost price (K${cost}).`,
+                    targetFields: ['price'],
+                    cost, price, targetPrice
+                });
+            } else if (price < targetPrice) {
+                threats.push({
+                    type: 'margin_warning',
+                    severity: 'high',
+                    message: `Below 30% margin. Recommended: K${targetPrice.toFixed(2)}.`,
+                    targetFields: ['price'],
+                    cost, price, targetPrice
+                });
+            }
+        }
+
+        // 5. ZERO-VALUE ASSET DETECTION
+        if (totalStockAvailable > 0 && price <= 0) {
+            threats.push({
+                type: 'unpriced_asset',
+                severity: 'critical',
+                message: "Item has stock but no selling price assigned.",
+                targetFields: ['price']
+            });
+        }
+
+        // 6. COST VOLATILITY (SUPPLY CHAIN SPIKE)
+        const prevCost = prevDateData?.items?.[item.id]?.lastOrderCost || 0;
+        if (prevCost > 0 && cost > (prevCost * this.settings.volatilityThreshold)) {
+            threats.push({
+                type: 'cost_spike',
+                severity: 'high',
+                message: `Cost jumped >50% (K${prevCost} to K${cost}).`,
+                targetFields: ['cost']
+            });
+        }
+
+        // 7. STOCKOUT RISK
+        if (closing === 0 && totalStockAvailable > 0) {
+            threats.push({
+                type: 'inventory_depletion',
+                severity: 'high',
+                message: "Item out of stock. Immediate reorder suggested.",
+                targetFields: ['closingStock']
+            });
+        }
+
+        // 8. DORMANT STOCK (DEAD CAPITAL)
+        if (salesVolume === 0 && totalStockAvailable > 0) {
+            threats.push({
+                type: 'dead_stock',
+                severity: 'low',
+                message: "Zero movement today. Capital is tied up in this asset.",
+                targetFields: ['closingStock']
+            });
+        }
+
+        // 9. FRACTIONAL INCONSISTENCY
+        if (!Number.isInteger(opening) && !['kg', 'ltr'].includes(item.unitType)) {
+            threats.push({
+                type: 'unit_error',
+                severity: 'medium',
+                message: "Fractional stock found on discrete unit item.",
+                targetFields: ['openingStock']
+            });
+        }
+
+        // 10. AUDIT BIAS (ROUND NUMBER DETECTION)
+        if (closing > 0 && closing % 5 === 0 && opening % 5 === 0) {
+            threats.push({
+                type: 'round_number_bias',
+                severity: 'low',
+                message: "Entries end in 0 or 5. Verify if physical count was performed.",
+                targetFields: ['closingStock', 'openingStock']
+            });
+        }
+
+        // 11. MISSING COST ANCHOR
+        if (totalStockAvailable > 0 && cost === 0) {
+            threats.push({
+                type: 'missing_cost',
+                severity: 'high',
+                message: "No purchase cost found. Profit margins are hallucinated.",
+                targetFields: ['cost']
+            });
+        }
+
+        // 12. VOLUME ANOMALY (FRAUD/THEFT CHECK)
+        const avg = item.avgDailySales || 0;
+        if (avg > 0 && salesVolume > (avg * 4)) {
+            threats.push({
+                type: 'volume_spike',
+                severity: 'high',
+                message: `Sales volume is 400% higher than daily average.`,
+                targetFields: ['closingStock']
+            });
+        }
+
+        // 13. BULK ORDER WITHOUT BATCH
+        if (orders > 0 && (!item.batches || item.batches.length === 0)) {
+            threats.push({
+                type: 'batch_missing',
+                severity: 'medium',
+                message: "New stock added without batch or expiry tracking.",
+                targetFields: ['orders']
+            });
+        }
+
+        // 14. PRICE DRIFT
+        if (prevDateData?.items?.[item.id] && prevDateData.items[item.id].price !== price) {
+            threats.push({
+                type: 'price_drift',
+                severity: 'low',
+                message: `Price changed from K${prevDateData.items[item.id].price} to K${price}.`,
+                targetFields: ['price']
+            });
+        }
+
+        // 15. UNTRACKED RETURN SURPLUS
+        if (closing > totalStockAvailable && !item.hasReturnNote) {
+            threats.push({
+                type: 'untracked_return',
+                severity: 'high',
+                message: "Surplus stock found without a return transaction record.",
+                targetFields: ['closingStock']
+            });
+        }
+
+        let status = 'healthy';
         if (threats.some(t => t.severity === 'critical')) status = 'critical';
         else if (threats.some(t => t.severity === 'high')) status = 'high';
+        else if (threats.length > 0) status = 'warning';
 
         return { threats, status };
     },
 
-    // --- TEMPLATE LIBRARY ---
     Templates: {
-        stockMismatch: (data) => `
-            <div style="background:var(--av-surface); padding:16px; border-radius:12px; margin-bottom:12px; border-left: 4px solid var(--av-orange);">
-                <h4 style="margin:0 0 8px 0; color:var(--av-orange);"><i class="fas fa-boxes"></i> Stock Reconciliation Error</h4>
-                <p style="margin:0; font-size:14px;">${data.message}</p>
-                <div style="display:flex; justify-content:space-between; margin-top:12px; font-size:12px; color:var(--av-text-secondary);">
-                    <div>Yesterday Close: <strong style="color:#fff;">${data.prevClosing}</strong></div>
-                    <div><i class="fas fa-arrow-right"></i></div>
-                    <div>Today Open: <strong style="color:var(--av-red);">${data.currentOpening}</strong></div>
+        alert(threat) {
+            const icons = { critical: 'fa-exclamation-triangle', high: 'fa-exclamation-circle', medium: 'fa-info-circle', low: 'fa-search' };
+            const colors = { critical: '#FF453A', high: '#FF9F0A', medium: '#64D2FF', low: 'rgba(255,255,255,0.4)' };
+            return `
+                <div style="background:rgba(255,255,255,0.05); padding:16px; border-radius:14px; margin-bottom:12px; border-left:4px solid ${colors[threat.severity]}">
+                    <div style="display:flex; align-items:center; margin-bottom:4px;">
+                        <i class="fas ${icons[threat.severity]}" style="color:${colors[threat.severity]}; margin-right:8px;"></i>
+                        <strong style="text-transform:uppercase; font-size:11px; letter-spacing:1px; color:${colors[threat.severity]}">${threat.type}</strong>
+                    </div>
+                    <p style="margin:0; font-size:14px; color:var(--av-text-primary); line-height:1.4;">${threat.message}</p>
+                </div>`;
+        },
+        healthy: () => `
+            <div style="text-align:center; padding:30px 0;">
+                <div style="width:60px; height:60px; background:rgba(50,215,75,0.1); border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto 16px;">
+                    <i class="fas fa-check" style="color:#32D74B; font-size:24px;"></i>
                 </div>
-            </div>`,
-            
-        pricingAnomaly: (data) => `
-            <div style="background:var(--av-surface); padding:16px; border-radius:12px; margin-bottom:12px; border-left: 4px solid var(--av-red);">
-                <h4 style="margin:0 0 8px 0; color:var(--av-red);"><i class="fas fa-tag"></i> Profit Margin Violation</h4>
-                <p style="margin:0; font-size:14px;">${data.message}</p>
-                <div style="margin-top:12px; font-size:12px; color:var(--av-text-secondary); background: rgba(255,69,58,0.1); padding:8px; border-radius:6px;">
-                    <strong>Advisory:</strong> Adjust selling price to <strong>K${data.targetPrice.toFixed(2)}</strong> (130% of cost).
-                </div>
-            </div>`,
-
-        healthyItem: (item) => `
-            <div style="text-align:center; padding: 20px;">
-                <i class="fas fa-check-circle" style="font-size:48px; color:#32D74B; margin-bottom:12px;"></i>
-                <h4 style="margin:0; color:var(--av-text-primary);">Integrity Verified</h4>
-                <p style="font-size:13px; color:var(--av-text-secondary); margin-top:8px;">No discrepancies detected in pricing algorithms or stock continuity.</p>
-            </div>`,
-            
-        expenseWarning: (revenue, expenses) => `
-            <div style="background:var(--av-surface); padding:16px; border-radius:12px; margin-bottom:12px; border-left: 4px solid var(--av-red);">
-                <h4 style="margin:0 0 8px 0; color:var(--av-red);"><i class="fas fa-chart-pie"></i> Deficit Warning</h4>
-                <p style="margin:0; font-size:14px;">Total daily expenses (K${expenses}) exceed total revenue (K${revenue}).</p>
+                <h4 style="margin:0; font-weight:600;">Ledger Integrity Solid</h4>
+                <p style="color:var(--av-text-secondary); font-size:13px; margin-top:8px;">No anomalies found in current inventory flow.</p>
             </div>`
     },
 
     showItemReport(itemId, item, prevDateData) {
-        if(state.selectMode) return;
         const analysis = this.analyzeItem(item, prevDateData);
-        document.getElementById('analysisModalTitle').textContent = `Analysis: ${item.name}`;
+        const modal = document.getElementById('itemAnalysisModal');
+        const body = document.getElementById('analysisModalBody');
         
-        let html = '';
-        if (analysis.threats.length === 0) {
-            html = this.Templates.healthyItem(item);
-        } else {
-            analysis.threats.forEach(threat => {
-                if (threat.type === 'stock_mismatch') html += this.Templates.stockMismatch(threat);
-                if (threat.type === 'loss_leader' || threat.type === 'margin_warning') html += this.Templates.pricingAnomaly(threat);
-                if (threat.type === 'impossible_closing') html += `<div style="color:var(--av-red); padding:10px; border:1px solid var(--av-red); border-radius:8px;">${threat.message}</div>`;
-            });
-        }
-        document.getElementById('analysisModalBody').innerHTML = html;
-        document.getElementById('itemAnalysisModal').classList.add('active');
+        document.getElementById('analysisModalTitle').textContent = `Audit: ${item.name}`;
+        body.innerHTML = analysis.threats.length ? analysis.threats.map(t => this.Templates.alert(t)).join('') : this.Templates.healthy();
+        
+        modal.classList.add('active');
     },
 
     updateDailyCard() {
-        const card = document.getElementById('dailyInsightCard');
-        const body = document.getElementById('insightBody');
         const dateData = state.dates[state.currentDate];
         if (!dateData) return;
 
-        let totalRevenue = 0;
-        let anomalyCount = 0;
-        
-        const prevDateKey = addDays(state.currentDate, -1);
-        const prevDateData = state.dates[prevDateKey];
-
+        let anomalies = 0;
+        let criticals = 0;
         Object.values(dateData.items || {}).forEach(item => {
-            const sales = Math.max(0, (Number(item.opening) + Number(item.orders)) - Number(item.closing));
-            totalRevenue += sales * Number(item.price);
-            const analysis = this.analyzeItem(item, prevDateData);
-            if(analysis.status !== 'healthy') anomalyCount++;
+            const res = this.analyzeItem(item, state.dates[addDays(state.currentDate, -1)]);
+            if (res.status !== 'healthy') anomalies++;
+            if (res.status === 'critical') criticals++;
         });
 
-        const totalExpenses = (dateData.expenses || []).reduce((s,i) => s + Number(i.amount), 0);
-        const totalIncomes = (dateData.incomes || []).reduce((s,i) => s + Number(i.amount), 0);
-        totalRevenue += totalIncomes;
-
-        card.style.display = 'block';
-
-        let html = `<div style="display:flex; justify-content:space-between; margin-bottom: 8px;">
-            <span>Gross Value Moved: <strong>K${totalRevenue.toLocaleString()}</strong></span>
-            <span>Anomalies: <strong style="color:${anomalyCount > 0 ? '#FF453A' : '#32D74B'};">${anomalyCount}</strong></span>
-        </div>`;
-
-        if (totalExpenses > totalRevenue && totalRevenue > 0) {
-            html += `<div style="color:#FF453A; font-size:12px; margin-top:8px;"><i class="fas fa-exclamation-triangle"></i> Operating at a deficit for this period.</div>`;
+        const card = document.getElementById('dailyInsightCard');
+        if(card) {
+            document.getElementById('insightBody').innerHTML = `
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <div>
+                        <span style="font-size:12px; color:var(--av-text-secondary);">System Health Score</span>
+                        <div style="font-size:24px; font-weight:700; color:${criticals > 0 ? '#FF453A' : '#32D74B'}">${Math.max(0, 100 - (criticals * 15) - (anomalies * 2))}%</div>
+                    </div>
+                    <div style="text-align:right;">
+                        <span style="font-size:12px; color:var(--av-text-secondary);">Active Anomalies</span>
+                        <div style="font-size:24px; font-weight:700;">${anomalies}</div>
+                    </div>
+                </div>`;
+            card.style.display = 'block';
         }
-
-        body.innerHTML = html;
     },
 
     generateAuditReport() {
-        // [Existing Audit Report Code preserved here]
         const dateData = state.dates[state.currentDate];
         const prevDateData = state.dates[addDays(state.currentDate, -1)];
-        let reportHtml = '';
-
         let totalRev = 0;
         let criticalErrors = 0;
-        let minorErrors = 0;
+        let reportHtml = '';
         
-        let itemReports = '';
         Object.values(dateData.items || {}).forEach(item => {
-            const sales = Math.max(0, (Number(item.opening) + Number(item.orders)) - Number(item.closing));
-            totalRev += sales * Number(item.price);
+            const sales = (Number(item.opening) + Number(item.orders)) - Number(item.closing);
+            totalRev += Math.max(0, sales) * Number(item.price);
 
             const analysis = this.analyzeItem(item, prevDateData);
             if (analysis.status === 'critical') criticalErrors++;
-            else if (analysis.status === 'high') minorErrors++;
 
             if (analysis.threats.length > 0) {
-                itemReports += `<div style="border-bottom:1px solid rgba(255,255,255,0.1); padding:10px 0;">
-                    <strong style="color:var(--av-text-primary);">${item.name}</strong><br>
-                    <span style="color:#FF453A; font-size:12px;">${analysis.threats.map(t=>t.message).join('<br>')}</span>
+                reportHtml += `
+                <div style="padding:12px 0; border-bottom:1px solid rgba(255,255,255,0.05);">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                        <strong>${item.name}</strong>
+                        <span style="font-size:10px; padding:2px 6px; border-radius:4px; background:${analysis.status === 'critical' ? 'rgba(255,69,58,0.1)' : 'rgba(255,159,10,0.1)'}; color:${analysis.status === 'critical' ? '#FF453A' : '#FF9F0A'}">${analysis.status.toUpperCase()}</span>
+                    </div>
+                    ${analysis.threats.map(t => `<div style="font-size:12px; color:var(--av-text-secondary); margin-bottom:2px;">• ${t.message}</div>`).join('')}
                 </div>`;
             }
         });
 
-        const totalExp = (dateData.expenses || []).reduce((s,i) => s + Number(i.amount), 0);
-        const healthScore = Math.max(0, 100 - (criticalErrors * 15) - (minorErrors * 5));
-
-        reportHtml += `
-            <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px;">
-                <div style="background:var(--av-surface); padding:16px; border-radius:12px; text-align:center;">
-                    <div style="font-size:32px; font-weight:800; color:${healthScore > 80 ? '#32D74B' : (healthScore > 50 ? '#FF9F0A' : '#FF453A')};">${healthScore}%</div>
-                    <div style="font-size:12px; color:var(--av-text-secondary); text-transform:uppercase;">System Health</div>
-                </div>
-                <div style="background:var(--av-surface); padding:16px; border-radius:12px; text-align:center;">
-                    <div style="font-size:32px; font-weight:800; color:#FF453A;">${criticalErrors}</div>
-                    <div style="font-size:12px; color:var(--av-text-secondary); text-transform:uppercase;">Critical Violations</div>
-                </div>
-                <div style="background:var(--av-surface); padding:16px; border-radius:12px; text-align:center;">
-                    <div style="font-size:32px; font-weight:800; color:#0A84FF;">${Object.keys(dateData.items||{}).length}</div>
-                    <div style="font-size:12px; color:var(--av-text-secondary); text-transform:uppercase;">Tracked Assets</div>
-                </div>
-            </div>
-        `;
-
-        if (totalExp > totalRev) reportHtml += this.Templates.expenseWarning(totalRev, totalExp);
-
-        reportHtml += `<h3 style="margin:20px 0 10px 0; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:8px;">Ledger Discrepancies</h3>`;
-        reportHtml += itemReports || `<p style="color:#32D74B;"><i class="fas fa-check-circle"></i> No discrepancies found in inventory lines.</p>`;
-
-        document.getElementById('auditModalBody').innerHTML = reportHtml;
+        document.getElementById('auditModalBody').innerHTML = reportHtml || this.Templates.healthy();
         document.getElementById('auditModal').classList.add('active');
     }
 };
 
+// Initialize on Load
+document.addEventListener('DOMContentLoaded', () => AvantiInsights.init());
+
 window.closeAnalysisModal = () => document.getElementById('itemAnalysisModal').classList.remove('active');
 window.closeAuditModal = () => document.getElementById('auditModal').classList.remove('active');
-
-document.addEventListener('DOMContentLoaded', () => {
-    AvantiInsights.init();
-});
 </script>
+
+
 <style>
     /* Add this to your existing AI Insight CSS */
     
