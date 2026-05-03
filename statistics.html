@@ -2204,7 +2204,7 @@ function sendToWhatsApp() {
         totalSalesVal += subtotal;
 
         // Fetch cost price from the latest batch or lastOrderCost
-        let costPriceDisplay = "--";
+        let costPriceDisplay = " ";
         if (item.lastOrderCost && item.lastOrderCost > 0) {
             costPriceDisplay = `(Cost:K${item.lastOrderCost} per unit)`;
         } else if (item.batches && item.batches.length > 0) {
