@@ -543,6 +543,49 @@ padding-bottom: env(safe-area-inset-bottom, 50px);
 
     </div>
 
+<!-- WhatsApp Share Button -->
+<button id="whatsappShareBtn" class="ios-action-btn" onclick="sendToWhatsApp()">
+    <div class="btn-content">
+        <i class="fab fa-whatsapp"></i>
+        <span>Send Report</span>
+    </div>
+</button>
+
+<style>
+.ios-action-btn {
+    background: #25D366; /* WhatsApp Green */
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 12px;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    box-shadow: 0 4px 15px rgba(37, 211, 102, 0.3);
+    -webkit-tap-highlight-color: transparent;
+}
+
+.ios-action-btn:active {
+    transform: scale(0.96);
+    background: #128C7E;
+    box-shadow: 0 2px 8px rgba(37, 211, 102, 0.2);
+}
+
+.btn-content {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.btn-content i {
+    font-size: 20px;
+}
+</style>
 
    
     <div class="section-container" >
@@ -2057,6 +2100,72 @@ window.switchUser = async function(newAccountKey, newUsername) {
     console.log(`Switching user to ${newUsername}. Reloading data from Firebase...`);
     await init();
 }
+
+function sendToWhatsApp() {
+    const dateKey = state.currentDate;
+    const dateObj = state.dates[dateKey];
+    
+    if (!dateObj) {
+        alert("No data available for this date.");
+        return;
+    }
+
+    const formattedDate = formatDateLabel(dateKey);
+    const items = Object.values(dateObj.items || {});
+    const expenses = dateObj.expenses || [];
+    const incomes = dateObj.incomes || [];
+
+    // --- Header ---
+    let message = `*📊 AVANTI LEDGER REPORT*\n`;
+    message += `*Date:* ${formattedDate}\n`;
+    message += `*Status:* ${dateObj.balanced ? "✅ Balanced" : "⚠️ Unbalanced"}\n`;
+    message += `--------------------------------\n\n`;
+
+    // --- Inventory & Sales ---
+    message += `*📦 INVENTORY & SALES*\n`;
+    let totalSalesVal = 0;
+    
+    items.forEach(item => {
+        const totalStock = Number(item.opening) + Number(item.orders);
+        const salesQty = Math.max(0, totalStock - Number(item.closing));
+        const itemTotal = salesQty * Number(item.price);
+        totalSalesVal += itemTotal;
+
+        if (salesQty > 0 || totalStock > 0) {
+            message += `• *${item.name}*\n`;
+            message += `  Stock: ${totalStock} | Sold: ${salesQty} | Price: K${item.price}\n`;
+            message += `  Subtotal: *K${itemTotal.toLocaleString()}*\n\n`;
+        }
+    });
+
+    // --- Financial Summary ---
+    const netIncome = incomes.reduce((s, i) => s + Number(i.amount || 0), 0);
+    const netExpenses = expenses.reduce((s, i) => s + Number(i.amount || 0), 0);
+    const finalRevenue = totalSalesVal + netIncome - netExpenses;
+
+    message += `--------------------------------\n`;
+    message += `*💰 FINANCIAL SUMMARY*\n`;
+    message += `Gross Sales: K${totalSalesVal.toLocaleString()}\n`;
+    
+    if (incomes.length > 0) {
+        message += `Other Income: +K${netIncome.toLocaleString()}\n`;
+    }
+    
+    if (expenses.length > 0) {
+        message += `Total Expenses: -K${netExpenses.toLocaleString()}\n`;
+    }
+
+    message += `\n*NET CASH REVENUE: K${finalRevenue.toLocaleString()}*\n`;
+    message += `--------------------------------\n`;
+    message += `_Generated via Avanti Ledger Portal_`;
+
+    // --- Execution ---
+    const encodedMessage = encodeURIComponent(message);
+    const whatsappUrl = `https://wa.me/?text=${encodedMessage}`;
+    
+    window.open(whatsappUrl, '_blank');
+}
+
 
 async function init(){
     // Load state and settings (which updates AV_LEDGER_ACCOUNT_KEY/USERNAME and REMOTE_DB_PATH)
