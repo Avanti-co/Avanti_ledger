@@ -2188,7 +2188,7 @@ function sendToWhatsApp() {
 
     let message = `*📊 AVANTI LEDGER: FULL REPORT*\n`;
     message += `*Period:* ${formattedDate}\n`;
-    message += `*Status:* ${dateObj.balanced ? "✅ BALANCED" : "⚠️ UNBALANCED"}\n`;
+    message += `*Status:* ${dateObj.balanced ? "✅ BALANCED" : "❌UNBALANCED"}\n`;
     message += `--------------------------------\n\n`;
 
     let totalSalesVal = 0;
@@ -2204,19 +2204,19 @@ function sendToWhatsApp() {
         totalSalesVal += subtotal;
 
         // Fetch cost price from the latest batch or lastOrderCost
-        let costPriceDisplay = "N/A";
+        let costPriceDisplay = "--";
         if (item.lastOrderCost && item.lastOrderCost > 0) {
-            costPriceDisplay = `K${item.lastOrderCost}`;
+            costPriceDisplay = `(Cost:K${item.lastOrderCost} per unit)`;
         } else if (item.batches && item.batches.length > 0) {
-            costPriceDisplay = `K${item.batches[item.batches.length - 1].cost}`;
+            costPriceDisplay = `( Cost: K${item.batches[item.batches.length - 1].cost} per unit)`;
         }
 
         message += `*${item.name.toUpperCase()}*\n`;
-        message += `• Op. Stock: ${opening}\n`;
-        message += `• Orders: ${orders} (Cost: ${costPriceDisplay})\n`;
+        message += `• Opening Stock: ${opening}\n`;
+        message += `• Orders: ${orders} ${costPriceDisplay}\n`;
         message += `• Total Stock: ${totalStock}\n`;
         message += `• Sell Price: K${price}\n`;
-        message += `• Cl. Stock: ${closing}\n`;
+        message += `• Closing Stock: ${closing}\n`;
         message += `• Sales: *${salesQty}*\n`;
         message += `• Subtotal: *K${subtotal.toLocaleString()}*\n`;
         message += `--------------------------------\n`;
@@ -2232,7 +2232,7 @@ function sendToWhatsApp() {
     message += `Other Income: +K${netIncome.toLocaleString()}\n`;
     message += `Expenses: -K${netExpenses.toLocaleString()}\n`;
     message += `*NET REVENUE: K${finalRevenue.toLocaleString()}*\n\n`;
-    message += `_Portal: Avanti Ledger v1.0_`;
+    message += `_Portal:Powered by Avanti Ledger v1.0_`;
 
     const encodedMessage = encodeURIComponent(message);
     window.open(`https://wa.me/?text=${encodedMessage}`, '_blank');
