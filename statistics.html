@@ -398,6 +398,76 @@ table.stats-table td {
 
 }
 
+
+
+/* Insights Dashboard Card */
+.ai-insights-dashboard {
+    margin: 20px 15px;
+    padding: 20px;
+    background: black;
+    backdrop-filter: blur(20px);
+    border: 1px solid var(--glass-border);
+    border-radius: 20px;
+    color: white;
+}
+
+.insight-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.health-pill {
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.health-pill.good { background: var(--ios-green); }
+.health-pill.warning { background: #FF9500; }
+.health-pill.critical { background: var(--ios-red); }
+
+/* Report Overlays */
+.full-screen-report {
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: #000;
+    z-index: 3000;
+    overflow-y: auto;
+    padding: 20px;
+    display: none;
+}
+
+.report-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 20px;
+    margin-top: 30px;
+}
+
+.audit-card {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 18px;
+    padding: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Animations */
+@keyframes pulseRed {
+    0% { box-shadow: 0 0 0 0 rgba(255, 59, 48, 0.4); }
+    70% { box-shadow: 0 0 0 10px rgba(255, 59, 48, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(255, 59, 48, 0); }
+}
+
+.ai-flagged-row {
+    background: rgba(255, 59, 48, 0.1) !important;
+    animation: pulseRed 2s infinite;
+}
+
+
 </style>
 
 </head>
@@ -722,8 +792,56 @@ Expenses</span>
         </a>
         
     </div>
+<!-- 1. Reporting Dashboard -->
+<div class="ai-insights-dashboard" id="dailyInsightCard">
+    <div class="insight-header">
+        <span class="health-pill" id="healthStatus">Analyzing...</span>
+        <small style="opacity: 0.6;"><i class="fas fa-robot"></i> Puter AI Guardian</small>
+    </div>
+    <h3 id="insightBrief">Scanning daily records for integrity...</h3>
+    <div id="anomalyList" style="margin-top: 10px;"></div>
+</div>
+
+<!-- 2. Deep Audit Button -->
+<div style="padding: 0 15px; margin-bottom: 20px;">
+    <button class="ios-btn-secondary" style="width: 100%;" onclick="openAuditRangePicker()">
+        <i class="fas fa-microscope"></i> Run Forensic Deep Audit
+    </button>
+</div>
+
+<!-- 3. Audit Range Picker Modal -->
+<div id="auditRangeModal" class="modal">
+    <div class="modal-content ios-modal">
+        <div class="ios-drag-handle"></div>
+        <h3>Select Audit Period</h3>
+        <div class="modal-body">
+            <input type="date" id="auditStart" class="ios-input" style="margin-bottom: 10px;">
+            <input type="date" id="auditEnd" class="ios-input">
+            <p style="font-size: 12px; opacity: 0.7; margin-top: 15px;">AI will verify stock carry-overs, expense-to-income ratios, and margin integrity.</p>
+        </div>
+        <div class="modal-footer">
+            <button class="ios-btn-primary" onclick="executeDeepAudit()">Start Analysis</button>
+            <button class="ios-btn-ghost" onclick="closeModal('auditRangeModal')">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<!-- 4. Comprehensive Audit Report Overlay -->
+<div id="auditReportOverlay" class="full-screen-report">
+    <div style="max-width: 800px; margin: 0 auto;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <button class="ios-btn-ghost" onclick="closeAuditReport()"><i class="fas fa-times"></i> Close</button>
+            <h2 id="reportTitle">Forensic Audit</h2>
+            <button class="ios-btn-ghost" onclick="window.print()"><i class="fas fa-print"></i></button>
+        </div>
+        <div id="auditReportContent"></div>
+    </div>
+</div>
+
+
 <div class="section-container mb-100"></div>
 </div>
+
 
 
     <div class="modal" id="ordersModal" role="dialog" aria-modal="true">
@@ -2171,6 +2289,136 @@ window.switchUser = async function(newAccountKey, newUsername) {
     console.log(`Switching user to ${newUsername}. Reloading data from Firebase...`);
     await init();
 }
+
+/* =======================================================
+    Avanti Ledger - Puter AI Intelligence Engine
+   ======================================================= */
+
+/**
+ * 1. DAILY INTEGRITY CHECK
+ * Triggered on renderAll(). Analyzes the current date.
+ */
+async function refreshDailyAI() {
+    const dateKey = state.currentDate;
+    const dateObj = state.dates[dateKey];
+    if (!dateObj || !isOnline) return;
+
+    const cachePath = `${REMOTE_DB_PATH}/ai_cache/${dateKey}`;
+    const snapshot = await firebaseDB.ref(cachePath).once('value');
+
+    if (snapshot.exists()) {
+        renderDailyDashboard(snapshot.val());
+    } else {
+        const payload = {
+            items: Object.values(dateObj.items),
+            expenses: dateObj.expenses,
+            incomes: dateObj.incomes,
+            prevClosing: getPreviousDayClosing()
+        };
+
+        const prompt = `Analyze this daily ledger for ${dateKey}: ${JSON.stringify(payload)}. 
+        Check: 1. Stock carry-over errors. 2. Selling price < 130% of cost. 3. High expense/income ratio.
+        Return JSON: { health: "good"|"warning"|"critical", brief: "string", anomalies: [{id: "itemId", msg: "string"}] }`;
+
+        const response = await puter.ai.chat(prompt);
+        const data = JSON.parse(response.message.content);
+        await firebaseDB.ref(cachePath).set(data);
+        renderDailyDashboard(data);
+    }
+}
+
+/**
+ * 2. INDIVIDUAL ITEM REPORT
+ * Drill-down analysis for specific items.
+ */
+function showItemAnalysis(itemId) {
+    const item = state.dates[state.currentDate].items[itemId];
+    const cost = item.lastOrderCost || 0;
+    const targetPrice = cost * 1.3;
+    const isPricingThreat = item.price < targetPrice;
+
+    let analysisHtml = `
+        <div class="report-card">
+            <h4>${item.name} Forensic Report</h4>
+            <div style="display: flex; gap: 10px; margin: 15px 0;">
+                <div class="stat-box"><span>Profitability</span><strong style="color: ${isPricingThreat ? '#FF3B30' : '#34C759'}">${isPricingThreat ? 'Low' : 'Healthy'}</strong></div>
+                <div class="stat-box"><span>Stock Turnover</span><strong>${((item.opening + item.orders - item.closing) / (item.opening + item.orders || 1) * 100).toFixed(0)}%</strong></div>
+            </div>
+            <p style="background: rgba(255,255,255,0.05); padding: 10px; border-radius: 10px;">
+                <i class="fas fa-info-circle"></i> 
+                ${isPricingThreat ? 
+                    `THREAT: Your selling price (K${item.price}) is below the 130% standard (K${targetPrice.toFixed(2)}). You are eroding your capital.` : 
+                    `This item is priced correctly according to accounting standards.`}
+            </p>
+        </div>`;
+
+    document.getElementById('aiAdviceText').innerHTML = analysisHtml;
+    document.getElementById('aiAdviceModal').classList.add('show');
+}
+
+/**
+ * 3. PERIODIC DEEP AUDIT
+ * Cross-date forensic engine.
+ */
+async function executeDeepAudit() {
+    const start = document.getElementById('auditStart').value;
+    const end = document.getElementById('auditEnd').value;
+    if (!start || !end) return;
+
+    document.getElementById('auditRangeModal').classList.remove('show');
+    const overlay = document.getElementById('auditReportOverlay');
+    overlay.style.display = 'block';
+    
+    const auditContent = document.getElementById('auditReportContent');
+    auditContent.innerHTML = '<div class="loading-spinner">Performing Forensic Audit...</div>';
+
+    // Aggregate Data across range
+    const periodData = [];
+    let curr = start;
+    while(curr <= end) {
+        if (state.dates[curr]) periodData.push({ date: curr, ...state.dates[curr] });
+        curr = addDays(curr, 1);
+    }
+
+    const prompt = `Perform a full forensic audit from ${start} to ${end} on this data: ${JSON.stringify(periodData)}.
+    Required sections: 1. Overall Account Integrity (0-100 score). 2. Stock Shrinkage Report. 3. Profit Margin Violations. 4. Unusual Cash Movements. 
+    Return a detailed HTML report using iOS-style cards and bold typography.`;
+
+    try {
+        const response = await puter.ai.chat(prompt);
+        auditContent.innerHTML = response.message.content;
+    } catch (e) {
+        auditContent.innerHTML = "<p>Audit failed. Check internet connection.</p>";
+    }
+}
+
+/* --- Helpers --- */
+function getPreviousDayClosing() {
+    const prevDate = addDays(state.currentDate, -1);
+    const prevData = state.dates[prevDate];
+    if (!prevData) return null;
+    const totals = {};
+    Object.values(prevData.items).forEach(it => totals[it.id] = it.closing);
+    return totals;
+}
+
+function renderDailyDashboard(data) {
+    const healthEl = document.getElementById('healthStatus');
+    healthEl.className = `health-pill ${data.health}`;
+    healthEl.textContent = data.health.toUpperCase();
+    document.getElementById('insightBrief').textContent = data.brief;
+    
+    // Highlight items in table
+    document.querySelectorAll('#statsTableBody tr').forEach(tr => tr.classList.remove('ai-flagged-row'));
+    data.anomalies.forEach(a => {
+        const row = document.querySelector(`tr[data-item-id="${a.id}"]`);
+        if (row) row.classList.add('ai-flagged-row');
+    });
+}
+
+function openAuditRangePicker() { document.getElementById('auditRangeModal').classList.add('show'); }
+function closeAuditReport() { document.getElementById('auditReportOverlay').style.display = 'none'; }
+
 
 function sendToWhatsApp() {
     const dateKey = state.currentDate;
