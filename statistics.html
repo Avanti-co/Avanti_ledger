@@ -398,62 +398,6 @@ table.stats-table td {
 
 }
 
-/* Row highlighting */
-.risk-critical { background: rgba(255,0,0,0.25); }
-.risk-high { background: rgba(255,80,80,0.2); }
-.risk-medium { background: rgba(255,165,0,0.2); }
-
-.alert-icon {
-    margin-left: 8px;
-    animation: pulse 1s infinite;
-}
-
-/* Modal */
-.ios-modal {
-    background: #1c1c1e;
-    border-radius: 20px;
-    padding: 20px;
-    color: white;
-}
-
-/* Insight blocks */
-.insight-block {
-    padding: 12px;
-    border-radius: 12px;
-    margin: 10px 0;
-}
-
-.insight-block.high { background: rgba(255,0,0,0.2); }
-.insight-block.medium { background: rgba(255,165,0,0.2); }
-
-/* Health card */
-.health-card {
-    background: linear-gradient(135deg,#3f72af,#112d4e);
-    padding: 15px;
-    border-radius: 20px;
-    color: white;
-}
-
-.bar {
-    height: 10px;
-    background: #333;
-    border-radius: 10px;
-    overflow: hidden;
-}
-
-#expenseBar {
-    height: 100%;
-    background: red;
-    width: 0%;
-    animation: grow 1s ease forwards;
-}
-
-@keyframes pulse {
-    0% {opacity:1;}
-    50% {opacity:0.5;}
-    100% {opacity:1;}
-}
-
 </style>
 
 </head>
@@ -778,29 +722,158 @@ Expenses</span>
         </a>
         
     </div>
-<button class="audit-btn" onclick="runFullAudit()">
-    Run Comprehensive Audit
-</button>
+<!-- Avanti AI Insight Engine UI -->
+<style>
+    /* iOS OLED & Glassmorphism Standards */
+    :root {
+        --av-bg-black: #000000;
+        --av-surface: rgba(28, 28, 30, 0.65);
+        --av-surface-solid: #1C1C1E;
+        --av-border: rgba(255, 255, 255, 0.1);
+        --av-text-primary: #F2F2F7;
+        --av-text-secondary: #EBEBF599;
+        --av-red: #FF453A;
+        --av-red-glow: rgba(255, 69, 58, 0.2);
+        --av-green: #32D74B;
+        --av-orange: #FF9F0A;
+        --av-blue: #0A84FF;
+        --av-blur: blur(20px);
+    }
 
-<div class="health-card">
-    <h3>📊 Daily Financial Health</h3>
+    .ai-insight-card {
+        background: var(--av-surface);
+        backdrop-filter: var(--av-blur);
+        -webkit-backdrop-filter: var(--av-blur);
+        border: 1px solid var(--av-border);
+        border-radius: 16px;
+        padding: 16px;
+        margin-bottom: 20px;
+        color: var(--av-text-primary);
+        font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+    }
 
-    <div class="bar">
-        <div id="expenseBar"></div>
+    .ai-insight-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 12px;
+        font-weight: 600;
+        font-size: 15px;
+        color: var(--av-blue);
+    }
+
+    .ai-insight-body { font-size: 14px; line-height: 1.4; }
+    
+    .audit-btn {
+        background: linear-gradient(135deg, var(--av-surface-solid), #2C2C2E);
+        border: 1px solid var(--av-border);
+        color: var(--av-text-primary);
+        padding: 10px 20px;
+        border-radius: 20px;
+        font-weight: 600;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        transition: all 0.2s ease;
+    }
+    .audit-btn:active { transform: scale(0.96); }
+
+    /* Threat Highlights in Table */
+    .row-threat {
+        background: var(--av-red-glow) !important;
+        position: relative;
+    }
+    .row-threat::after {
+        content: '\f071'; /* FontAwesome alert */
+        font-family: 'Font Awesome 5 Free';
+        font-weight: 900;
+        color: var(--av-red);
+        position: absolute;
+        left: 4px;
+        top: 50%;
+        transform: translateY(-50%);
+        font-size: 12px;
+        animation: pulse 1.5s infinite;
+    }
+
+    @keyframes pulse {
+        0% { opacity: 0.6; transform: translateY(-50%) scale(1); }
+        50% { opacity: 1; transform: translateY(-50%) scale(1.2); }
+        100% { opacity: 0.6; transform: translateY(-50%) scale(1); }
+    }
+
+    /* iOS Modal Native Styles */
+    .ios-modal-overlay {
+        position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+        background: rgba(0,0,0,0.6);
+        backdrop-filter: blur(5px);
+        -webkit-backdrop-filter: blur(5px);
+        z-index: 9999;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        opacity: 0; transition: opacity 0.3s ease;
+    }
+    .ios-modal-overlay.active { display: flex; opacity: 1; }
+    
+    .ios-modal-content {
+        background: var(--av-surface-solid);
+        border: 1px solid var(--av-border);
+        border-radius: 24px;
+        width: 90%; max-width: 500px;
+        max-height: 85vh; overflow-y: auto;
+        padding: 24px;
+        color: var(--av-text-primary);
+        box-shadow: 0 20px 40px rgba(0,0,0,0.8);
+        transform: translateY(20px); transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+    .ios-modal-overlay.active .ios-modal-content { transform: translateY(0); }
+
+    .audit-fullscreen {
+        max-width: 900px; height: 90vh; border-radius: 16px;
+    }
+
+    /* Visual Bars */
+    .visual-bar-bg { background: #333; border-radius: 8px; height: 12px; width: 100%; overflow: hidden; margin-top: 6px; }
+    .visual-bar-fill { height: 100%; border-radius: 8px; transition: width 0.5s ease; }
+    .fill-red { background: var(--av-red); }
+    .fill-green { background: var(--av-green); }
+    .fill-blue { background: var(--av-blue); }
+</style>
+
+<div id="dailyInsightCard" class="ai-insight-card" style="display:none;">
+    <div class="ai-insight-header">
+        <span><i class="fas fa-brain"></i> AI Daily Insights</span>
+        <button id="runAuditBtn" class="audit-btn"><i class="fas fa-shield-alt"></i> Comprehensive Audit</button>
     </div>
-
-    <p id="healthText"></p>
+    <div id="insightBody" class="ai-insight-body">Analyzing ledger integrity...</div>
 </div>
+
+<!-- Item Analysis Modal -->
+<div id="itemAnalysisModal" class="ios-modal-overlay">
+    <div class="ios-modal-content">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 20px;">
+            <h3 id="analysisModalTitle" style="margin:0; font-size:20px; font-weight:700;">Analysis</h3>
+            <i class="fas fa-times" style="font-size:20px; cursor:pointer; color:var(--av-text-secondary);" onclick="closeAnalysisModal()"></i>
+        </div>
+        <div id="analysisModalBody"></div>
+    </div>
+</div>
+
+<!-- Comprehensive Audit Modal -->
+<div id="auditModal" class="ios-modal-overlay">
+    <div class="ios-modal-content audit-fullscreen">
+        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--av-border); padding-bottom:16px; margin-bottom:20px;">
+            <h2 style="margin:0;"><i class="fas fa-file-contract" style="color:var(--av-blue);"></i> Comprehensive Audit Report</h2>
+            <i class="fas fa-times" style="font-size:24px; cursor:pointer;" onclick="closeAuditModal()"></i>
+        </div>
+        <div id="auditModalBody" style="display:flex; flex-direction:column; gap:20px;"></div>
+    </div>
+</div>
+
 <div class="section-container mb-100"></div>
-</div>
-
-<div id="insightModal" class="modal">
-  <div class="modal-content ios-modal">
-    <div id="insightBody"></div>
-    <button onclick="document.getElementById('insightModal').classList.remove('show')">
-      Close
-    </button>
-  </div>
 </div>
 
 
@@ -2779,234 +2852,317 @@ renderAll();
     bootstrapDownloadListener();
 })();
 </script>
-
 <script>
-/* =======================================================
-   AVANTI AI INSIGHT ENGINE
-   - Detects discrepancies
-   - Highlights risky items
-   - Provides audit intelligence
-   ======================================================= */
-
-const INSIGHT_FLAGS = {
-    STOCK_MISMATCH: "stock_mismatch",
-    NEGATIVE_SALES: "negative_sales",
-    PRICE_BELOW_COST: "price_below_cost",
-    LOW_MARGIN: "low_margin",
-    ZERO_ACTIVITY: "zero_activity",
-    HIGH_EXPENSE_RATIO: "high_expense_ratio",
-    ABNORMAL_INCOME: "abnormal_income"
-};
-
-let insightCache = {};
-
-/* ---------- CORE ANALYSIS ---------- */
-function analyzeItem(itemId, dateKey){
-    const date = state.dates[dateKey];
-    const item = date.items[itemId];
-    const prevDate = addDays(dateKey, -1);
-    const prevItem = state.dates[prevDate]?.items?.[itemId];
-
-    let issues = [];
-
-    // 1. STOCK FLOW MISMATCH
-    if(prevItem && prevItem.closing !== item.opening){
-        issues.push({
-            type: INSIGHT_FLAGS.STOCK_MISMATCH,
-            severity: "high",
-            msg: `Opening (${item.opening}) ≠ Previous Closing (${prevItem.closing})`
-        });
-    }
-
-    // 2. NEGATIVE SALES
-    const totalStock = item.opening + item.orders;
-    const sales = totalStock - item.closing;
-    if(sales < 0){
-        issues.push({
-            type: INSIGHT_FLAGS.NEGATIVE_SALES,
-            severity: "high",
-            msg: "Closing stock exceeds available stock"
-        });
-    }
-
-    // 3. COST vs PRICE (GFA MODE)
-    if(USER_SETTINGS.GFA && item.lastOrderCost){
-        if(item.price < item.lastOrderCost){
-            issues.push({
-                type: INSIGHT_FLAGS.PRICE_BELOW_COST,
-                severity: "critical",
-                msg: "Selling below cost (LOSS)"
-            });
+const AvantiInsights = {
+    init() {
+        if (typeof renderTable === 'function') {
+            const originalRenderTable = renderTable;
+            window.renderTable = function() {
+                originalRenderTable(); 
+                AvantiInsights.applyTableHooks();
+                AvantiInsights.updateDailyCard();
+            };
         }
+        const auditBtn = document.getElementById('runAuditBtn');
+        if(auditBtn) auditBtn.addEventListener('click', () => this.generateAuditReport());
+    },
 
-        if(item.price < item.lastOrderCost * 1.3){
-            issues.push({
-                type: INSIGHT_FLAGS.LOW_MARGIN,
-                severity: "medium",
-                msg: "Below 130% markup standard"
-            });
-        }
-    }
+    applyTableHooks() {
+        const tbody = document.getElementById('statsTableBody');
+        if (!tbody) return;
 
-    // 4. DEAD STOCK
-    if(item.opening > 0 && item.orders === 0 && item.closing === item.opening){
-        issues.push({
-            type: INSIGHT_FLAGS.ZERO_ACTIVITY,
-            severity: "low",
-            msg: "No movement detected"
+        const dateData = state.dates[state.currentDate];
+        if (!dateData || !dateData.items) return;
+
+        const prevDateKey = addDays(state.currentDate, -1);
+        const prevDateData = state.dates[prevDateKey];
+
+        Array.from(tbody.children).forEach(tr => {
+            const itemId = tr.dataset.itemId;
+            const item = dateData.items[itemId];
+            if (!item) return;
+
+            // 1. Analyze and Target Specific Cells
+            const analysis = this.analyzeItem(item, prevDateData);
+            
+            if (analysis.threats.length > 0) {
+                analysis.threats.forEach(threat => {
+                    if (threat.targetFields) {
+                        threat.targetFields.forEach(field => {
+                            // Find the exact cell matching the data-col attribute
+                            const cell = tr.querySelector(`td[data-col="${field}"]`);
+                            if (cell) {
+                                cell.classList.add('cell-threat');
+                            }
+                        });
+                    }
+                });
+            }
+
+            // 2. Attach iOS Native Interaction (Double Click / Long Press)
+            let pressTimer;
+            tr.addEventListener('touchstart', (e) => {
+                pressTimer = setTimeout(() => this.showItemReport(itemId, item, prevDateData), 600);
+            }, {passive: true});
+            tr.addEventListener('touchend', () => clearTimeout(pressTimer));
+            tr.addEventListener('touchmove', () => clearTimeout(pressTimer));
+            tr.addEventListener('dblclick', () => this.showItemReport(itemId, item, prevDateData));
         });
-    }
+    },
 
-    return issues;
-}
+    analyzeItem(item, prevDateData) {
+        let threats = [];
+        let status = 'healthy';
 
-/* ---------- APPLY VISUAL HIGHLIGHTS ---------- */
-function applyInsightsToTable(){
-    const rows = document.querySelectorAll("#statsTableBody tr");
-
-    rows.forEach(row=>{
-        const id = row.dataset.itemId;
-        const issues = analyzeItem(id, state.currentDate);
-
-        row.classList.remove("risk-high","risk-medium","risk-low");
-
-        if(issues.length){
-            const highest = issues.sort((a,b)=>severityRank(b.severity)-severityRank(a.severity))[0];
-
-            row.classList.add("risk-" + highest.severity);
-
-            if(!row.querySelector(".alert-icon")){
-                const icon = document.createElement("span");
-                icon.className = "alert-icon";
-                icon.innerHTML = "⚠️";
-                row.children[1].appendChild(icon);
+        // Discrepancy 1: Opening Stock vs Previous Closing
+        if (prevDateData && prevDateData.items && prevDateData.items[item.id]) {
+            const prevClosing = Number(prevDateData.items[item.id].closing || 0);
+            if (prevClosing !== Number(item.opening)) {
+                threats.push({
+                    type: 'stock_mismatch',
+                    message: `Opening stock (${item.opening}) differs from yesterday's closing (${prevClosing}).`,
+                    severity: 'critical',
+                    targetFields: ['openingStock'], // Maps to data-col="openingStock"
+                    prevClosing, currentOpening: item.opening
+                });
             }
         }
-    });
-}
 
-function severityRank(s){
-    return {critical:3, high:2, medium:1, low:0}[s] || 0;
-}
+        // Discrepancy 2: Cost Price vs Selling Price (130% Standard)
+        if (USER_SETTINGS.GFA) {
+            let cost = item.lastOrderCost || (item.batches && item.batches.length > 0 ? item.batches[item.batches.length - 1].cost : 0);
+            cost = Number(cost);
+            const price = Number(item.price);
+            
+            if (cost > 0) {
+                const targetPrice = cost * 1.30;
+                if (price < cost) {
+                    threats.push({
+                        type: 'loss_leader',
+                        message: `Selling price (K${price}) is lower than Cost price (K${cost}).`,
+                        severity: 'critical',
+                        targetFields: ['price'], // Maps to data-col="price"
+                        cost, price, targetPrice
+                    });
+                } else if (price < targetPrice) {
+                    threats.push({
+                        type: 'margin_warning',
+                        message: `Selling price (K${price}) falls below the 130% standard target (K${targetPrice.toFixed(2)}).`,
+                        severity: 'high',
+                        targetFields: ['price'], // Maps to data-col="price"
+                        cost, price, targetPrice
+                    });
+                }
+            }
+        }
 
-/* ---------- ITEM REPORT MODAL ---------- */
-function showItemInsight(itemId){
-    const issues = analyzeItem(itemId, state.currentDate);
-    const item = state.dates[state.currentDate].items[itemId];
+        // Discrepancy 3: Negative Stock / Sales
+        const totalStock = Number(item.opening) + Number(item.orders);
+        if (Number(item.closing) > totalStock) {
+            threats.push({
+                type: 'impossible_closing',
+                message: `Closing stock (${item.closing}) cannot exceed Total stock (${totalStock}).`,
+                severity: 'critical',
+                targetFields: ['closingStock'] // Maps to data-col="closingStock"
+            });
+        }
 
-    let html = `<h2>${item.name}</h2>`;
+        if (threats.some(t => t.severity === 'critical')) status = 'critical';
+        else if (threats.some(t => t.severity === 'high')) status = 'high';
 
-    if(!issues.length){
-        html += `<p class="good">No issues detected. Data integrity is strong.</p>`;
-    }
+        return { threats, status };
+    },
 
-    issues.forEach(i=>{
-        html += `
-            <div class="insight-block ${i.severity}">
-                <strong>${i.type}</strong>
-                <p>${i.msg}</p>
-                ${generateAdvice(i)}
+    // --- TEMPLATE LIBRARY ---
+    Templates: {
+        stockMismatch: (data) => `
+            <div style="background:var(--av-surface); padding:16px; border-radius:12px; margin-bottom:12px; border-left: 4px solid var(--av-orange);">
+                <h4 style="margin:0 0 8px 0; color:var(--av-orange);"><i class="fas fa-boxes"></i> Stock Reconciliation Error</h4>
+                <p style="margin:0; font-size:14px;">${data.message}</p>
+                <div style="display:flex; justify-content:space-between; margin-top:12px; font-size:12px; color:var(--av-text-secondary);">
+                    <div>Yesterday Close: <strong style="color:#fff;">${data.prevClosing}</strong></div>
+                    <div><i class="fas fa-arrow-right"></i></div>
+                    <div>Today Open: <strong style="color:var(--av-red);">${data.currentOpening}</strong></div>
+                </div>
+            </div>`,
+            
+        pricingAnomaly: (data) => `
+            <div style="background:var(--av-surface); padding:16px; border-radius:12px; margin-bottom:12px; border-left: 4px solid var(--av-red);">
+                <h4 style="margin:0 0 8px 0; color:var(--av-red);"><i class="fas fa-tag"></i> Profit Margin Violation</h4>
+                <p style="margin:0; font-size:14px;">${data.message}</p>
+                <div style="margin-top:12px; font-size:12px; color:var(--av-text-secondary); background: rgba(255,69,58,0.1); padding:8px; border-radius:6px;">
+                    <strong>Advisory:</strong> Adjust selling price to <strong>K${data.targetPrice.toFixed(2)}</strong> (130% of cost).
+                </div>
+            </div>`,
+
+        healthyItem: (item) => `
+            <div style="text-align:center; padding: 20px;">
+                <i class="fas fa-check-circle" style="font-size:48px; color:#32D74B; margin-bottom:12px;"></i>
+                <h4 style="margin:0; color:var(--av-text-primary);">Integrity Verified</h4>
+                <p style="font-size:13px; color:var(--av-text-secondary); margin-top:8px;">No discrepancies detected in pricing algorithms or stock continuity.</p>
+            </div>`,
+            
+        expenseWarning: (revenue, expenses) => `
+            <div style="background:var(--av-surface); padding:16px; border-radius:12px; margin-bottom:12px; border-left: 4px solid var(--av-red);">
+                <h4 style="margin:0 0 8px 0; color:var(--av-red);"><i class="fas fa-chart-pie"></i> Deficit Warning</h4>
+                <p style="margin:0; font-size:14px;">Total daily expenses (K${expenses}) exceed total revenue (K${revenue}).</p>
+            </div>`
+    },
+
+    showItemReport(itemId, item, prevDateData) {
+        if(state.selectMode) return;
+        const analysis = this.analyzeItem(item, prevDateData);
+        document.getElementById('analysisModalTitle').textContent = `Analysis: ${item.name}`;
+        
+        let html = '';
+        if (analysis.threats.length === 0) {
+            html = this.Templates.healthyItem(item);
+        } else {
+            analysis.threats.forEach(threat => {
+                if (threat.type === 'stock_mismatch') html += this.Templates.stockMismatch(threat);
+                if (threat.type === 'loss_leader' || threat.type === 'margin_warning') html += this.Templates.pricingAnomaly(threat);
+                if (threat.type === 'impossible_closing') html += `<div style="color:var(--av-red); padding:10px; border:1px solid var(--av-red); border-radius:8px;">${threat.message}</div>`;
+            });
+        }
+        document.getElementById('analysisModalBody').innerHTML = html;
+        document.getElementById('itemAnalysisModal').classList.add('active');
+    },
+
+    updateDailyCard() {
+        const card = document.getElementById('dailyInsightCard');
+        const body = document.getElementById('insightBody');
+        const dateData = state.dates[state.currentDate];
+        if (!dateData) return;
+
+        let totalRevenue = 0;
+        let anomalyCount = 0;
+        
+        const prevDateKey = addDays(state.currentDate, -1);
+        const prevDateData = state.dates[prevDateKey];
+
+        Object.values(dateData.items || {}).forEach(item => {
+            const sales = Math.max(0, (Number(item.opening) + Number(item.orders)) - Number(item.closing));
+            totalRevenue += sales * Number(item.price);
+            const analysis = this.analyzeItem(item, prevDateData);
+            if(analysis.status !== 'healthy') anomalyCount++;
+        });
+
+        const totalExpenses = (dateData.expenses || []).reduce((s,i) => s + Number(i.amount), 0);
+        const totalIncomes = (dateData.incomes || []).reduce((s,i) => s + Number(i.amount), 0);
+        totalRevenue += totalIncomes;
+
+        card.style.display = 'block';
+
+        let html = `<div style="display:flex; justify-content:space-between; margin-bottom: 8px;">
+            <span>Gross Value Moved: <strong>K${totalRevenue.toLocaleString()}</strong></span>
+            <span>Anomalies: <strong style="color:${anomalyCount > 0 ? '#FF453A' : '#32D74B'};">${anomalyCount}</strong></span>
+        </div>`;
+
+        if (totalExpenses > totalRevenue && totalRevenue > 0) {
+            html += `<div style="color:#FF453A; font-size:12px; margin-top:8px;"><i class="fas fa-exclamation-triangle"></i> Operating at a deficit for this period.</div>`;
+        }
+
+        body.innerHTML = html;
+    },
+
+    generateAuditReport() {
+        // [Existing Audit Report Code preserved here]
+        const dateData = state.dates[state.currentDate];
+        const prevDateData = state.dates[addDays(state.currentDate, -1)];
+        let reportHtml = '';
+
+        let totalRev = 0;
+        let criticalErrors = 0;
+        let minorErrors = 0;
+        
+        let itemReports = '';
+        Object.values(dateData.items || {}).forEach(item => {
+            const sales = Math.max(0, (Number(item.opening) + Number(item.orders)) - Number(item.closing));
+            totalRev += sales * Number(item.price);
+
+            const analysis = this.analyzeItem(item, prevDateData);
+            if (analysis.status === 'critical') criticalErrors++;
+            else if (analysis.status === 'high') minorErrors++;
+
+            if (analysis.threats.length > 0) {
+                itemReports += `<div style="border-bottom:1px solid rgba(255,255,255,0.1); padding:10px 0;">
+                    <strong style="color:var(--av-text-primary);">${item.name}</strong><br>
+                    <span style="color:#FF453A; font-size:12px;">${analysis.threats.map(t=>t.message).join('<br>')}</span>
+                </div>`;
+            }
+        });
+
+        const totalExp = (dateData.expenses || []).reduce((s,i) => s + Number(i.amount), 0);
+        const healthScore = Math.max(0, 100 - (criticalErrors * 15) - (minorErrors * 5));
+
+        reportHtml += `
+            <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px;">
+                <div style="background:var(--av-surface); padding:16px; border-radius:12px; text-align:center;">
+                    <div style="font-size:32px; font-weight:800; color:${healthScore > 80 ? '#32D74B' : (healthScore > 50 ? '#FF9F0A' : '#FF453A')};">${healthScore}%</div>
+                    <div style="font-size:12px; color:var(--av-text-secondary); text-transform:uppercase;">System Health</div>
+                </div>
+                <div style="background:var(--av-surface); padding:16px; border-radius:12px; text-align:center;">
+                    <div style="font-size:32px; font-weight:800; color:#FF453A;">${criticalErrors}</div>
+                    <div style="font-size:12px; color:var(--av-text-secondary); text-transform:uppercase;">Critical Violations</div>
+                </div>
+                <div style="background:var(--av-surface); padding:16px; border-radius:12px; text-align:center;">
+                    <div style="font-size:32px; font-weight:800; color:#0A84FF;">${Object.keys(dateData.items||{}).length}</div>
+                    <div style="font-size:12px; color:var(--av-text-secondary); text-transform:uppercase;">Tracked Assets</div>
+                </div>
             </div>
         `;
-    });
 
-    openInsightModal(html);
-}
+        if (totalExp > totalRev) reportHtml += this.Templates.expenseWarning(totalRev, totalExp);
 
-function generateAdvice(issue){
-    switch(issue.type){
-        case INSIGHT_FLAGS.STOCK_MISMATCH:
-            return `<p>Check manual edits or missing propagation.</p>`;
-        case INSIGHT_FLAGS.PRICE_BELOW_COST:
-            return `<p>Adjust selling price ≥ 130% of cost.</p>`;
-        case INSIGHT_FLAGS.LOW_MARGIN:
-            return `<p>Increase price or reduce procurement cost.</p>`;
-        case INSIGHT_FLAGS.NEGATIVE_SALES:
-            return `<p>Verify stock entries — possible counting error.</p>`;
-        default:
-            return `<p>Monitor this item closely.</p>`;
+        reportHtml += `<h3 style="margin:20px 0 10px 0; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:8px;">Ledger Discrepancies</h3>`;
+        reportHtml += itemReports || `<p style="color:#32D74B;"><i class="fas fa-check-circle"></i> No discrepancies found in inventory lines.</p>`;
+
+        document.getElementById('auditModalBody').innerHTML = reportHtml;
+        document.getElementById('auditModal').classList.add('active');
     }
-}
-
-/* ---------- DAILY HEALTH ANALYSIS ---------- */
-function analyzeDay(){
-    const d = state.dates[state.currentDate];
-    const items = Object.values(d.items);
-
-    const totalRevenue = items.reduce((s,i)=>{
-        const sales = (i.opening + i.orders - i.closing);
-        return s + (sales * i.price);
-    },0);
-
-    const expenses = d.expenses.reduce((s,e)=>s+e.amount,0);
-
-    let flags = [];
-
-    if(expenses > totalRevenue){
-        flags.push({
-            type: INSIGHT_FLAGS.HIGH_EXPENSE_RATIO,
-            msg: "Expenses exceed revenue"
-        });
-    }
-
-    return { totalRevenue, expenses, flags };
-}
-
-/* ---------- AUDIT REPORT ---------- */
-function runFullAudit(){
-    const date = state.currentDate;
-    const items = Object.values(state.dates[date].items);
-
-    let report = `
-        <h2>📊 Comprehensive Audit</h2>
-        <p>Date: ${formatDateLabel(date)}</p>
-    `;
-
-    items.forEach(i=>{
-        const issues = analyzeItem(i.id, date);
-        if(issues.length){
-            report += `<div class="audit-item">
-                <strong>${i.name}</strong>
-                <ul>
-                    ${issues.map(x=>`<li>${x.msg}</li>`).join("")}
-                </ul>
-            </div>`;
-        }
-    });
-
-    const day = analyzeDay();
-    report += `
-        <div class="audit-summary">
-            <p>Revenue: K${day.totalRevenue}</p>
-            <p>Expenses: K${day.expenses}</p>
-        </div>
-    `;
-
-    openInsightModal(report);
-}
-
-/* ---------- MODAL ---------- */
-function openInsightModal(content){
-    const modal = document.getElementById("insightModal");
-    const body = document.getElementById("insightBody");
-
-    body.innerHTML = content;
-    modal.classList.add("show");
-}
-
-/* ---------- INTERACTIONS ---------- */
-document.addEventListener("dblclick", e=>{
-    const row = e.target.closest("tr");
-    if(row) showItemInsight(row.dataset.itemId);
-});
-
-/* ---------- HOOK INTO RENDER ---------- */
-const oldRenderTable = renderTable;
-renderTable = function(){
-    oldRenderTable();
-    applyInsightsToTable();
 };
 
+window.closeAnalysisModal = () => document.getElementById('itemAnalysisModal').classList.remove('active');
+window.closeAuditModal = () => document.getElementById('auditModal').classList.remove('active');
+
+document.addEventListener('DOMContentLoaded', () => {
+    AvantiInsights.init();
+});
 </script>
+<style>
+    /* Add this to your existing AI Insight CSS */
+    
+    /* Targeted Cell Threat Highlighting */
+    .cell-threat {
+        background: rgba(255, 69, 58, 0.15) !important; /* var(--av-red-glow) */
+        border: 1px solid rgba(255, 69, 58, 0.5) !important;
+        position: relative;
+        border-radius: 6px; /* Soft iOS rounding for the cell */
+        transition: all 0.3s ease;
+    }
+
+    .cell-threat::after {
+        content: '\f071'; /* FontAwesome alert icon */
+        font-family: 'Font Awesome 5 Free';
+        font-weight: 900;
+        color: #FF453A; /* var(--av-red) */
+        position: absolute;
+        right: 6px;
+        top: 50%;
+        transform: translateY(-50%);
+        font-size: 11px;
+        animation: pulseAlert 1.2s infinite;
+        pointer-events: none; /* Prevents icon from blocking text edits */
+        text-shadow: 0 0 8px rgba(255, 69, 58, 0.6);
+    }
+
+    @keyframes pulseAlert {
+        0% { opacity: 0.4; transform: translateY(-50%) scale(0.9); }
+        50% { opacity: 1; transform: translateY(-50%) scale(1.2); }
+        100% { opacity: 0.4; transform: translateY(-50%) scale(0.9); }
+    }
+</style>
+
+
 </body>
 </html>
