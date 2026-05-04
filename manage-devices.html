@@ -1324,7 +1324,7 @@ profilesRef.on('value', (snapshot) => {
                 <div class="left">
                     <div class="info-container">
                         <div class="user-name">${isTargetAdmin ? 'Admin Device' : 'Standard Device'}</div>
-                        <div class="authStatus"><i class="fas ${isTargetAdmin ? 'fa-user-shield' : 'fa-user-shield'}" style="color: #6772e5; width: 20px; text-align: center;"></i> Authorization Status</div>
+                        <div class="authStatus"><i class="fas fa-user-shield" style="color: #6772e5; width: 20px; text-align: center;"></i> Authorization Status</div>
                     </div>
                 </div>
             </div>
@@ -1335,6 +1335,14 @@ profilesRef.on('value', (snapshot) => {
             modalHtml += `
                 <div class="item safe-action" data-action="log-in-as" data-profile="${targetProfileName}">
                     <div class="safe"><i class="fas fa-sign-in-alt" style="margin-right: 10px;"></i> Log into this profile</div>
+                </div>`;
+        }
+
+        // NEW: Clear Stats Button (Only for the active device)
+        if (isTargetCurrentUser) {
+            modalHtml += `
+                <div class="item danger-action" onclick="handleClearMyStats()">
+                    <div class="danger"><i class="fas fa-eraser" style="margin-right: 10px;"></i> Clear My Statistics</div>
                 </div>`;
         }
 
@@ -1376,13 +1384,11 @@ profilesRef.on('value', (snapshot) => {
     modalHtml += `</div>`;
 
     // --- RENDER DUAL ACTION SECTION ---
-       // --- RENDER DUAL ACTION SECTION ---
     const targetPendingReqs = targetProfile.pendingRequests || {};
     const myRequestToThem = targetPendingReqs[CURRENT_PROFILE_NAME];
     
     modalHtml += `<div class="section-title">ACTIONS</div><div class="list">`;
 
-    // 1. Download Request Item
     if (myRequestToThem && myRequestToThem.type === 'download') {
         modalHtml += `
             <div class="item" onclick="cancelRequest('${targetProfileName}')">
@@ -1403,7 +1409,6 @@ profilesRef.on('value', (snapshot) => {
             </div>`;
     }
 
-    // 2. Broadcast Toggle (Now checks for approval)
     modalHtml += `
         <div class="item ${broadcastDisabled ? 'disabled-item' : ''}">
             <div class="left">
@@ -1419,7 +1424,6 @@ profilesRef.on('value', (snapshot) => {
             </label>
         </div>`;
 
-    // 3. Receive Toggle
     modalHtml += `
         <div class="item ${receiveDisabled ? 'disabled-item' : ''}">
             <div class="left">
@@ -1437,7 +1441,6 @@ profilesRef.on('value', (snapshot) => {
     </div>`;
 
     modalContent.innerHTML = modalHtml;
-
 
     // --- EVENT LISTENERS ---
     const broadcastSwitch = document.getElementById('broadcast-switch');
@@ -1457,7 +1460,10 @@ profilesRef.on('value', (snapshot) => {
     }
 
     document.querySelectorAll(".modal .danger-action, .modal .safe-action").forEach(item => {
-        item.onclick = (e) => handleModalSecurityAction(e.currentTarget);
+        // Skip the Clear Stats button if it's already handled by its own onclick
+        if (!item.hasAttribute('onclick')) {
+            item.onclick = (e) => handleModalSecurityAction(e.currentTarget);
+        }
     });
 
     const unlockBtn = document.getElementById('unlock-security-btn');
@@ -1465,6 +1471,29 @@ profilesRef.on('value', (snapshot) => {
 
     deviceModal.classList.add("active");
 }
+
+async function handleClearMyStats() {
+    const confirmed = confirm("Are you sure you want to delete all statistics for this profile? This action is permanent and cannot be undone.");
+    
+    if (!confirmed) return;
+
+    // Security check: Verify password before wiping data
+    const action = async () => {
+        try {
+            const statsPath = `accounts/${CURRENT_ACCOUNT_KEY}/profiles/${CURRENT_PROFILE_NAME}/avanti_stats`;
+            await db.ref(statsPath).remove();
+            
+            toast('Stats Cleared', 'All statistics for this profile have been deleted.', true);
+            closeModal('deviceModal');
+        } catch (error) {
+            console.error("Error clearing stats:", error);
+            toast('Error', 'Failed to delete statistics.', false);
+        }
+    };
+
+    performSecurityAction(action, 'Clear Statistics', 'Please confirm your password to wipe all statistics from this profile.');
+}
+
 
 
     async function handleModalSecurityAction(btn) {
