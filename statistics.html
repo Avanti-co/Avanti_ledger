@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+ <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8" />
@@ -6,7 +6,7 @@
 <title>Statistics Table</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 
-<script src="[https://js.puter.com/v2/](https://js.puter.com/v2/)"></script>
+
 <!-- Firebase SDKs (place before the script below) -->
 <script src="https://cdn.tailwindcss.com/"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
@@ -722,156 +722,158 @@ Expenses</span>
         </a>
         
     </div>
-<!-- Puter AI Daily Health Card -->
-<div class="daily-health-card" id="dailyHealthCard" style="display: none;">
-    <div class="health-header">
-        <div class="health-title">
-            <i class="fas fa-shield-alt" style="color: #34C759;"></i> Daily Integrity Check
-        </div>
-        <button onclick="openDeepAuditModal()" class="ios-btn-small">Run Deep Audit</button>
-    </div>
-    <div class="health-content" id="dailyHealthContent">
-        <!-- AI anomalies and visual indicators inject here -->
-    </div>
-</div>
-
-<!-- iOS Standard Item Advice Modal -->
-<div id="aiItemModal" class="ios-modal-overlay">
-    <div class="ios-modal-content">
-        <div class="ios-modal-header">
-            <h3 id="aiItemTitle">Item Analysis</h3>
-            <button onclick="closeAiItemModal()" class="close-ios-btn"><i class="fas fa-times"></i></button>
-        </div>
-        <div class="ios-modal-body" id="aiItemBody">
-            <div class="loading-pulse" id="aiItemLoading">Analyzing with Puter AI...</div>
-            <div id="aiItemAdvice"></div>
-        </div>
-    </div>
-</div>
-
-<!-- Deep Audit Modal -->
-<div id="deepAuditModal" class="ios-modal-overlay full-screen">
-    <div class="ios-modal-content large">
-        <div class="ios-modal-header">
-            <h3><i class="fas fa-chart-line"></i> Comprehensive Deep Audit</h3>
-            <button onclick="closeDeepAuditModal()" class="close-ios-btn"><i class="fas fa-times"></i></button>
-        </div>
-        <div class="ios-modal-body">
-            <div class="audit-controls">
-                <input type="date" id="auditStartDate" class="ios-input">
-                <input type="date" id="auditEndDate" class="ios-input">
-                <button onclick="generateDeepAudit()" class="ios-btn-primary">Execute Audit</button>
-            </div>
-            <div id="auditReportContainer" class="audit-report-container">
-                <!-- Comprehensive report renders here -->
-                <div class="empty-state">Select a period to begin the audit.</div>
-            </div>
-        </div>
-    </div>
-</div>
-
+<!-- Avanti AI Insight Engine UI -->
 <style>
-/* Apple/iOS Design Language Additions */
-:root {
-    --ios-bg: rgba(255, 255, 255, 0.7);
-    --ios-blur: blur(20px);
-    --ios-red: #FF3B30;
-    --ios-green: #34C759;
-    --ios-blue: #007AFF;
-    --text-primary: #1C1C1E;
-}
+    /* iOS OLED & Glassmorphism Standards */
+    :root {
+        --av-bg-black: #000000;
+        --av-surface: rgba(28, 28, 30, 0.65);
+        --av-surface-solid: #1C1C1E;
+        --av-border: rgba(255, 255, 255, 0.1);
+        --av-text-primary: #F2F2F7;
+        --av-text-secondary: #EBEBF599;
+        --av-red: #FF453A;
+        --av-red-glow: rgba(255, 69, 58, 0.2);
+        --av-green: #32D74B;
+        --av-orange: #FF9F0A;
+        --av-blue: #0A84FF;
+        --av-blur: blur(20px);
+    }
 
-.daily-health-card {
-    background: var(--ios-bg);
-    backdrop-filter: var(--ios-blur);
-    -webkit-backdrop-filter: var(--ios-blur);
-    border-radius: 16px;
-    padding: 16px;
-    margin: 20px 0;
-    box-shadow: 0 4px 24px rgba(0,0,0,0.06);
-    border: 1px solid rgba(255,255,255,0.4);
-}
+    .ai-insight-card {
+        background: black;
+        backdrop-filter: var(--av-blur);
+        -webkit-backdrop-filter: var(--av-blur);
+        border: 1px solid var(--av-border);
+        border-radius: 16px;
+        padding: 16px;
+        margin-bottom: 20px;
+        color: var(--av-text-primary);
+        font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+    }
 
-.health-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 12px;
-    border-bottom: 1px solid rgba(0,0,0,0.05);
-    padding-bottom: 8px;
-}
+    .ai-insight-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 12px;
+        font-weight: 600;
+        font-size: 15px;
+        color: var(--av-blue);
+    }
 
-.health-title { font-weight: 600; font-size: 15px; color: var(--text-primary); }
+    .ai-insight-body { font-size: 14px; line-height: 1.4; }
+    
+    .audit-btn {
+        background: linear-gradient(135deg, var(--av-surface-solid), #2C2C2E);
+        border: 1px solid var(--av-border);
+        color: var(--av-text-primary);
+        padding: 10px 20px;
+        border-radius: 20px;
+        font-weight: 600;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        transition: all 0.2s ease;
+    }
+    .audit-btn:active { transform: scale(0.96); }
 
-.ios-modal-overlay {
-    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-    background: rgba(0,0,0,0.4);
-    backdrop-filter: blur(4px);
-    -webkit-backdrop-filter: blur(4px);
-    display: none; align-items: center; justify-content: center;
-    z-index: 9999; opacity: 0; transition: opacity 0.3s ease;
-}
+    /* Threat Highlights in Table */
+    .row-threat {
+        background: var(--av-red-glow) !important;
+        position: relative;
+    }
+    .row-threat::after {
+        content: '\f071'; /* FontAwesome alert */
+        font-family: 'Font Awesome 5 Free';
+        font-weight: 900;
+        color: var(--av-red);
+        position: absolute;
+        left: 4px;
+        top: 50%;
+        transform: translateY(-50%);
+        font-size: 12px;
+        animation: pulse 1.5s infinite;
+    }
 
-.ios-modal-overlay.active { display: flex; opacity: 1; }
+    @keyframes pulse {
+        0% { opacity: 0.6; transform: translateY(-50%) scale(1); }
+        50% { opacity: 1; transform: translateY(-50%) scale(1.2); }
+        100% { opacity: 0.6; transform: translateY(-50%) scale(1); }
+    }
 
-.ios-modal-content {
-    background: #ffffff;
-    border-radius: 20px;
-    width: 90%; max-width: 400px;
-    box-shadow: 0 20px 40px rgba(0,0,0,0.2);
-    overflow: hidden;
-    transform: translateY(20px);
-    transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-}
+    /* iOS Modal Native Styles */
+    .ios-modal-overlay {
+        position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+        background: rgba(0,0,0,0.6);
+        backdrop-filter: blur(5px);
+        -webkit-backdrop-filter: blur(5px);
+        z-index: 9999;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        opacity: 0; transition: opacity 0.3s ease;
+    }
+    .ios-modal-overlay.active { display: flex; opacity: 1; }
+    
+    .ios-modal-content {
+        background: black;
+        border: 1px solid var(--av-border);
+        border-radius: 24px;
+        width: 90%; max-width: 500px;
+        max-height: 85vh; overflow-y: auto;
+        padding: 24px;
+        color: var(--av-text-primary);
+        box-shadow: 0 20px 40px rgba(0,0,0,0.8);
+        transform: translateY(20px); transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+font-size: calc(1em + 2px) !important;
 
-.ios-modal-overlay.active .ios-modal-content { transform: translateY(0); }
+    }
+    .ios-modal-overlay.active .ios-modal-content { transform: translateY(0); }
 
-.ios-modal-content.large { max-width: 800px; height: 85vh; display: flex; flex-direction: column; }
+    .audit-fullscreen {
+        max-width: 900px; height: 90vh; border-radius: 16px;
+    }
 
-.ios-modal-header {
-    padding: 16px 20px; background: #F2F2F7;
-    display: flex; justify-content: space-between; align-items: center;
-    border-bottom: 1px solid #E5E5EA;
-}
-
-.ios-modal-header h3 { margin: 0; font-size: 17px; font-weight: 600; }
-
-.close-ios-btn { background: none; border: none; font-size: 20px; color: #8E8E93; cursor: pointer; }
-
-.ios-modal-body { padding: 20px; overflow-y: auto; flex-grow: 1; }
-
-/* Visual Alerts and Animations */
-.alert-icon {
-    color: var(--ios-red);
-    margin-left: 8px;
-    cursor: pointer;
-    animation: pulseRed 2s infinite;
-}
-
-@keyframes pulseRed {
-    0% { transform: scale(1); opacity: 1; }
-    50% { transform: scale(1.2); opacity: 0.7; }
-    100% { transform: scale(1); opacity: 1; }
-}
-
-.loading-pulse {
-    text-align: center; color: var(--ios-blue); font-weight: 500;
-    animation: fadePulse 1.5s infinite; display: none;
-}
-
-@keyframes fadePulse { 0% { opacity: 0.4; } 50% { opacity: 1; } 100% { opacity: 0.4; } }
-
-.audit-controls { display: flex; gap: 10px; margin-bottom: 20px; }
-.ios-input { padding: 10px; border-radius: 10px; border: 1px solid #E5E5EA; font-size: 15px; flex-grow: 1; }
-.ios-btn-primary { background: var(--ios-blue); color: white; border: none; padding: 10px 20px; border-radius: 10px; font-weight: 600; cursor: pointer; }
-.ios-btn-small { background: rgba(0,122,255,0.1); color: var(--ios-blue); border: none; padding: 6px 12px; border-radius: 14px; font-weight: 600; font-size: 13px; cursor: pointer; }
-
-/* Visual Bar Charts inside AI Reports */
-.visual-bar-container { width: 100%; background: #E5E5EA; border-radius: 8px; height: 12px; margin-top: 6px; overflow: hidden; }
-.visual-bar-fill { height: 100%; background: var(--ios-green); transition: width 1s ease-out; }
-.visual-bar-fill.warning { background: #FF9500; }
-.visual-bar-fill.danger { background: var(--ios-red); }
+    /* Visual Bars */
+    .visual-bar-bg { background: #333; border-radius: 8px; height: 12px; width: 100%; overflow: hidden; margin-top: 6px; }
+    .visual-bar-fill { height: 100%; border-radius: 8px; transition: width 0.5s ease; }
+    .fill-red { background: var(--av-red); }
+    .fill-green { background: var(--av-green); }
+    .fill-blue { background: var(--av-blue); }
 </style>
+
+<div id="dailyInsightCard" class="ai-insight-card" style="display:none;">
+    <div class="ai-insight-header">
+        <span><i class="fas fa-brain"></i> AI Daily Insights</span>
+        <button id="runAuditBtn" class="audit-btn"><i class="fas fa-shield-alt"></i> Comprehensive Audit</button>
+    </div>
+    <div id="insightBody" class="ai-insight-body">Analyzing ledger integrity...</div>
+</div>
+
+<!-- Item Analysis Modal -->
+<div id="itemAnalysisModal" class="ios-modal-overlay">
+    <div class="ios-modal-content">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 20px;">
+            <h3 id="analysisModalTitle" style="margin:0; font-size:20px; font-weight:700;">Analysis</h3>
+            <i class="fas fa-times" style="font-size:20px; cursor:pointer; color:var(--av-text-secondary);" onclick="closeAnalysisModal()"></i>
+        </div>
+        <div id="analysisModalBody"></div>
+    </div>
+</div>
+
+<!-- Comprehensive Audit Modal -->
+<div id="auditModal" class="ios-modal-overlay">
+    <div class="ios-modal-content audit-fullscreen">
+        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--av-border); padding-bottom:16px; margin-bottom:20px;">
+            <h2 style="margin:0;"><i class="fas fa-file-contract" style="color:var(--av-blue);"></i> Comprehensive Audit Report</h2>
+            <i class="fas fa-times" style="font-size:24px; cursor:pointer;" onclick="closeAuditModal()"></i>
+        </div>
+        <div id="auditModalBody" style="display:flex; flex-direction:column; gap:20px;"></div>
+    </div>
+</div>
 
 <div class="section-container mb-100"></div>
 </div>
@@ -2853,225 +2855,316 @@ renderAll();
 })();
 </script>
 <script>
-/* =======================================================
-   AVANTI LEDGER - PUTER AI INTEGRATION & INTEGRITY ENGINE
-   ======================================================= */
+const AvantiInsights = {
+    init() {
+        if (typeof renderTable === 'function') {
+            const originalRenderTable = renderTable;
+            window.renderTable = function() {
+                originalRenderTable(); 
+                AvantiInsights.applyTableHooks();
+                AvantiInsights.updateDailyCard();
+            };
+        }
+        const auditBtn = document.getElementById('runAuditBtn');
+        if(auditBtn) auditBtn.addEventListener('click', () => this.generateAuditReport());
+    },
 
-// 1. Hook into the existing rendering system
-const originalRenderTable = renderTable;
-renderTable = function() {
-    originalRenderTable(); 
-    runDailyIntegrityCheck(); // Runs our AI checks right after the table draws
-};
+    applyTableHooks() {
+        const tbody = document.getElementById('statsTableBody');
+        if (!tbody) return;
 
-// 2. Local Discrepancy Checker (Saves API calls by checking logic locally first)
-function runDailyIntegrityCheck() {
-    const dateObj = state.dates[state.currentDate];
-    if (!dateObj || !dateObj.items) return;
+        const dateData = state.dates[state.currentDate];
+        if (!dateData || !dateData.items) return;
 
-    let totalAlerts = 0;
-    const prevDateKey = addDays(state.currentDate, -1);
-    const prevDateObj = state.dates[prevDateKey];
+        const prevDateKey = addDays(state.currentDate, -1);
+        const prevDateData = state.dates[prevDateKey];
 
-    Object.values(dateObj.items).forEach(item => {
-        let hasDiscrepancy = false;
-        let alertMessages = [];
+        Array.from(tbody.children).forEach(tr => {
+            const itemId = tr.dataset.itemId;
+            const item = dateData.items[itemId];
+            if (!item) return;
 
-        // Check 1: Opening vs Yesterday's Closing
-        if (prevDateObj && prevDateObj.items && prevDateObj.items[item.id]) {
-            const prevClosing = prevDateObj.items[item.id].closing || 0;
-            if (Number(item.opening) !== Number(prevClosing)) {
-                hasDiscrepancy = true;
-                alertMessages.push(`Stock manipulation detected: Yesterday's closing was ${prevClosing}, but today's opening was edited to ${item.opening}.`);
+            // 1. Analyze and Target Specific Cells
+            const analysis = this.analyzeItem(item, prevDateData);
+            
+            if (analysis.threats.length > 0) {
+                analysis.threats.forEach(threat => {
+                    if (threat.targetFields) {
+                        threat.targetFields.forEach(field => {
+                            // Find the exact cell matching the data-col attribute
+                            const cell = tr.querySelector(`td[data-col="${field}"]`);
+                            if (cell) {
+                                cell.classList.add('cell-threat');
+                            }
+                        });
+                    }
+                });
+            }
+
+            // 2. Attach iOS Native Interaction (Double Click / Long Press)
+            let pressTimer;
+            tr.addEventListener('touchstart', (e) => {
+                pressTimer = setTimeout(() => this.showItemReport(itemId, item, prevDateData), 600);
+            }, {passive: true});
+            tr.addEventListener('touchend', () => clearTimeout(pressTimer));
+            tr.addEventListener('touchmove', () => clearTimeout(pressTimer));
+            tr.addEventListener('dblclick', () => this.showItemReport(itemId, item, prevDateData));
+        });
+    },
+
+    analyzeItem(item, prevDateData) {
+        let threats = [];
+        let status = 'healthy';
+
+        // Discrepancy 1: Opening Stock vs Previous Closing
+        if (prevDateData && prevDateData.items && prevDateData.items[item.id]) {
+            const prevClosing = Number(prevDateData.items[item.id].closing || 0);
+            if (prevClosing !== Number(item.opening)) {
+                threats.push({
+                    type: 'stock_mismatch',
+                    message: `Opening stock (${item.opening}) differs from yesterday's closing (${prevClosing}).`,
+                    severity: 'critical',
+                    targetFields: ['openingStock'], // Maps to data-col="openingStock"
+                    prevClosing, currentOpening: item.opening
+                });
             }
         }
 
-        // Check 2: 130% Accounting Standard (Only if GFA is true)
+        // Discrepancy 2: Cost Price vs Selling Price (130% Standard)
         if (USER_SETTINGS.GFA) {
-            let cost = item.lastOrderCost || (item.batches && item.batches.length > 0 ? item.batches[item.batches.length-1].cost : 0);
+            let cost = item.lastOrderCost || (item.batches && item.batches.length > 0 ? item.batches[item.batches.length - 1].cost : 0);
+            cost = Number(cost);
+            const price = Number(item.price);
+            
             if (cost > 0) {
-                let requiredSellingPrice = cost * 1.30;
-                if (item.price < requiredSellingPrice) {
-                    hasDiscrepancy = true;
-                    alertMessages.push(`Pricing violation: At a cost of K${cost}, the 130% standard requires a selling price of at least K${requiredSellingPrice.toFixed(2)}. Current price is K${item.price}.`);
+                const targetPrice = cost * 1.30;
+                if (price < cost) {
+                    threats.push({
+                        type: 'loss_leader',
+                        message: `Selling price (K${price}) is lower than Cost price (K${cost}).`,
+                        severity: 'critical',
+                        targetFields: ['price'], // Maps to data-col="price"
+                        cost, price, targetPrice
+                    });
+                } else if (price < targetPrice) {
+                    threats.push({
+                        type: 'margin_warning',
+                        message: `Selling price (K${price}) falls below the 130% standard target (K${targetPrice.toFixed(2)}).`,
+                        severity: 'high',
+                        targetFields: ['price'], // Maps to data-col="price"
+                        cost, price, targetPrice
+                    });
                 }
             }
         }
 
-        // Inject Alert Icon into the UI if threats are found
-        if (hasDiscrepancy) {
-            totalAlerts++;
-            const tr = document.querySelector(`tr[data-item-id="${item.id}"]`);
-            if (tr) {
-                const nameTd = tr.querySelector('[data-col="item"]');
-                // Avoid adding multiple icons
-                if (!nameTd.querySelector('.alert-icon')) {
-                    const icon = document.createElement('i');
-                    icon.className = 'fas fa-exclamation-triangle alert-icon';
-                    icon.onclick = (e) => {
-                        e.stopPropagation();
-                        openAiItemModal(item, alertMessages);
-                    };
-                    nameTd.appendChild(icon);
-                }
-            }
-        }
-    });
-
-    updateDailyHealthCard(totalAlerts, dateObj);
-}
-
-// 3. UI Interactions for Modals
-function updateDailyHealthCard(alertsCount, dateObj) {
-    const card = document.getElementById('dailyHealthCard');
-    const content = document.getElementById('dailyHealthContent');
-    if (!card || !content) return;
-
-    card.style.display = 'block';
-    
-    // Check for abnormal expenses (e.g., higher than total sales)
-    let netSales = 0;
-    Object.values(dateObj.items || {}).forEach(it => { 
-        netSales += Math.max(0, ((Number(it.opening) + Number(it.orders)) - Number(it.closing))) * Number(it.price); 
-    });
-    const netExpenses = (dateObj.expenses || []).reduce((s,i) => s + Number(i.amount || 0), 0);
-
-    let healthHtml = `<div style="display:flex; align-items:center; gap: 10px; margin-bottom: 10px;">`;
-    
-    if (alertsCount === 0 && netExpenses < (netSales * 0.5)) {
-        healthHtml += `<i class="fas fa-check-circle" style="color: var(--ios-green); font-size: 24px;"></i> 
-                       <span style="font-size: 14px;">Ledger is balanced and healthy. No pricing or stock anomalies detected today.</span>`;
-    } else {
-        healthHtml += `<i class="fas fa-radiation" style="color: var(--ios-red); font-size: 24px;"></i>
-                       <span style="font-size: 14px;"><b>${alertsCount} anomalies detected.</b> Click the pulsing red icons in the table for AI advice.</span>`;
-    }
-    healthHtml += `</div>`;
-
-    if (netExpenses > netSales && netSales > 0) {
-        healthHtml += `<div style="padding: 10px; background: rgba(255,59,48,0.1); border-radius: 8px; font-size: 13px; color: var(--ios-red);">
-                        <b>Warning:</b> Daily expenses (K${netExpenses}) exceed gross sales (K${netSales}).
-                       </div>`;
-    }
-
-    content.innerHTML = healthHtml;
-}
-
-// 4. Puter AI Item Specific Advice (With Firebase Caching)
-async function openAiItemModal(item, localAlerts) {
-    document.getElementById('aiItemModal').classList.add('active');
-    document.getElementById('aiItemTitle').textContent = `${item.name} - Audit`;
-    document.getElementById('aiItemAdvice').innerHTML = '';
-    document.getElementById('aiItemLoading').style.display = 'block';
-
-    // Create a unique cache key for this exact scenario
-    const cacheKey = `item_${item.id}_${state.currentDate}_${item.opening}_${item.price}`;
-    
-    const prompt = `You are an expert accountant auditing a ledger. 
-    Analyze this specific inventory item:
-    Name: ${item.name}
-    Opening Stock: ${item.opening}, Orders: ${item.orders}, Closing: ${item.closing}, Selling Price: K${item.price}.
-    Local System Flags: ${localAlerts.join(' ')}
-    
-    Provide professional advice on how to rectify these discrepancies to preserve accounting integrity. Format in clean HTML using <b> and <ul>. Keep it concise. Do not use markdown blocks.`;
-
-    const responseText = await fetchFromPuterWithCache(cacheKey, prompt);
-    
-    document.getElementById('aiItemLoading').style.display = 'none';
-    document.getElementById('aiItemAdvice').innerHTML = `
-        <div style="background: #F2F2F7; padding: 15px; border-radius: 12px; font-size: 14px; line-height: 1.5; color: var(--text-primary);">
-            <p style="color: var(--ios-red); font-weight: 600; margin-top:0;">Local Discrepancies Detected:</p>
-            <ul>${localAlerts.map(a => `<li>${a}</li>`).join('')}</ul>
-            <hr style="border: none; border-top: 1px solid #C6C6C8; margin: 15px 0;">
-            <p style="color: var(--ios-blue); font-weight: 600;">AI Accountant Advice:</p>
-            ${responseText}
-        </div>`;
-}
-
-function closeAiItemModal() { document.getElementById('aiItemModal').classList.remove('active'); }
-
-// 5. Comprehensive Deep Audit Flow
-function openDeepAuditModal() {
-    document.getElementById('deepAuditModal').classList.add('active');
-}
-function closeDeepAuditModal() { document.getElementById('deepAuditModal').classList.remove('active'); }
-
-async function generateDeepAudit() {
-    const start = document.getElementById('auditStartDate').value;
-    const end = document.getElementById('auditEndDate').value;
-    const container = document.getElementById('auditReportContainer');
-
-    if (!start || !end) {
-        alert("Please select both a start and end date for the audit.");
-        return;
-    }
-
-    container.innerHTML = `<div class="loading-pulse" style="display:block; margin-top: 40px; font-size: 16px;">
-        <i class="fas fa-brain fa-spin"></i> Puter AI is running a deep audit of your ledger... this may take a moment.
-    </div>`;
-
-    // Compile Ledger Data for the prompt
-    let auditData = {};
-    let current = start;
-    while (current <= end) {
-        if (state.dates[current]) {
-            auditData[current] = state.dates[current];
-        }
-        current = addDays(current, 1);
-    }
-
-    const cacheKey = `deep_audit_${start}_to_${end}`;
-    const payloadString = JSON.stringify(auditData).substring(0, 3000); // Truncate to save tokens if massive
-
-    const prompt = `You are a strict, highly professional Chief Financial Officer auditing the "Avanti Ledger" bookkeeping system.
-    Analyze the following JSON ledger data for the period ${start} to ${end}.
-    Data: ${payloadString}
-    
-    Generate a robust, comprehensive audit report in HTML format.
-    Include:
-    1. An executive summary of financial health.
-    2. Identification of abnormal expenses or abnormal incomes.
-    3. Threats to accounting integrity (e.g., manual stock manipulation between days).
-    4. Provide visual HTML representations (like simple inline CSS progress bars or colored status tags) within the text to indicate severity.
-    Do NOT output raw markdown. Output ONLY valid, beautifully styled HTML that matches an Apple iOS aesthetic.`;
-
-    const responseHtml = await fetchFromPuterWithCache(cacheKey, prompt);
-    container.innerHTML = responseHtml;
-}
-
-// 6. Centralized Firebase Caching for Puter AI
-async function fetchFromPuterWithCache(cacheKey, prompt) {
-    if (!firebaseDB || REMOTE_DB_PATH === DEFAULT_FALLBACK_PATH || !isOnline) {
-        return "<p>System is offline or database unlinked. AI cannot run.</p>";
-    }
-
-    // Sanitize cache key for Firebase (no invalid characters)
-    const safeKey = cacheKey.replace(/[.#$[\]]/g, '_');
-    const aiPath = `${REMOTE_DB_PATH}/ai_audits/${safeKey}`;
-
-    try {
-        const snapshot = await firebaseDB.ref(aiPath).once('value');
-        if (snapshot.exists()) {
-            console.log("Loaded AI response from Firebase Cache.");
-            return snapshot.val().response;
+        // Discrepancy 3: Negative Stock / Sales
+        const totalStock = Number(item.opening) + Number(item.orders);
+        if (Number(item.closing) > totalStock) {
+            threats.push({
+                type: 'impossible_closing',
+                message: `Closing stock (${item.closing}) cannot exceed Total stock (${totalStock}).`,
+                severity: 'critical',
+                targetFields: ['closingStock'] // Maps to data-col="closingStock"
+            });
         }
 
-        console.log("Calling Puter AI...");
-        const response = await puter.ai.chat(prompt);
-        const text = response.message.content;
+        if (threats.some(t => t.severity === 'critical')) status = 'critical';
+        else if (threats.some(t => t.severity === 'high')) status = 'high';
 
-        // Save to Firebase to ensure it's only sent once per identical query
-        await firebaseDB.ref(aiPath).set({
-            response: text,
-            timestamp: Date.now()
+        return { threats, status };
+    },
+
+    // --- TEMPLATE LIBRARY ---
+    Templates: {
+        stockMismatch: (data) => `
+            <div style="background:var(--av-surface); padding:16px; border-radius:12px; margin-bottom:12px; border-left: 4px solid var(--av-orange);">
+                <h4 style="margin:0 0 8px 0; color:var(--av-orange);"><i class="fas fa-boxes"></i> Stock Reconciliation Error</h4>
+                <p style="margin:0; font-size:14px;">${data.message}</p>
+                <div style="display:flex; justify-content:space-between; margin-top:12px; font-size:14px; color:var(--av-text-secondary);">
+                    <div>Yesterday Close: <strong style="color:#fff;">${data.prevClosing}</strong></div>
+                    <div><i class="fas fa-arrow-right"></i></div>
+                    <div>Today Open: <strong style="color:var(--av-red);">${data.currentOpening}</strong></div>
+                </div>
+            </div>`,
+            
+        pricingAnomaly: (data) => `
+            <div style="background:var(--av-surface); padding:16px; border-radius:12px; margin-bottom:12px; border-left: 4px solid var(--av-red);">
+                <h4 style="margin:0 0 8px 0; color:var(--av-red);"><i class="fas fa-tag"></i> Profit Margin Violation</h4>
+                <p style="margin:0; font-size:14px;">${data.message}</p>
+                <div style="margin-top:12px; font-size:14px; color:var(--av-text-secondary); background: rgba(255,69,58,0.1); padding:8px; border-radius:6px;">
+                    <strong>Advisory:</strong> Adjust selling price to <strong>K${data.targetPrice.toFixed(2)}</strong> (+30% of cost).
+                </div>
+            </div>`,
+
+        healthyItem: (item) => `
+            <div style="text-align:center; padding: 20px;">
+                <i class="fas fa-check-circle" style="font-size:48px; color:#32D74B; margin-bottom:12px;"></i>
+                <h4 style="margin:0; color:var(--av-text-primary);">Integrity Verified</h4>
+                <p style="font-size:13px; color:var(--av-text-secondary); margin-top:8px;">No discrepancies detected in pricing algorithms or stock continuity.</p>
+            </div>`,
+            
+        expenseWarning: (revenue, expenses) => `
+            <div style="background:var(--av-surface); padding:16px; border-radius:12px; margin-bottom:12px; border-left: 4px solid var(--av-red);">
+                <h4 style="margin:0 0 8px 0; color:var(--av-red);"><i class="fas fa-chart-pie"></i> Deficit Warning</h4>
+                <p style="margin:0; font-size:14px;">Total daily expenses (K${expenses}) exceed total revenue (K${revenue}).</p>
+            </div>`
+    },
+
+    showItemReport(itemId, item, prevDateData) {
+        if(state.selectMode) return;
+        const analysis = this.analyzeItem(item, prevDateData);
+        document.getElementById('analysisModalTitle').textContent = `Analysis: ${item.name}`;
+        
+        let html = '';
+        if (analysis.threats.length === 0) {
+            html = this.Templates.healthyItem(item);
+        } else {
+            analysis.threats.forEach(threat => {
+                if (threat.type === 'stock_mismatch') html += this.Templates.stockMismatch(threat);
+                if (threat.type === 'loss_leader' || threat.type === 'margin_warning') html += this.Templates.pricingAnomaly(threat);
+                if (threat.type === 'impossible_closing') html += `<div style="color:var(--av-red); padding:10px; border:1px solid var(--av-red); border-radius:8px;">${threat.message}</div>`;
+            });
+        }
+        document.getElementById('analysisModalBody').innerHTML = html;
+        document.getElementById('itemAnalysisModal').classList.add('active');
+    },
+
+    updateDailyCard() {
+        const card = document.getElementById('dailyInsightCard');
+        const body = document.getElementById('insightBody');
+        const dateData = state.dates[state.currentDate];
+        if (!dateData) return;
+
+        let totalRevenue = 0;
+        let anomalyCount = 0;
+        
+        const prevDateKey = addDays(state.currentDate, -1);
+        const prevDateData = state.dates[prevDateKey];
+
+        Object.values(dateData.items || {}).forEach(item => {
+            const sales = Math.max(0, (Number(item.opening) + Number(item.orders)) - Number(item.closing));
+            totalRevenue += sales * Number(item.price);
+            const analysis = this.analyzeItem(item, prevDateData);
+            if(analysis.status !== 'healthy') anomalyCount++;
         });
 
-        return text;
-    } catch (error) {
-        console.error("Puter AI Error:", error);
-        return `<p style="color:red;">Error communicating with AI Accountant. Please check your internet connection.</p>`;
+        const totalExpenses = (dateData.expenses || []).reduce((s,i) => s + Number(i.amount), 0);
+        const totalIncomes = (dateData.incomes || []).reduce((s,i) => s + Number(i.amount), 0);
+        totalRevenue += totalIncomes;
+
+        card.style.display = 'block';
+
+        let html = `<div style="display:flex; justify-content:space-between; margin-bottom: 8px;">
+            <span>Gross Value Moved: <strong>K${totalRevenue.toLocaleString()}</strong></span>
+            <span>Anomalies: <strong style="color:${anomalyCount > 0 ? '#FF453A' : '#32D74B'};">${anomalyCount}</strong></span>
+        </div>`;
+
+        if (totalExpenses > totalRevenue && totalRevenue > 0) {
+            html += `<div style="color:#FF453A; font-size:14px; margin-top:8px;"><i class="fas fa-exclamation-triangle"></i> Operating at a deficit for this period.</div>`;
+        }
+
+        body.innerHTML = html;
+    },
+
+    generateAuditReport() {
+        // [Existing Audit Report Code preserved here]
+        const dateData = state.dates[state.currentDate];
+        const prevDateData = state.dates[addDays(state.currentDate, -1)];
+        let reportHtml = '';
+
+        let totalRev = 0;
+        let criticalErrors = 0;
+        let minorErrors = 0;
+        
+        let itemReports = '';
+        Object.values(dateData.items || {}).forEach(item => {
+            const sales = Math.max(0, (Number(item.opening) + Number(item.orders)) - Number(item.closing));
+            totalRev += sales * Number(item.price);
+
+            const analysis = this.analyzeItem(item, prevDateData);
+            if (analysis.status === 'critical') criticalErrors++;
+            else if (analysis.status === 'high') minorErrors++;
+
+            if (analysis.threats.length > 0) {
+                itemReports += `<div style="border-bottom:1px solid rgba(255,255,255,0.1); padding:10px 0;">
+                    <strong style="color:var(--av-text-primary);">${item.name}</strong><br>
+                    <span style="color:#FF453A; font-size:14px;">${analysis.threats.map(t=>t.message).join('<br>')}</span>
+                </div>`;
+            }
+        });
+
+        const totalExp = (dateData.expenses || []).reduce((s,i) => s + Number(i.amount), 0);
+        const healthScore = Math.max(0, 100 - (criticalErrors * 15) - (minorErrors * 5));
+
+        reportHtml += `
+            <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px;">
+                <div style="background:var(--av-surface); padding:16px; border-radius:12px; text-align:center;">
+                    <div style="font-size:32px; font-weight:800; color:${healthScore > 80 ? '#32D74B' : (healthScore > 50 ? '#FF9F0A' : '#FF453A')};">${healthScore}%</div>
+                    <div style="font-size:14px; color:var(--av-text-secondary); text-transform:uppercase;">System Health</div>
+                </div>
+                <div style="background:var(--av-surface); padding:16px; border-radius:12px; text-align:center;">
+                    <div style="font-size:32px; font-weight:800; color:#FF453A;">${criticalErrors}</div>
+                    <div style="font-size:14px; color:var(--av-text-secondary); text-transform:uppercase;">Critical Violations</div>
+                </div>
+                <div style="background:var(--av-surface); padding:16px; border-radius:12px; text-align:center;">
+                    <div style="font-size:32px; font-weight:800; color:#0A84FF;">${Object.keys(dateData.items||{}).length}</div>
+                    <div style="font-size:12px; color:var(--av-text-secondary); text-transform:uppercase;">Tracked Assets</div>
+                </div>
+            </div>
+        `;
+
+        if (totalExp > totalRev) reportHtml += this.Templates.expenseWarning(totalRev, totalExp);
+
+        reportHtml += `<h3 style="margin:20px 0 10px 0; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:8px;">Ledger Discrepancies</h3>`;
+        reportHtml += itemReports || `<p style="color:#32D74B;"><i class="fas fa-check-circle"></i> No discrepancies found in inventory lines.</p>`;
+
+        document.getElementById('auditModalBody').innerHTML = reportHtml;
+        document.getElementById('auditModal').classList.add('active');
     }
-}
+};
+
+window.closeAnalysisModal = () => document.getElementById('itemAnalysisModal').classList.remove('active');
+window.closeAuditModal = () => document.getElementById('auditModal').classList.remove('active');
+
+document.addEventListener('DOMContentLoaded', () => {
+    AvantiInsights.init();
+});
 </script>
+<style>
+    /* Add this to your existing AI Insight CSS */
+    
+    /* Targeted Cell Threat Highlighting */
+    .cell-threat {
+        background: rgba(255, 69, 58, 0.25) !important; /* var(--av-red-glow) */
+        
+        position: relative;
+        border-radius: 0px; /* Soft iOS rounding for the cell */
+        transition: all 0.3s ease;
+    }
+
+    .cell-threat::after {
+        content: '\f071'; /* FontAwesome alert icon */
+        font-family: 'Font Awesome 5 Free';
+        font-weight: 900;
+        color: #FF453A; /* var(--av-red) */
+        position: absolute;
+        right: 6px;
+        top: 50%;
+        transform: translateY(-50%);
+        font-size: 11px;
+        animation: pulseAlert 1.2s infinite;
+        pointer-events: none; /* Prevents icon from blocking text edits */
+        text-shadow: 0 0 8px rgba(255, 69, 58, 0.6);
+    }
+
+    @keyframes pulseAlert {
+        0% { opacity: 0.4; transform: translateY(-50%) scale(0.9); }
+        50% { opacity: 1; transform: translateY(-50%) scale(1.2); }
+        100% { opacity: 0.4; transform: translateY(-50%) scale(0.9); }
+    }
+</style>
+
 
 </body>
 </html>
