@@ -51,10 +51,10 @@
     padding-bottom: 200px;
     padding-top: 125px;
     margin-bottom: 100px;
-      -webkit-user-select: none; /* Safari */
+  -webkit-user-select: none; /* Safari */
   -ms-user-select: none;     /* IE 10+ */
   user-select: none;         /* Standard */
-  }
+}
   .container{
     max-width:450px;
     margin:0 auto;
@@ -3317,15 +3317,26 @@ document.addEventListener('DOMContentLoaded', () => {
     const originalPadding = window.getComputedStyle(body).paddingTop;
     const originalMargin = window.getComputedStyle(body).marginTop;
 
+    // List of element IDs that should NOT trigger the layout shift when the keyboard opens
+    const overrideIds = [
+      'searchItemInput', 
+      'orderQuantity', 
+      'costPrice', 
+      'expenseDesc', 
+      'expenseAmt', 
+      'incomeDesc', 
+      'incomeAmt'
+    ];
+
     const handleViewportChange = () => {
       const currentHeight = window.visualViewport ? window.visualViewport.height : window.innerHeight;
       const isKeyboardOpen = currentHeight < initialHeight * 0.85;
 
       // --- Override Logic ---
-      // Check if the focused element is the search input
       const activeEl = document.activeElement;
-      if (activeEl && activeEl.id === 'searchItemInput') {
-        // If searching, ensure the header remains visible and layout stays default
+      
+      // If the focused element is in our override list, maintain default layout
+      if (activeEl && overrideIds.includes(activeEl.id)) {
         if (header.style.display === 'none') {
             header.style.display = 'block';
             body.style.paddingTop = originalPadding;
@@ -3335,6 +3346,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       if (isKeyboardOpen) {
+        // Apply layout shift for all other inputs to maximize screen real estate
         header.style.display = 'none';
         body.style.paddingTop = '10px';
         body.style.marginTop = '-150px';
@@ -3345,6 +3357,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
       } else {
+        // Reset layout when keyboard is closed
         if (header.style.display === 'none') {
           header.style.display = 'block';
           body.style.paddingTop = originalPadding;
@@ -3365,6 +3378,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   })();
 </script>
+
 
 
 <script>
