@@ -335,13 +335,14 @@ text-align: left;
 /* 1. Set the container height and scroll behavior */
 .stats-table-container {
   max-height: 45vh; 
-  overflow-y: auto;
+  overflow: auto;
   margin: 0 16px 16px 16px;
   
   /* Important: use border-separate to ensure sticky borders work correctly */
   display: block; 
   box-shadow: 0 18px 16px -16px rgba(0, 0, 0, 0.5);
-border-radius: 15px !important;
+border-radius: 10px !important;
+
 }
 
 
@@ -354,6 +355,7 @@ table.stats-table {
   font-size: 0.84rem;
   border: 1px solid var(--border-color);
   border-radius: 5px;
+
 }
 
 /* 3. Sticky Header */
@@ -549,10 +551,10 @@ padding-bottom: env(safe-area-inset-bottom, 50px);
 
  
 
-    <div class="stats-table-container">
+    <div style="border: 1px solid #D1D1D6;" class="stats-table-container">
 
 
-      <table style="border-radius: 30px !important; "class="stats-table" id="statisticsTable">
+      <table style="border: 1px solid #D1D1D6;"class="stats-table" id="statisticsTable">
         <thead>
           <tr class="border border-blue-100">
             <th style="max-width: 2px;"class="select-col hidden"></th>
@@ -569,7 +571,7 @@ padding-bottom: env(safe-area-inset-bottom, 50px);
         <tbody id="statsTableBody"></tbody>
         <tfoot >
           <tr style="background:#F9F9F9;">
-            <th  style=""class="table-controls"  style="border-top:1px solid var(--border-color); border-right: solid black 3px;" colspan=""> <button class="" onclick="addRow()" title="Add new item" style=" background: #3f72af; /* WhatsApp Green */
+            <th  style=""class="table-controls"  style="border-top:1px solid var(--border-color); border-right: solid black 3px; padding-right: 0 !important;" colspan=""> <button class="" onclick="addRow()" title="Add new item" style=" background: #3f72af; /* WhatsApp Green */
     color: white;
     border: none;
     padding: 13px 30px;
@@ -589,13 +591,15 @@ margin-right: -200px;
     box-shadow: 0 4px 15px rgba(37, 211, 102, 0.3);
     -webkit-tap-highlight-color: transparent;
 width: 200%;
-height: 100%; " > <i style="font-size: 18px;
+height: 100%;
+margin-right: 0;
+ " > <i style="font-size: 18px;
     font-weight: bold;" class="fas fa-plus" ></i></button></th>
- <th style="padding-left: 0;" class="table-controls2" colspan="5" style="border-top:1px solid var(--border-color);">  <!-- WhatsApp Share Button -->
+ <th style="padding-left: 8px;" class="table-controls2" colspan="5" style="border-top:1px solid var(--border-color);">  <!-- WhatsApp Share Button -->
 <button id="whatsappShareBtn" class="ios-action-btn" onclick="sendToWhatsApp()">
     <div class="btn-content">
         <i class="fab fa-whatsapp"></i>
-        <span>Send Report</span>
+        <span>Share Report</span>
     </div>
 </button></th>
             <th class="table-controls3"  style="border-top:1px solid var(--border-color); color:var(--text-color);">Total Sales:</th>
@@ -655,7 +659,7 @@ height: 100%;
 
    
     <div class="section-container" >
-        <div class="financial-summary" >
+        <div style="border: 1px solid #D1D1D6;" class="financial-summary" >
           <div class="finance-grid">
             <div class="expenses-section">
               <div class="finance-header">
@@ -690,7 +694,7 @@ Expenses</span>
 
    <div class="section-container mb-20" style="padding-bottom: 120px;">
     
-    <div class="totals-section" style="width: 100%; background: #ffffff; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); border: 1px solid rgba(0,0,0,0.05); overflow: hidden;">
+    <div class="totals-section" style="width: 100%; background: #ffffff; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); border: 1px solid rgba(0,0,0,0.05); overflow: hidden;border: 1px solid #D1D1D6;">
 
         
         <h3 style="margin: 0; padding: 20px 24px; background: #ffffff; border-bottom: 1px solid #eeeeee; font-size: 1rem; font-weight: 900; color: #3f72af; text-transform: uppercase; letter-spacing: 1px;">
