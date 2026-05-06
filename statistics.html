@@ -336,11 +336,12 @@ text-align: left;
 .stats-table-container {
   max-height: 45vh; 
   overflow-y: auto;
-  margin: 0 0 16px 0;
-  padding: 0 16px;
+  margin: 0 16px 16px 16px;
+  
   /* Important: use border-separate to ensure sticky borders work correctly */
   display: block; 
   box-shadow: 0 18px 16px -16px rgba(0, 0, 0, 0.5);
+border-radius: 15px !important;
 }
 
 
@@ -376,7 +377,9 @@ table.stats-table thead th {
 
 /* 4. Sticky Footer */
 table.stats-table tfoot {
-  
+  position: sticky;
+  bottom: 0;
+  z-index: 10;
 }
 
 
@@ -399,12 +402,14 @@ table.stats-table td {
 
 }
 
+
+
 </style>
 
 </head>
 <body>
 
-    <div class="header" style="z-index: 1000;position: fixed;  width: 100vw; top:0; right: 0; background-color: #3f72af !important; padding: 10px 0 0 0 !important; font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', Helvetica, sans-serif !important; color: #ffffff !important; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1) !important;">
+    <div id="header" class="header" style="z-index: 1000;position: fixed;  width: 100vw; top:0; right: 0; background-color: #3f72af !important; padding: 10px 0 0 0 !important; font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', Helvetica, sans-serif !important; color: #ffffff !important; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1) !important;">
     
     <div style="display: flex !important; align-items: center !important; justify-content: space-between !important; padding: 10px 16px !important; margin-bottom: 10px !important;">
           <h1 class="text-3xl font-black tracking-tight text-white"> 
@@ -547,7 +552,7 @@ padding-bottom: env(safe-area-inset-bottom, 50px);
     <div class="stats-table-container">
 
 
-      <table class="stats-table" id="statisticsTable">
+      <table style="border-radius: 30px !important; "class="stats-table" id="statisticsTable">
         <thead>
           <tr class="border border-blue-100">
             <th style="max-width: 2px;"class="select-col hidden"></th>
@@ -564,15 +569,18 @@ padding-bottom: env(safe-area-inset-bottom, 50px);
         <tbody id="statsTableBody"></tbody>
         <tfoot >
           <tr style="background:#F9F9F9;">
-            <th  class="table-controls"  style="border-top:1px solid var(--border-color); " colspan=""> <button class="" onclick="addRow()" title="Add new item" style=" background: #3f72af; /* WhatsApp Green */
+            <th  style=""class="table-controls"  style="border-top:1px solid var(--border-color); border-right: solid black 3px;" colspan=""> <button class="" onclick="addRow()" title="Add new item" style=" background: #3f72af; /* WhatsApp Green */
     color: white;
     border: none;
     padding: 13px 30px;
-    border-radius: 0px;
+    /* This targets ONLY the bottom-left corner */
+border-bottom-left-radius: 10px; 
+
     font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
+margin-right: -200px;
 
     font-size: 28px;
-    font-weight: 800;
+    font-weight: 1000;
     cursor: pointer;
     display: flex;
     align-items: center;
@@ -580,10 +588,10 @@ padding-bottom: env(safe-area-inset-bottom, 50px);
     transition: all 0.2s ease;
     box-shadow: 0 4px 15px rgba(37, 211, 102, 0.3);
     -webkit-tap-highlight-color: transparent;
-width: 160%;
-height: 100%;" > <i style="font-size: 16px;
-    font-weight: 600;" class="fas fa-plus" ></i></button></th>
- <th class="table-controls2" colspan="5" style="border-top:1px solid var(--border-color);">  <!-- WhatsApp Share Button -->
+width: 200%;
+height: 100%; " > <i style="font-size: 18px;
+    font-weight: bold;" class="fas fa-plus" ></i></button></th>
+ <th style="padding-left: 0;" class="table-controls2" colspan="5" style="border-top:1px solid var(--border-color);">  <!-- WhatsApp Share Button -->
 <button id="whatsappShareBtn" class="ios-action-btn" onclick="sendToWhatsApp()">
     <div class="btn-content">
         <i class="fab fa-whatsapp"></i>
@@ -625,6 +633,7 @@ height: 100%;" > <i style="font-size: 16px;
     -webkit-tap-highlight-color: transparent;
 width: 100%;
 height: 100%;
+
 }
 
 .ios-action-btn:active {
@@ -1553,7 +1562,7 @@ function makeEmptyDate(){
     return { items: {}, expenses: [], incomes: [], balanced: false };
 }
 let nextItemId = 1;
-function makeItem(idHint, name='new item', opening=0, orders=0, price=0, closing=0){
+function makeItem(idHint, name='new item', opening=0, orders=0, price=0, closing=0, position=0){
     const id = idHint || `itm${Date.now()}${nextItemId++}`;
     return {
         id,
@@ -1562,9 +1571,11 @@ function makeItem(idHint, name='new item', opening=0, orders=0, price=0, closing
         orders: Number(orders||0),
         price: Number(price||0),
         closing: Number(closing||0),
+        position: position, // Added position property
         batches: []
     };
 }
+
 
 /* ---------- Ensure date exists + bootstrap from nearest neighbor (FORWARD ONLY) ---------- */
 function ensureDateExists(dateKey){
@@ -1601,7 +1612,10 @@ function ensureDateExists(dateKey){
         if(foundKey){
             // copy items but keep opening/closes sensible:
             Object.values(state.dates[foundKey].items).forEach(it => {
-                const copy = makeItem(it.id, it.name, it.opening || it.closing || 0, 0, it.price || 0, 0);
+            // Inside the loop that copies items:
+const copy = makeItem(it.id, it.name, it.opening || it.closing || 0, 0, it.price || 0, 0, it.position || 0);
+
+
                 copy.batches = clone(it.batches || []);
                 state.dates[dateKey].items[copy.id] = copy;
             });
@@ -1680,81 +1694,170 @@ function directOrderEntry(itemId) {
 }
 
 
-function renderTable(){
+function renderTable() {
     const tbody = document.getElementById('statsTableBody');
-    if(!tbody) return;
+    if (!tbody) return;
     tbody.innerHTML = '';
-    const dateObj = state.dates[state.currentDate] || makeEmptyDate();
-    const items = Object.values(dateObj.items || {});
-    const filter = (document.getElementById('searchItemInput')||{value:''}).value.trim().toUpperCase();
 
+    const dateObj = state.dates[state.currentDate] || makeEmptyDate();
+    
+    // 1. Convert items object to an array
+    let items = Object.values(dateObj.items || {});
+
+    // 2. Legacy Support: Assign positions if they don't exist yet
+    items.forEach((it, idx) => {
+        if (it.position === undefined || it.position === null) {
+            it.position = idx + 1;
+            // Persist to Firebase for future consistency
+            if (firebaseDB && isOnline && REMOTE_DB_PATH !== DEFAULT_FALLBACK_PATH) {
+                firebaseDB.ref(`${REMOTE_DB_PATH}/dates/${state.currentDate}/items/${it.id}/position`).set(it.position);
+            }
+        }
+    });
+
+    // 3. Sort by position for a consistent user-defined order
+    items.sort((a, b) => (a.position || 0) - (b.position || 0));
+
+    const filter = (document.getElementById('searchItemInput') || { value: '' }).value.trim().toUpperCase();
     let totalSales = 0;
-    items.forEach(item=>{
-        if(filter && !item.name.toUpperCase().includes(filter)) return;
+
+    items.forEach(item => {
+        // Search filter logic
+        if (filter && !item.name.toUpperCase().includes(filter)) return;
+
         const tr = document.createElement('tr');
         tr.dataset.itemId = item.id;
 
-        // select col
-        const tdSelect = document.createElement('td'); tdSelect.className = 'select-col';
-        if(state.selectMode) tdSelect.classList.remove('hidden'); else tdSelect.classList.add('hidden');
-        const cb = document.createElement('input'); cb.type='checkbox';
+        // --- Column 0: Selection & Drag Handle ---
+        const tdSelect = document.createElement('td'); 
+        tdSelect.className = 'select-col';
+        if (state.selectMode) tdSelect.classList.remove('hidden'); else tdSelect.classList.add('hidden');
+        
+        const controlWrapper = document.createElement('div');
+        controlWrapper.style.display = 'flex';
+        controlWrapper.style.alignItems = 'center';
+        controlWrapper.style.gap = '10px';
+
+        const dragIcon = document.createElement('i');
+        dragIcon.className = 'fas fa-grip-horizontal drag-handle-hint';
+        dragIcon.style.color = '#007aff';
+        dragIcon.style.fontSize = '14px';
+
+        const cb = document.createElement('input'); 
+        cb.type = 'checkbox';
         cb.checked = state.selectedForDelete.has(item.id);
-        cb.onchange = (e)=>{ if(e.target.checked) state.selectedForDelete.add(item.id); else state.selectedForDelete.delete(item.id); updateSelectionUI(); };
-        tdSelect.appendChild(cb);
+        cb.onchange = (e) => { 
+            if (e.target.checked) state.selectedForDelete.add(item.id); 
+            else state.selectedForDelete.delete(item.id); 
+            updateSelectionUI(); 
+        };
+
+        controlWrapper.appendChild(dragIcon);
+        controlWrapper.appendChild(cb);
+        tdSelect.appendChild(controlWrapper);
         tr.appendChild(tdSelect);
 
-        const tdItem = document.createElement('td'); tdItem.className='editable'; tdItem.dataset.col='item'; tdItem.contentEditable = true; tdItem.spellcheck=false;
+        // --- Column 1: Item Name (Editable) ---
+        const tdItem = document.createElement('td'); 
+        tdItem.className = 'editable'; 
+        tdItem.dataset.col = 'item'; 
+        tdItem.contentEditable = !state.selectMode; // Locked in select mode
+        tdItem.spellcheck = false;
         tdItem.textContent = item.name;
-        tdItem.onblur = ()=>{
+        tdItem.onblur = () => {
             const newName = tdItem.textContent.trim() || 'new item';
-            if(state.dates[state.currentDate] && state.dates[state.currentDate].items[item.id]){
+            if (state.dates[state.currentDate]?.items[item.id]) {
                 state.dates[state.currentDate].items[item.id].name = newName;
             }
             propagateNameAcrossDates(item.id, newName);
             persistItemChange(item.id);
         };
-        tdItem.onkeydown = (e)=>{ if(e.key==='Enter'){ e.preventDefault(); tdItem.blur(); } };
+        tdItem.onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); tdItem.blur(); } };
         tr.appendChild(tdItem);
 
-        const tdOpening = document.createElement('td'); tdOpening.className='editable'; tdOpening.dataset.col='openingStock'; tdOpening.contentEditable = true; tdOpening.textContent = item.opening;
-        tdOpening.onblur = ()=>{ item.opening = sanitizeNumber(tdOpening.textContent); persistItemChange(item.id); };
-        tdOpening.onkeydown = (e)=>{ if(e.key==='Enter'){ e.preventDefault(); tdOpening.blur(); } };
+        // --- Column 2: Opening Stock (Editable) ---
+        const tdOpening = document.createElement('td'); 
+        tdOpening.className = 'editable'; 
+        tdOpening.dataset.col = 'openingStock'; 
+        tdOpening.contentEditable = !state.selectMode;
+        tdOpening.textContent = item.opening;
+        tdOpening.onblur = () => { 
+            item.opening = sanitizeNumber(tdOpening.textContent); 
+            persistItemChange(item.id); 
+        };
+        tdOpening.onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); tdOpening.blur(); } };
         tr.appendChild(tdOpening);
 
-        const tdOrders = document.createElement('td'); tdOrders.dataset.col='orders'; tdOrders.style.cursor='pointer'; tdOrders.onclick = ()=>handleOrdersClick(item.id);
+        // --- Column 3: Orders (Clickable / Modal) ---
+        const tdOrders = document.createElement('td'); 
+        tdOrders.dataset.col = 'orders'; 
+        tdOrders.style.cursor = 'pointer'; 
+        tdOrders.onclick = () => handleOrdersClick(item.id);
         tdOrders.textContent = item.orders;
         tr.appendChild(tdOrders);
 
+        // --- Column 4: Total Stock (Calculated) ---
         const totalStock = Number(item.opening) + Number(item.orders);
-        const tdTotalStock = document.createElement('td'); tdTotalStock.dataset.col='totalStock'; tdTotalStock.textContent = totalStock;
+        const tdTotalStock = document.createElement('td'); 
+        tdTotalStock.dataset.col = 'totalStock'; 
+        tdTotalStock.textContent = totalStock;
         tr.appendChild(tdTotalStock);
 
-        const tdPrice = document.createElement('td'); tdPrice.className='editable'; tdPrice.dataset.col='price'; tdPrice.contentEditable=true; tdPrice.textContent = item.price;
-        tdPrice.onblur = ()=>{ const old = item.price; item.price = sanitizeNumber(tdPrice.textContent); if(item.price !== old) propagatePriceToFuture(item.id, item.price); persistItemChange(item.id); };
-        tdPrice.onkeydown = (e)=>{ if(e.key==='Enter'){ e.preventDefault(); tdPrice.blur(); } };
+        // --- Column 5: Price (Editable) ---
+        const tdPrice = document.createElement('td'); 
+        tdPrice.className = 'editable'; 
+        tdPrice.dataset.col = 'price'; 
+        tdPrice.contentEditable = !state.selectMode;
+        tdPrice.textContent = item.price;
+        tdPrice.onblur = () => { 
+            const old = item.price; 
+            item.price = sanitizeNumber(tdPrice.textContent); 
+            if (item.price !== old) propagatePriceToFuture(item.id, item.price); 
+            persistItemChange(item.id); 
+        };
+        tdPrice.onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); tdPrice.blur(); } };
         tr.appendChild(tdPrice);
 
-        const tdClosing = document.createElement('td'); tdClosing.className='editable'; tdClosing.dataset.col='closingStock'; tdClosing.contentEditable=true; tdClosing.textContent = item.closing;
-        tdClosing.onblur = ()=>{ item.closing = sanitizeNumber(tdClosing.textContent); persistItemChange(item.id); propagateClosingToNext(item.id); };
-        tdClosing.onkeydown = (e)=>{ if(e.key==='Enter'){ e.preventDefault(); tdClosing.blur(); } };
+        // --- Column 6: Closing Stock (Editable) ---
+        const tdClosing = document.createElement('td'); 
+        tdClosing.className = 'editable'; 
+        tdClosing.dataset.col = 'closingStock'; 
+        tdClosing.contentEditable = !state.selectMode;
+        tdClosing.textContent = item.closing;
+        tdClosing.onblur = () => { 
+            item.closing = sanitizeNumber(tdClosing.textContent); 
+            persistItemChange(item.id); 
+            propagateClosingToNext(item.id); 
+        };
+        tdClosing.onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); tdClosing.blur(); } };
         tr.appendChild(tdClosing);
 
+        // --- Column 7: Sales Quantity (Calculated) ---
         const sales = Math.max(0, totalStock - Number(item.closing));
-        const tdSales = document.createElement('td'); tdSales.dataset.col='sales'; tdSales.textContent = sales;
+        const tdSales = document.createElement('td'); 
+        tdSales.dataset.col = 'sales'; 
+        tdSales.textContent = sales;
         tr.appendChild(tdSales);
 
+        // --- Column 8: Total Revenue (Calculated) ---
         const total = sales * Number(item.price);
-        const tdTotal = document.createElement('td'); tdTotal.dataset.col='total'; tdTotal.textContent = total;
+        const tdTotal = document.createElement('td'); 
+        tdTotal.dataset.col = 'total'; 
+        tdTotal.textContent = total;
         tr.appendChild(tdTotal);
 
         tbody.appendChild(tr);
         totalSales += Number(total);
     });
 
+    // Update Bottom Summary Display with Zambian Kwacha Formatting
     const totEl = document.getElementById('totalSalesAmount');
-    if(totEl) totEl.textContent = "K"+totalSales;
+    if (totEl) totEl.textContent = "K" + totalSales.toLocaleString();
+    
     updateTotalsNumbers();
 }
+
+
 
 /* ---------- Utility render helpers ---------- */
 function updateTotalsNumbers(){
@@ -1917,23 +2020,25 @@ function deleteSelectedItems() {
 /* ---------- Add New Row ---------- */
 function addRow() {
     ensureDateExists(state.currentDate);
-    
-    // Safety check for adding rows to balanced days
     const dateObj = state.dates[state.currentDate];
+    
     if (dateObj && (dateObj.balanced === true || String(dateObj.balanced).toLowerCase() === 'true')) {
         alert("Cannot add items to a balanced day. Please uncheck 'balanced' first.");
         return;
     }
 
+    // Calculate the next logical position number
+    const itemsArray = Object.values(dateObj.items || {});
+    const nextPos = itemsArray.length > 0 
+        ? Math.max(...itemsArray.map(i => i.position || 0)) + 1 
+        : 1;
+
     const id = `itm${Date.now()}`;
-    const item = makeItem(id, 'new item', 0, 0, 0, 0);
+    const item = makeItem(id, 'new item', 0, 0, 0, 0, nextPos);
     
-    if (!state.dates[state.currentDate]) state.dates[state.currentDate] = makeEmptyDate();
     if (!state.dates[state.currentDate].items) state.dates[state.currentDate].items = {};
-    
     state.dates[state.currentDate].items[item.id] = item;
     
-    // Propagate the new item to future days
     propagateItemToFuture(item, state.currentDate);
     saveState(); 
     renderAll();
@@ -2007,18 +2112,36 @@ function updateSelectionUI(){
 }
 
 /* ---------- CRUD: Add / Delete / Persist ---------- */
-function addRow(){
-    // ensure current date exists
+/* ---------- Add New Row (Last Position Logic) ---------- */
+function addRow() {
     ensureDateExists(state.currentDate);
+    const dateObj = state.dates[state.currentDate];
+    
+    // Safety check for balanced days
+    if (dateObj && (dateObj.balanced === true || String(dateObj.balanced).toLowerCase() === 'true')) {
+        alert("Cannot add items to a balanced day. Please uncheck 'balanced' first.");
+        return;
+    }
+
+    // 1. Calculate the next logical position number
+    const itemsArray = Object.values(dateObj.items || {});
+    const nextPos = itemsArray.length > 0 
+        ? Math.max(...itemsArray.map(i => i.position || 0)) + 1 
+        : 1;
+
+    // 2. Create the item with the new position
     const id = `itm${Date.now()}`;
-    const item = makeItem(id,'new item',0,0,0,0);
-    if(!state.dates[state.currentDate]) state.dates[state.currentDate]=makeEmptyDate();
-    if(!state.dates[state.currentDate].items) state.dates[state.currentDate].items = {};
-    state.dates[state.currentDate].items[item.id]=item;
-    // propagate forward from the added date (so future days get this item)
+    const item = makeItem(id, 'new item', 0, 0, 0, 0, nextPos);
+    
+    if (!state.dates[state.currentDate].items) state.dates[state.currentDate].items = {};
+    state.dates[state.currentDate].items[item.id] = item;
+    
+    // 3. Sync and Save
     propagateItemToFuture(item, state.currentDate);
-    saveState(); renderAll();
+    saveState(); 
+    renderAll();
 }
+
 
 /**
  * Deletes an item from the starting date and all future dates, 
@@ -2119,7 +2242,10 @@ function propagateClosingToNext(itemId){
 
     if(!nextDateData.items[itemId]) {
         if (!isNextDateBalanced) {
-            const copy = makeItem(itemId, thisItem.name, thisItem.closing, 0, thisItem.price, 0);
+// Inside the item creation block:
+const copy = makeItem(itemId, thisItem.name, thisItem.closing, 0, thisItem.price, 0, thisItem.position || 0);
+
+
             copy.batches = clone(thisItem.batches || []);
             state.dates[nextDate].items[itemId] = copy;
         } else {
@@ -2149,7 +2275,10 @@ function propagateItemToFuture(item, fromDateKey){
         }
 
         if(!dateData.items[item.id]){
-            const copy = makeItem(item.id, item.name, item.closing || item.opening || 0, 0, item.price, 0);
+// Inside the item creation block:
+const copy = makeItem(item.id, item.name, item.closing || item.opening || 0, 0, item.price, 0, item.position || 0);
+
+
             copy.batches = clone(item.batches || []);
             dateData.items[item.id] = copy;
         }
@@ -2222,7 +2351,10 @@ function nextDate(){
         if(prev){
             Object.values(prev.items || {}).forEach(it=>{
                 if(!state.dates[state.currentDate].items[it.id]){
-                    const copy = makeItem(it.id, it.name, it.closing || 0, 0, it.price, 0);
+// Inside the copy items loop:
+const copy = makeItem(it.id, it.name, it.closing || 0, 0, it.price, 0, it.position || 0);
+
+
                     copy.batches = clone(it.batches || []);
                     state.dates[state.currentDate].items[it.id] = copy;
                 } else {
@@ -3165,6 +3297,444 @@ document.addEventListener('DOMContentLoaded', () => {
         100% { opacity: 0.4; transform: translateY(-50%) scale(0.9); }
     }
 </style>
+
+
+<script>
+  (function() {
+    const header = document.getElementById('header');
+    const body = document.body;
+    
+    if (!header) return;
+
+    const initialHeight = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+    const originalPadding = window.getComputedStyle(body).paddingTop;
+    const originalMargin = window.getComputedStyle(body).marginTop;
+
+    const handleViewportChange = () => {
+      const currentHeight = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+      const isKeyboardOpen = currentHeight < initialHeight * 0.85;
+
+      // --- Override Logic ---
+      // Check if the focused element is the search input
+      const activeEl = document.activeElement;
+      if (activeEl && activeEl.id === 'searchItemInput') {
+        // If searching, ensure the header remains visible and layout stays default
+        if (header.style.display === 'none') {
+            header.style.display = 'block';
+            body.style.paddingTop = originalPadding;
+            body.style.marginTop = originalMargin;
+        }
+        return; 
+      }
+
+      if (isKeyboardOpen) {
+        header.style.display = 'none';
+        body.style.paddingTop = '10px';
+        body.style.marginTop = '-150px';
+
+        window.scrollTo({
+          top: 0,
+          behavior: 'instant'
+        });
+
+      } else {
+        if (header.style.display === 'none') {
+          header.style.display = 'block';
+          body.style.paddingTop = originalPadding;
+          body.style.marginTop = originalMargin;
+          
+          window.scrollTo({
+            top: 0,
+            behavior: 'smooth'
+          });
+        }
+      }
+    };
+
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', handleViewportChange);
+    } else {
+      window.addEventListener('resize', handleViewportChange);
+    }
+  })();
+</script>
+
+
+<script>
+  /**
+   * Adaptive Scroll Listener: 
+   * Sets a baseline after initial render, then scrolls only on new additions.
+   */
+  (function() {
+    const targetNode = document.getElementById('statsTableBody');
+    const container = document.querySelector('.stats-table-container');
+
+    if (!targetNode || !container) return;
+
+    let baselineRowCount = 0;
+    let isInitialized = false;
+
+    const observer = new MutationObserver(() => {
+      const currentCount = targetNode.children.length;
+
+      // STAGE 1: Wait for data to exist to set the baseline
+      if (!isInitialized && currentCount > 0) {
+        baselineRowCount = currentCount;
+        isInitialized = true;
+        return; // Exit here so we don't scroll on the initial load
+      }
+
+      // STAGE 2: Only scroll if the count has actually increased from the baseline
+      if (isInitialized && currentCount > baselineRowCount) {
+        container.scrollTo({
+          top: container.scrollHeight,
+          behavior: 'instant'
+        });
+        
+        // Update baseline so the next addition is measured correctly
+        baselineRowCount = currentCount;
+      }
+    });
+
+    // Start observing immediately
+    observer.observe(targetNode, { childList: true });
+  })();
+</script>
+
+<style>
+    /* 1. Select Mode UI Overrides */
+    body.select-mode-active {
+        user-select: none !important;
+        -webkit-user-select: none !important;
+    }
+
+    body.select-mode-active .stats-table-container {
+        max-height: none !important;
+        overflow-y: visible !important;
+        box-shadow: none !important;
+        display: block !important;
+    }
+
+    /* Remove sticky headers/footers in select mode */
+    body.select-mode-active thead,
+    body.select-mode-active tfoot,
+    body.select-mode-active thead th,
+    body.select-mode-active tfoot td {
+        position: static !important;
+    }
+
+    /* Lock cells in select mode */
+    body.select-mode-active .editable {
+        pointer-events: none !important;
+    }
+
+    /* 2. Dragging States */
+.dragging-ghost {
+    position: fixed;
+    pointer-events: none;
+    z-index: 10000;
+    background: white;
+    box-shadow: 0 15px 35px rgba(0,0,0,0.4);
+    opacity: 0.95;
+    border: 2px solid #007bff;
+    border-radius: 8px;
+    color: black;
+    
+    /* NEW: Safety constraints */
+    box-sizing: border-box;
+    max-width: 95vw; /* Prevents ghost from being wider than the screen */
+    overflow: hidden;
+}
+
+.row-dragging-original {
+    opacity: 0.5 !important;
+    background-color: #f0f0f0 !important;
+}
+
+
+    .is-dragging-now {
+        cursor: grabbing !important;
+        user-select: none !important;
+        touch-action: none !important;
+    }
+
+    /* 3. Drag Handle Hint (Optional) */
+    .draggable-ready {
+        background-color: #e3f2fd !important;
+        cursor: grab;
+    }
+
+/* Update this in your <style> tag */
+body.select-mode-active .editable {
+    /* Instead of 'none', we use 'auto' but prevent the text cursor */
+    pointer-events: auto !important; 
+    user-select: none !important;
+    -webkit-user-select: none !important;
+    cursor: default !important;
+}
+
+body.select-mode-active #statsTableBody tr {
+    /* Ensure the row itself is ready for the pointer */
+    
+}
+.drag-handle-icon {
+    opacity: 0.6;
+    transition: opacity 0.2s;
+    padding: 4px;
+}
+
+/* Optional: Make the icon pop when the row is ready to drag */
+.draggable-ready .drag-handle-icon {
+    opacity: 1;
+    transform: scale(1.1);
+    color: #007aff !important;
+}
+
+/* Ensure the selection column doesn't get too wide */
+.select-col {
+    min-width: 60px;
+    white-space: nowrap;
+}
+
+</style>
+
+<script>
+(function() {
+    let isDragging = false;
+    let draggedRow = null;
+    let ghost = null;
+    let scrollInterval = null;
+    let lastClickTime = 0;
+    let isReadyToDrag = false;
+
+    // --- Drag Core Logic ---
+
+    function startDrag(e, row) {
+        isDragging = true;
+        draggedRow = row;
+        
+        document.body.classList.add('is-dragging-now');
+        row.classList.add('row-dragging-original');
+
+        // Create the floating ghost
+        ghost = document.createElement('div');
+        ghost.className = 'dragging-ghost';
+        
+        const tableWrap = document.createElement('table');
+        tableWrap.style.width = row.offsetWidth + "px";
+        tableWrap.style.borderCollapse = "collapse";
+        const tbody = document.createElement('tbody');
+        const clone = row.cloneNode(true);
+        
+        // Match column widths
+        const originalTds = row.querySelectorAll('td');
+        const cloneTds = clone.querySelectorAll('td');
+        originalTds.forEach((td, i) => {
+            cloneTds[i].style.width = td.offsetWidth + 'px';
+        });
+
+        tbody.appendChild(clone);
+        tableWrap.appendChild(tbody);
+        ghost.appendChild(tableWrap);
+        document.body.appendChild(ghost);
+        
+        updateGhostPosition(e.clientX, e.clientY);
+        
+        if (window.navigator.vibrate) window.navigator.vibrate(50);
+    }
+
+    function updateGhostPosition(x, y) {
+    if (!ghost) return;
+
+    const ghostWidth = ghost.offsetWidth;
+    const ghostHeight = ghost.offsetHeight;
+    const padding = 20; // Margin from edges
+
+    // 1. Calculate Top Constraint (35% of the page)
+    const topLimit = window.innerHeight * 0.30;
+
+    // 2. Clamped Horizontal Position (Stay within left/right edges)
+    let left = x - ghostWidth / 2;
+    left = Math.max(padding, Math.min(left, window.innerWidth - ghostWidth - padding));
+
+    // 3. Clamped Vertical Position (Stay below top 35% and above bottom edge)
+    let top = y - 20; 
+    
+    // Clamp 'top' so it cannot be less than topLimit
+    top = Math.max(topLimit, Math.min(top, window.innerHeight - ghostHeight - padding));
+
+    ghost.style.right = left + 'px';
+    ghost.style.top = top + 'px';
+}
+
+    function handleAutoScroll(y) {
+    clearInterval(scrollInterval);
+    
+    // Calculate the 20% thresholds based on current screen height
+    const threshold = window.innerHeight * 0.30; 
+    const speed = 10; 
+
+    if (y < threshold) {
+        // Dragged item is in the top 20% of the screen
+        scrollInterval = setInterval(() => window.scrollBy(0, -speed), 15);
+    } else if (y > window.innerHeight - threshold) {
+        // Dragged item is in the bottom 20% of the screen
+        scrollInterval = setInterval(() => window.scrollBy(0, speed), 15);
+    }
+}
+
+    function onPointerMove(e) {
+        if (!isDragging) return;
+
+        updateGhostPosition(e.clientX, e.clientY);
+        handleAutoScroll(e.clientY);
+
+        // Calculate insertion point
+        const target = document.elementFromPoint(e.clientX, e.clientY)?.closest('#statsTableBody tr');
+        if (target && target !== draggedRow) {
+            const rect = target.getBoundingClientRect();
+            if (e.clientY > rect.top + rect.height / 2) {
+                target.parentNode.insertBefore(draggedRow, target.nextSibling);
+            } else {
+                target.parentNode.insertBefore(draggedRow, target);
+            }
+        }
+    }
+
+    async function onPointerUp() {
+        clearInterval(scrollInterval);
+        isReadyToDrag = false;
+        
+        if (isDragging) {
+            isDragging = false;
+            document.body.classList.remove('is-dragging-now');
+            draggedRow.classList.remove('row-dragging-original');
+            draggedRow.classList.remove('draggable-ready');
+            if (ghost) ghost.remove();
+            
+            await syncTableOrder();
+        }
+        draggedRow = null;
+    }
+
+    // --- Firebase Order Sync ---
+
+    // --- Firebase Order Sync: Re-indexing & Forward Propagation ---
+async function syncTableOrder() {
+    if (typeof firebaseDB === 'undefined' || !state.currentDate || !REMOTE_DB_PATH) return;
+
+    const rows = document.querySelectorAll('#statsTableBody tr');
+    const updates = {};
+    const currentDateData = state.dates[state.currentDate];
+    
+    if (!currentDateData) return;
+
+    // 1. Re-index based on the new DOM order
+    rows.forEach((row, index) => {
+        const itemId = row.dataset.itemId;
+        const newPosition = index + 1; // Successive numbering (1, 2, 3...)
+
+        if (currentDateData.items[itemId]) {
+            // Update current date locally
+            currentDateData.items[itemId].position = newPosition;
+            // Queue Firebase update for current date
+            updates[`${REMOTE_DB_PATH}/dates/${state.currentDate}/items/${itemId}/position`] = newPosition;
+
+            // 2. Propagate to future dates
+            // Loops forward (defaulting to 30 days) to keep item order consistent
+            for (let i = 1; i <= (state.futureWindowDays || 30); i++) {
+                const futureDateKey = addDays(state.currentDate, i);
+                const futureDateData = state.dates[futureDateKey];
+
+                // Only update if item exists and the date isn't already 'balanced' (locked)
+                if (futureDateData && futureDateData.items && futureDateData.items[itemId]) {
+                    if (!futureDateData.balanced) {
+                        futureDateData.items[itemId].position = newPosition;
+                        updates[`${REMOTE_DB_PATH}/dates/${futureDateKey}/items/${itemId}/position`] = newPosition;
+                    }
+                }
+            }
+        }
+    });
+
+    // 3. Perform Atomic Update
+    try {
+        await firebaseDB.ref().update(updates);
+        console.log("Global position sync successful.");
+    } catch (err) {
+        console.error("Propagation Error:", err);
+        // Refresh UI to correct state if update fails
+        if (typeof renderTable === 'function') renderTable();
+    }
+}
+
+// Helper to calculate future date strings (YYYY-MM-DD)
+function addDays(dateStr, days) {
+    const date = new Date(dateStr);
+    date.setDate(date.getDate() + days);
+    return date.toISOString().split('T')[0];
+}
+
+
+    // --- Event Listeners ---
+
+ // Replace your existing initRowListeners with this:
+function initRowListeners() {
+    const tbody = document.getElementById('statsTableBody');
+    if (!tbody || tbody.dataset.delegationInited === 'true') return;
+
+    tbody.addEventListener('pointerdown', (e) => {
+        // 1. MUST be in select mode to drag
+        if (!state.selectMode) return;
+
+        // Find the row, even if they clicked a cell or a span inside it
+        const row = e.target.closest('tr');
+        if (!row) return;
+
+        // 2. Ignore actual checkbox clicks so they still work
+        if (e.target.tagName === 'INPUT' && e.target.type === 'checkbox') {
+            return; 
+        }
+
+        const currentTime = new Date().getTime();
+        const tapLength = currentTime - lastClickTime;
+
+        // Detect Double Tap
+        if (tapLength < 300 && tapLength > 0) {
+            isReadyToDrag = true;
+            row.classList.add('draggable-ready');
+            startDrag(e, row);
+            
+            // Critical: prevents the browser from trying to select text 
+            // or perform default "touch" actions
+            e.preventDefault(); 
+        }
+
+        lastClickTime = currentTime;
+    });
+
+    tbody.dataset.delegationInited = 'true';
+}
+
+    // Monitor table changes
+    const observer = new MutationObserver(() => {
+        initRowListeners();
+        // Control global classes based on selectMode state
+        if (state.selectMode) {
+            document.body.classList.add('select-mode-active');
+        } else {
+            document.body.classList.remove('select-mode-active');
+        }
+    });
+
+    document.addEventListener('DOMContentLoaded', () => {
+        observer.observe(document.body, { childList: true, subtree: true });
+        window.addEventListener('pointermove', onPointerMove);
+        window.addEventListener('pointerup', onPointerUp);
+        window.addEventListener('pointercancel', onPointerUp);
+    });
+})();
+</script>
 
 
 </body>
