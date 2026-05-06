@@ -3700,6 +3700,10 @@ async function syncTableOrder() {
             // We only take the ID, Price, and the New Position
             const propagationData = {
                 id: itemId,
+                name: originalItem.name,
+opening: 0,
+orders: 0,
+cloding: 0,
                 position: newPosition,
                 price: originalItem.price || 0 // Ensure price exists
             };
