@@ -48,9 +48,9 @@
     background: linear-gradient(180deg,#f2f6fb 0%, #eef2f7 100%);
     color:var(--text-color);
     margin-top: 50px;
-    padding-bottom: 200px;
+    padding-bottom: 280px;
     padding-top: 125px;
-    margin-bottom: 100px;
+    margin-bottom: 180px;
   -webkit-user-select: none; /* Safari */
   -ms-user-select: none;     /* IE 10+ */
   user-select: none;         /* Standard */
@@ -356,9 +356,12 @@ table.stats-table {
   border-collapse: separate; /* Required for sticky positioning */
   border-spacing: 0;
   font-size: 0.84rem;
-  border: 1px solid var(--border-color);
+  border: none !important;
   border-radius: 5px;
 
+}
+table.stats-table thead{
+box-shadow: 0 4px 15px -2px rgba(0, 0, 0, 0.2) !important;
 }
 
 /* 3. Sticky Header */
@@ -368,15 +371,18 @@ table.stats-table thead th {
   z-index: 4;
   
   /* The "Frosted" Logic */
-      background:rgba(63, 114, 175, 0.3);/* Increased alpha slightly for better readability */
+     background: rgba(120, 170, 255, 0.25);
+
+
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px); /* Essential for Safari support */
   
   /* Styling & Borders */
-  border-bottom: 2px solid var(--border-color);
+  border-bottom: 1px solid  #D1D1D6;
   padding: 8px;
   font-weight: 600;
-  color: #3f72af; /* Changed to white for better contrast against the darker blue tint */
+  color: #3f72af; 
+
 }
 
 
@@ -385,24 +391,28 @@ table.stats-table tfoot {
   position: sticky;
   bottom: 0;
   z-index: 10;
+border-top: 1px solid  #D1D1D6;
 }
 
 
 
 table.stats-table tfoot tr {
-  background: #F9F9F9; /* Solid background */
+  
+border-top: 1px solid  #D1D1D6;
 }
 
 table.stats-table tfoot th, 
 table.stats-table tfoot td {
-  border-top: 2px solid var(--border-color);
+  border-top: 1px solid  #D1D1D6;
   padding: 8px;
-background:rgba(63, 114, 175, 0.3);
+
+          
+ background: white;
 }
 
 /* Ensure table cells still look clean with border-separate */
 table.stats-table td {
-  border-bottom: 1px solid var(--border-color);
+ 
   padding: 8px;
 
 }
@@ -414,7 +424,7 @@ table.stats-table td {
 </head>
 <body>
 
-    <div id="header" class="header" style="z-index: 1000;position: fixed;  width: 100vw; top:0; right: 0; background-color: #3f72af !important; padding: 10px 0 0 0 !important; font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', Helvetica, sans-serif !important; color: #ffffff !important; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1) !important;">
+    <div id="header" class="header" style="z-index: 1000;position: fixed;  width: 100vw; top:0; right: 0; background-color: #3f72af !important; padding: 10px 0 0 0 !important; font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', Helvetica, sans-serif !important; color: #ffffff !important; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1) !important; backdrop-filter: blur(10px);">
     
     <div style="display: flex !important; align-items: center !important; justify-content: space-between !important; padding: 10px 16px !important; margin-bottom: 10px !important;">
           <h1 class="text-3xl font-black tracking-tight text-white"> 
@@ -558,8 +568,8 @@ padding-bottom: env(safe-area-inset-bottom, 50px);
 
 
       <table style="border: 1px solid #D1D1D6;"class="stats-table" id="statisticsTable">
-        <thead>
-          <tr class="border border-blue-100">
+        <thead >
+          <tr style="" class="border border-blue-100">
             <th style="max-width: 2px;"class="select-col hidden"></th>
             <th >Item</th>
             <th>Opening Stock</th>
@@ -573,40 +583,25 @@ padding-bottom: env(safe-area-inset-bottom, 50px);
         </thead>
         <tbody id="statsTableBody"></tbody>
         <tfoot >
-          <tr style="background:#F9F9F9;">
-            <th  style=""class="table-controls"  style="border-top:1px solid var(--border-color); border-right: solid black 3px; padding-right: 0 !important;" colspan=""> <button class="" onclick="addRow()" title="Add new item" style=" background: #3f72af; /* WhatsApp Green */
-    color: white;
-    border: none;
-    padding: 13px 30px;
-    /* This targets ONLY the bottom-left corner */
-border-bottom-left-radius: 10px; 
-
-    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
-margin-right: -200px;
-
-    font-size: 28px;
-    font-weight: 1000;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.2s ease;
-    box-shadow: 0 4px 15px rgba(37, 211, 102, 0.3);
-    -webkit-tap-highlight-color: transparent;
-width: 200%;
-height: 100%;
-margin-right: 0;
+          <tr style="background:#F9F9F9; ">
+            <th  style=""class="table-controls"  style="border-top:1px solid var(--border-color); border-top: 1px solid  #D1D1D6; padding-right: 0 !important;" colspan="2"> <button class="" onclick="addRow()" title="Add new item" style="  background: white;
+            border: 2px dashed #cbd5e1;
+            color: #64748b;
+            padding: 8px 10px;
+            border-radius: 12px;
+            cursor: pointer;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+margin: 5px;
  " > <i style="font-size: 18px;
-    font-weight: bold;" class="fas fa-plus" ></i></button></th>
- <th style="padding-left: 8px;" class="table-controls2" colspan="5" style="border-top:1px solid var(--border-color);">  <!-- WhatsApp Share Button -->
-<button id="whatsappShareBtn" class="ios-action-btn" onclick="sendToWhatsApp()">
-    <div class="btn-content">
-        <i class="fab fa-whatsapp"></i>
-        <span>Share Report</span>
-    </div>
-</button></th>
-            <th class="table-controls3"  style="border-top:1px solid var(--border-color); color:var(--text-color);">Total Sales:</th>
-            <th id="totalSalesAmount" style="border-top:1px solid var(--border-color); font-weight:600; color:var(--system-blue);">K0</th>
+    font-weight: bold;" class="fas fa-plus" ></i> Add item</button></th>
+ <th style="padding-left: 8px;" class="table-controls2" colspan="3" style="border-top:1px solid var(--border-color);">  <!-- WhatsApp Share Button -->
+</th>
+            <th colspan="2" class="table-controls3"  style=" color: gray; font-weight: bold;">Total Sales:</th>
+            <th id="totalSalesAmount" style=" font-weight:800; color: #3f72af border-top: 1px solid  #D1D1D6;">K0</th>
           </tr>
 
         </tfoot>
@@ -621,43 +616,75 @@ margin-right: 0;
 
 
 
+<div class="floating-actions">
+    <div class="total-badge">
+        Total Sales 
+        <span id="totalSalesAmount2" >K0.00</span>
+    </div>
+    <button id="whatsappShareBtn" class="btn-whatsapp" onclick="sendToWhatsApp()">
+        <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/></svg>
+        Share Report 
+    </button>
+</div>
+
+
+
 <style>
-.ios-action-btn {
-    background: #25D366; /* WhatsApp Green */
-    color: white;
-    border: none;
-    padding: 12px 24px;
-    border-radius: 0px;
-    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
-    font-size: 16px;
-    font-weight: 600;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.2s ease;
-    box-shadow: 0 4px 15px rgba(37, 211, 102, 0.3);
-    -webkit-tap-highlight-color: transparent;
-width: 100%;
-height: 100%;
+ :root {
+            --bg-gradient: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            --accent: #6366f1;
+            --accent-glow: rgba(99, 102, 241, 0.4);
+            --wa-green: #25D366;
+            --wa-glow: rgba(37, 211, 102, 0.4);
+            --glass: rgba(255, 255, 255, 0.8);
+            --text: #1e293b;
+        }
+ .floating-actions {
+            position: fixed;
+            bottom: 90px;
+            left: 1em;
+            
+            background: rgba(30, 41, 59, 0.9);
+            backdrop-filter: blur(10px);
+            padding: 12px 24px;
+            border-radius: 50px;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            box-shadow: 0 20px 25px -5px rgba(0,0,0,0.3);
+            z-index: 1000;
+            border: 1px solid rgba(255,255,255,0.1);
+width: 23em;
+        }
 
-}
+        .total-badge {
+            color: white;
+            font-size: 0.9rem;
+            padding-right: 20px;
+            border-right: 1px solid rgba(255,255,255,0.2);
+        }
 
-.ios-action-btn:active {
-    transform: scale(0.96);
-    background: #128C7E;
-    box-shadow: 0 2px 8px rgba(37, 211, 102, 0.2);
-}
+        .total-badge span { display: block; font-size: 1.1rem; font-weight: 800; color: #fbbf24; }
 
-.btn-content {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
+        .btn-whatsapp {
+            background: var(--wa-green);
+            color: white;
+            border: none;
+            padding: 12px 28px;
+            border-radius: 30px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+            box-shadow: 0 4px 15px var(--wa-glow);
+            transition: all 0.3s;
+        }
 
-.btn-content i {
-    font-size: 20px;
-}
+        .btn-whatsapp:hover {
+            transform: translateY(-3px) scale(1.05);
+            box-shadow: 0 8px 25px var(--wa-glow);
+        }
 </style>
 
    
@@ -675,6 +702,7 @@ Expenses</span>
               <div id="expensesList">
               
               </div>
+Expense List
             </div>
 
             <div class="finance-divider"></div>
@@ -687,9 +715,13 @@ Expenses</span>
               <div id="incomesList">
                
               </div>
+Income List
             </div>
+
           </div>
+
         </div>
+
     </div>
 <style>
 
@@ -764,7 +796,7 @@ Expenses</span>
         border: 1px solid var(--av-border);
         border-radius: 16px;
         padding: 16px;
-        margin-bottom: 20px;
+        margin-bottom: 70px;
         color: var(--av-text-primary);
         font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif;
         box-shadow: 0 8px 32px rgba(0,0,0,0.5);
@@ -1860,6 +1892,9 @@ function renderTable() {
     // Update Bottom Summary Display with Zambian Kwacha Formatting
     const totEl = document.getElementById('totalSalesAmount');
     if (totEl) totEl.textContent = "K" + totalSales.toLocaleString();
+
+const totEl2 = document.getElementById('totalSalesAmount2');
+    if (totEl2) totEl2.textContent = "K" + totalSales.toLocaleString();
     
     updateTotalsNumbers();
 }
@@ -2088,8 +2123,8 @@ function exitSelectMode(){
 const tableControls2 = document.querySelector('.table-controls2');
 const tableControls3 = document.querySelector('.table-controls3');
    
-if (tableControls) tableControls2.setAttribute('colspan', '5');
-if (tableControls) tableControls3.setAttribute('colspan', '1');
+if (tableControls) tableControls2.setAttribute('colspan', '3');
+if (tableControls) tableControls3.setAttribute('colspan', '2');
     if (tableControls) {
     tableControls.hidden = false;
 }
@@ -3485,7 +3520,7 @@ document.addEventListener('DOMContentLoaded', () => {
         cursor: grab;
     }
 
-/* Update this in your <style> tag */
+
 body.select-mode-active .editable {
     /* Instead of 'none', we use 'auto' but prevent the text cursor */
     pointer-events: auto !important; 
@@ -3640,7 +3675,7 @@ body.select-mode-active #statsTableBody tr {
 
     // --- Firebase Order Sync ---
 
-    // --- Firebase Order Sync: Re-indexing & Forward Propagation ---
+// --- Firebase Order Sync: Re-indexing & Forward Propagation ---
 async function syncTableOrder() {
     if (typeof firebaseDB === 'undefined' || !state.currentDate || !REMOTE_DB_PATH) return;
 
@@ -3650,62 +3685,58 @@ async function syncTableOrder() {
     
     if (!currentDateData) return;
 
-    // 1. Iterate through rows to capture full item data and update position
     rows.forEach((row, index) => {
         const itemId = row.dataset.itemId;
         const newPosition = index + 1;
-
-        // Fetch the existing item object to preserve all "underlying" data
         const originalItem = currentDateData.items[itemId];
 
         if (originalItem) {
-            // Create a fresh copy of the item and update its position
-            const updatedItem = {
-                ...originalItem,
-                position: newPosition
+            // 1. Update the local state for the CURRENT date 
+            // (Keep full data here so the UI doesn't break)
+            originalItem.position = newPosition;
+
+            // 2. Prepare the "Lightweight" object for propagation
+            // We only take the ID, Price, and the New Position
+            const propagationData = {
+                id: itemId,
+                position: newPosition,
+                price: originalItem.price || 0 // Ensure price exists
             };
 
-            // Update local state for the current date
-            currentDateData.items[itemId] = updatedItem;
+            // Update Current Date in Firebase (Full update to preserve other fields)
+            updates[`${REMOTE_DB_PATH}/dates/${state.currentDate}/items/${itemId}/position`] = newPosition;
 
-            // Queue the ENTIRE object for Firebase (this transfers everything under the itemId)
-            updates[`${REMOTE_DB_PATH}/dates/${state.currentDate}/items/${itemId}`] = updatedItem;
-
-            // 2. Propagate the FULL updated object to future dates
+            // 3. Propagate ONLY id, position, and price to future dates
             for (let i = 1; i <= (state.futureWindowDays || 30); i++) {
                 const futureDateKey = addDays(state.currentDate, i);
                 const futureDateData = state.dates[futureDateKey];
 
-                // Only propagate if the item already exists in that future date
-                // and the date isn't "locked" (balanced)
                 if (futureDateData && futureDateData.items && futureDateData.items[itemId]) {
                     if (!futureDateData.balanced) {
-                        // Sync local state for future date
-                        futureDateData.items[itemId] = updatedItem;
-                        // Queue Firebase update for the full object in future dates
-                        updates[`${REMOTE_DB_PATH}/dates/${futureDateKey}/items/${itemId}`] = updatedItem;
+                        // Update Local Future State (Specific fields)
+                        futureDateData.items[itemId].position = propagationData.position;
+                        futureDateData.items[itemId].price = propagationData.price;
+
+                        // Update Firebase Future State (Specific fields)
+                        // Using individual paths ensures we don't overwrite/delete other 
+                        // data existing in future items (like notes or quantities)
+                        const itemPath = `${REMOTE_DB_PATH}/dates/${futureDateKey}/items/${itemId}`;
+                        updates[`${itemPath}/position`] = propagationData.position;
+                        updates[`${itemPath}/price`] = propagationData.price;
+                        updates[`${itemPath}/id`] = propagationData.id;
                     }
                 }
             }
         }
     });
 
-    // 3. Perform Atomic Update
     try {
         await firebaseDB.ref().update(updates);
-        console.log("Global item sync (full data + position) successful.");
+        console.log("Propagation restricted to ID, Position, and Price successful.");
     } catch (err) {
         console.error("Propagation Error:", err);
         if (typeof renderTable === 'function') renderTable();
     }
-}
-
-
-// Helper to calculate future date strings (YYYY-MM-DD)
-function addDays(dateStr, days) {
-    const date = new Date(dateStr);
-    date.setDate(date.getDate() + days);
-    return date.toISOString().split('T')[0];
 }
 
 
@@ -3768,6 +3799,8 @@ function initRowListeners() {
     });
 })();
 </script>
+
+
 
 
 </body>
