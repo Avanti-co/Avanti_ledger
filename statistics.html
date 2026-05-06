@@ -421,8 +421,8 @@ table.stats-table td {
  <div class="more-btn border border-blue-100" id="moreBtn" title="More">
         <i class="fas fa-ellipsis-h" id="moreIcon"></i>
         <div class="dropdown" id="moreDropdown">
-          <div onclick="enterSelectMode()">Select</div>
-        <div onclick="window.location.href='accounting-report.html'">Open reports</div>
+          <div onclick="enterSelectMode()">Edit</div>
+        <div onclick="window.location.href='accounting-report.html'">Reports</div>
 <div onclick="window.location.href='notes.html'">Notes</div>
 </div>
       </div>
@@ -3629,28 +3629,40 @@ async function syncTableOrder() {
     
     if (!currentDateData) return;
 
-    // 1. Re-index based on the new DOM order
+    // 1. Iterate through rows to capture full item data and update position
     rows.forEach((row, index) => {
         const itemId = row.dataset.itemId;
-        const newPosition = index + 1; // Successive numbering (1, 2, 3...)
+        const newPosition = index + 1;
 
-        if (currentDateData.items[itemId]) {
-            // Update current date locally
-            currentDateData.items[itemId].position = newPosition;
-            // Queue Firebase update for current date
-            updates[`${REMOTE_DB_PATH}/dates/${state.currentDate}/items/${itemId}/position`] = newPosition;
+        // Fetch the existing item object to preserve all "underlying" data
+        const originalItem = currentDateData.items[itemId];
 
-            // 2. Propagate to future dates
-            // Loops forward (defaulting to 30 days) to keep item order consistent
+        if (originalItem) {
+            // Create a fresh copy of the item and update its position
+            const updatedItem = {
+                ...originalItem,
+                position: newPosition
+            };
+
+            // Update local state for the current date
+            currentDateData.items[itemId] = updatedItem;
+
+            // Queue the ENTIRE object for Firebase (this transfers everything under the itemId)
+            updates[`${REMOTE_DB_PATH}/dates/${state.currentDate}/items/${itemId}`] = updatedItem;
+
+            // 2. Propagate the FULL updated object to future dates
             for (let i = 1; i <= (state.futureWindowDays || 30); i++) {
                 const futureDateKey = addDays(state.currentDate, i);
                 const futureDateData = state.dates[futureDateKey];
 
-                // Only update if item exists and the date isn't already 'balanced' (locked)
+                // Only propagate if the item already exists in that future date
+                // and the date isn't "locked" (balanced)
                 if (futureDateData && futureDateData.items && futureDateData.items[itemId]) {
                     if (!futureDateData.balanced) {
-                        futureDateData.items[itemId].position = newPosition;
-                        updates[`${REMOTE_DB_PATH}/dates/${futureDateKey}/items/${itemId}/position`] = newPosition;
+                        // Sync local state for future date
+                        futureDateData.items[itemId] = updatedItem;
+                        // Queue Firebase update for the full object in future dates
+                        updates[`${REMOTE_DB_PATH}/dates/${futureDateKey}/items/${itemId}`] = updatedItem;
                     }
                 }
             }
@@ -3660,13 +3672,13 @@ async function syncTableOrder() {
     // 3. Perform Atomic Update
     try {
         await firebaseDB.ref().update(updates);
-        console.log("Global position sync successful.");
+        console.log("Global item sync (full data + position) successful.");
     } catch (err) {
         console.error("Propagation Error:", err);
-        // Refresh UI to correct state if update fails
         if (typeof renderTable === 'function') renderTable();
     }
 }
+
 
 // Helper to calculate future date strings (YYYY-MM-DD)
 function addDays(dateStr, days) {
