@@ -3692,57 +3692,74 @@ async function syncTableOrder() {
         const originalItem = currentDateData.items[itemId];
 
         if (originalItem) {
-            // 1. Update the local state for the CURRENT date
+            // Update the position for the CURRENT date
             originalItem.position = newPosition;
-
-            // Update Current Date in Firebase
             updates[`${REMOTE_DB_PATH}/dates/${state.currentDate}/items/${itemId}/position`] = newPosition;
 
-            // 2. Propagate to future dates
             const futureDays = state.futureWindowDays || 30;
-            
+
+            // This loop runs 30 times, once for each individual date
             for (let i = 1; i <= futureDays; i++) {
                 const futureDateKey = addDays(state.currentDate, i);
                 const futureDateData = state.dates[futureDateKey];
 
-                if (futureDateData && futureDateData.items && futureDateData.items[itemId]) {
-                    // Only update if the day isn't already "balanced" (locked)
-                    if (!futureDateData.balanced) {
-                        const itemPath = `${REMOTE_DB_PATH}/dates/${futureDateKey}/items/${itemId}`;
-                        
-                        // Logic: Only the first future day (i === 1) gets the closing value.
-                        // All subsequent days (i > 1) get 0.
-                        const calculatedOpening = (i === 1) ? (originalItem.closing || 0) : 0;
+                // Skip if the date is locked or data isn't loaded for this day
+                if (!futureDateData || futureDateData.balanced) continue;
 
-                        // Update Local Future State
-                        futureDateData.items[itemId].position = newPosition;
-                        futureDateData.items[itemId].price = originalItem.price || 0;
-                        futureDateData.items[itemId].opening = calculatedOpening;
-                        futureDateData.items[itemId].orders = 0;
-                        futureDateData.items[itemId].closing = 0;
+                const itemPath = `${REMOTE_DB_PATH}/dates/${futureDateKey}/items/${itemId}`;
+                
+                // INDIVIDUAL CHECK: Does the item exist on THIS specific date?
+                const itemExistsOnThisDate = !!(futureDateData.items && futureDateData.items[itemId]);
 
-                        // Update Firebase Future State
-                        updates[`${itemPath}/position`] = newPosition;
-                        updates[`${itemPath}/price`] = originalItem.price || 0;
-                        updates[`${itemPath}/id`] = itemId;
-                        updates[`${itemPath}/name`] = originalItem.name;
-                        updates[`${itemPath}/opening`] = calculatedOpening;
-                        updates[`${itemPath}/orders`] = 0;
-                        updates[`${itemPath}/closing`] = 0;
-                    }
+                // --- RULE 1: ALWAYS update the position (regardless of existence) ---
+                updates[`${itemPath}/position`] = newPosition;
+                if (itemExistsOnThisDate) {
+                    futureDateData.items[itemId].position = newPosition;
                 }
+
+                // --- RULE 2: DATA PROTECTION ---
+                // We ONLY touch 'opening', 'name', 'price', etc., if the item is MISSING from this specific date.
+                if (!itemExistsOnThisDate) {
+                    
+                    // Logic for initialization: Only if we are creating it for "Tomorrow" (i=1),
+                    // do we take the current closing. Otherwise, it defaults to 0.
+                    const initialOpening = (i === 1) ? (originalItem.closing || 0) : 0;
+
+                    // These fields are ONLY sent to Firebase if the item is new to this date
+                    updates[`${itemPath}/id`] = itemId;
+                    updates[`${itemPath}/name`] = originalItem.name || "New Item";
+                    updates[`${itemPath}/price`] = originalItem.price || 0;
+                    updates[`${itemPath}/opening`] = initialOpening;
+                    updates[`${itemPath}/orders`] = 0;
+                    updates[`${itemPath}/closing`] = 0;
+
+                    // Sync local memory so the UI shows the new row correctly
+                    if (!futureDateData.items) futureDateData.items = {};
+                    futureDateData.items[itemId] = {
+                        id: itemId,
+                        name: originalItem.name,
+                        position: newPosition,
+                        price: originalItem.price || 0,
+                        opening: initialOpening,
+                        orders: 0,
+                        closing: 0
+                    };
+                }
+                // If itemExistsOnThisDate was true, we exit the loop iteration 
+                // having ONLY added 'position' to the updates object.
             }
         }
     });
 
     try {
         await firebaseDB.ref().update(updates);
-        console.log("Sync successful: Next day opening updated, subsequent days reset to 0.");
+        console.log("Sync successful: Each date evaluated individually.");
     } catch (err) {
         console.error("Propagation Error:", err);
         if (typeof renderTable === 'function') renderTable();
     }
 }
+
 
 
     // --- Event Listeners ---
