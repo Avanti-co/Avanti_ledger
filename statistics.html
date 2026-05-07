@@ -797,7 +797,7 @@ Income List
         border: 1px solid var(--av-border);
         border-radius: 16px;
         padding: 16px;
-        margin-bottom: 70px;
+        margin-bottom: 100px;
         color: var(--av-text-primary);
         font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif;
         box-shadow: 0 8px 32px rgba(0,0,0,0.5);
@@ -3692,59 +3692,43 @@ async function syncTableOrder() {
         const originalItem = currentDateData.items[itemId];
 
         if (originalItem) {
-            // 1. Update the local state for the CURRENT date 
-            // (Keep full data here so the UI doesn't break)
+            // 1. Update the local state for the CURRENT date
             originalItem.position = newPosition;
 
-            // 2. Prepare the "Lightweight" object for propagation
-            // We only take the ID, Price, and the New Position
-            const propagationData = {
-                id: itemId,
-                name: originalItem.name,
-opening: 0,
-orders: 0,
-closing: 0,
-                position: newPosition,
-                price: originalItem.price || 0 // Ensure price exists
-            };
-
-            // Update Current Date in Firebase (Full update to preserve other fields)
+            // Update Current Date in Firebase
             updates[`${REMOTE_DB_PATH}/dates/${state.currentDate}/items/${itemId}/position`] = newPosition;
 
-            // 3. Propagate ONLY id, position, and price to future dates
-            for (let i = 1; i <= (state.futureWindowDays || 30); i++) {
+            // 2. Propagate to future dates
+            const futureDays = state.futureWindowDays || 30;
+            
+            for (let i = 1; i <= futureDays; i++) {
                 const futureDateKey = addDays(state.currentDate, i);
                 const futureDateData = state.dates[futureDateKey];
 
                 if (futureDateData && futureDateData.items && futureDateData.items[itemId]) {
+                    // Only update if the day isn't already "balanced" (locked)
                     if (!futureDateData.balanced) {
-                        // Update Local Future State (Specific fields)
-                        futureDateData.items[itemId].position = propagationData.position;
-                        futureDateData.items[itemId].price = propagationData.price;
-
-                        // Update Firebase Future State (Specific fields)
-                        // Using individual paths ensures we don't overwrite/delete other 
-                        // data existing in future items (like notes or quantities)
                         const itemPath = `${REMOTE_DB_PATH}/dates/${futureDateKey}/items/${itemId}`;
-                        updates[`${itemPath}/position`] = propagationData.position;
-                        updates[`${itemPath}/price`] = propagationData.price;
-                        updates[`${itemPath}/id`] = propagationData.id;
+                        
+                        // Logic: Only the first future day (i === 1) gets the closing value.
+                        // All subsequent days (i > 1) get 0.
+                        const calculatedOpening = (i === 1) ? (originalItem.closing || 0) : 0;
 
-updates[`${itemPath}/name`] = propagationData.name;
+                        // Update Local Future State
+                        futureDateData.items[itemId].position = newPosition;
+                        futureDateData.items[itemId].price = originalItem.price || 0;
+                        futureDateData.items[itemId].opening = calculatedOpening;
+                        futureDateData.items[itemId].orders = 0;
+                        futureDateData.items[itemId].closing = 0;
 
-// Check if the value is null, undefined, or the key doesn't exist
-if (existingData?.[itemPath]?.opening === undefined || existingData?.[itemPath]?.opening === null) {
-    updates[`${itemPath}/opening`] = 0;
-}
-
-if (existingData?.[itemPath]?.orders === undefined || existingData?.[itemPath]?.orders === null) {
-    updates[`${itemPath}/orders`] = 0;
-}
-
-if (existingData?.[itemPath]?.closing === undefined || existingData?.[itemPath]?.closing === null) {
-    updates[`${itemPath}/closing`] = 0;
-}
-
+                        // Update Firebase Future State
+                        updates[`${itemPath}/position`] = newPosition;
+                        updates[`${itemPath}/price`] = originalItem.price || 0;
+                        updates[`${itemPath}/id`] = itemId;
+                        updates[`${itemPath}/name`] = originalItem.name;
+                        updates[`${itemPath}/opening`] = calculatedOpening;
+                        updates[`${itemPath}/orders`] = 0;
+                        updates[`${itemPath}/closing`] = 0;
                     }
                 }
             }
@@ -3753,7 +3737,7 @@ if (existingData?.[itemPath]?.closing === undefined || existingData?.[itemPath]?
 
     try {
         await firebaseDB.ref().update(updates);
-        console.log("Propagation restricted to ID, Position, and Price successful.");
+        console.log("Sync successful: Next day opening updated, subsequent days reset to 0.");
     } catch (err) {
         console.error("Propagation Error:", err);
         if (typeof renderTable === 'function') renderTable();
