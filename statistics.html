@@ -3732,9 +3732,19 @@ closing: 0,
 
 updates[`${itemPath}/name`] = propagationData.name;
 
-updates[`${itemPath}/opening`] = 0;
-updates[`${itemPath}/orders`] = 0;
-updates[`${itemPath}/closing`] = 0;
+// Check if the value is null, undefined, or the key doesn't exist
+if (existingData?.[itemPath]?.opening === undefined || existingData?.[itemPath]?.opening === null) {
+    updates[`${itemPath}/opening`] = 0;
+}
+
+if (existingData?.[itemPath]?.orders === undefined || existingData?.[itemPath]?.orders === null) {
+    updates[`${itemPath}/orders`] = 0;
+}
+
+if (existingData?.[itemPath]?.closing === undefined || existingData?.[itemPath]?.closing === null) {
+    updates[`${itemPath}/closing`] = 0;
+}
+
                     }
                 }
             }
