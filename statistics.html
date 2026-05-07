@@ -3703,7 +3703,7 @@ async function syncTableOrder() {
                 name: originalItem.name,
 opening: 0,
 orders: 0,
-cloding: 0,
+closing: 0,
                 position: newPosition,
                 price: originalItem.price || 0 // Ensure price exists
             };
@@ -3731,6 +3731,10 @@ cloding: 0,
                         updates[`${itemPath}/id`] = propagationData.id;
 
 updates[`${itemPath}/name`] = propagationData.name;
+
+updates[`${itemPath}/opening`] = 0;
+updates[`${itemPath}/orders`] = 0;
+updates[`${itemPath}/closing`] = 0;
                     }
                 }
             }
