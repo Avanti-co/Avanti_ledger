@@ -3578,10 +3578,8 @@ body.select-mode-active #statsTableBody tr {
 
     // --- Network Guard Utility ---
     function isOfflineOrPoorConnection() {
-        // Check for complete lack of network connectivity
         if (!navigator.onLine) return true;
         
-        // Check for poor/low-speed connection thresholds (2G / Slow-2G)
         const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
         if (connection) {
             if (connection.effectiveType === 'slow-2g' || connection.effectiveType === '2g') {
@@ -3603,6 +3601,8 @@ body.select-mode-active #statsTableBody tr {
         // Create the floating ghost
         ghost = document.createElement('div');
         ghost.className = 'dragging-ghost';
+        // CRITICAL: Prevents elementFromPoint from accidentally targeting the ghost itself
+        ghost.style.pointerEvents = 'none'; 
         
         const tableWrap = document.createElement('table');
         tableWrap.style.width = row.offsetWidth + "px";
@@ -3633,7 +3633,6 @@ body.select-mode-active #statsTableBody tr {
         const ghostWidth = ghost.offsetWidth;
         const ghostHeight = ghost.offsetHeight;
         const padding = 20;
-
         const topLimit = window.innerHeight * 0.30;
 
         let left = x - ghostWidth / 2;
@@ -3659,8 +3658,8 @@ body.select-mode-active #statsTableBody tr {
         }
     }
 
-    onPointerMove = function(e) {
-        if (!isDragging) return;
+    function onPointerMove(e) {
+        if (!isDragging || !draggedRow) return;
 
         updateGhostPosition(e.clientX, e.clientY);
         handleAutoScroll(e.clientY);
@@ -3676,45 +3675,60 @@ body.select-mode-active #statsTableBody tr {
         }
     }
 
-    async function onPointerUp() {
+    function onPointerUp() {
         clearInterval(scrollInterval);
         isReadyToDrag = false;
         
         if (isDragging) {
             isDragging = false;
             document.body.classList.remove('is-dragging-now');
-            draggedRow.classList.remove('row-dragging-original');
-            draggedRow.classList.remove('draggable-ready');
-            if (ghost) ghost.remove();
             
-            // Execute the isolated midpoint synchronization
-            await syncTableOrder();
+            if (draggedRow) {
+                draggedRow.classList.remove('row-dragging-original');
+                draggedRow.classList.remove('draggable-ready');
+            }
+            
+            if (ghost) {
+                ghost.remove();
+                ghost = null; // Clean up memory reference immediately
+            }
+            
+            // FIX: Snap structural DOM layout instantly before clearing globals
+            const rowToSync = draggedRow;
+            const prevRow = rowToSync ? rowToSync.previousElementSibling : null;
+            const nextRow = rowToSync ? rowToSync.nextElementSibling : null;
+            
+            // Instantly clear the global tracking state so consecutive drags can execute safely
+            draggedRow = null;
+
+            // Trigger Firebase sync out-of-band without blocking the UI framework
+            if (rowToSync) {
+                syncTableOrder(rowToSync, prevRow, nextRow).catch(err => {
+                    console.error("Delayed Sync Pipeline Error:", err);
+                });
+            }
+        } else {
+            draggedRow = null;
         }
-        draggedRow = null;
     }
 
-    // --- Firebase Order Sync: Midpoint Optimization ---
-    async function syncTableOrder() {
-        if (typeof firebaseDB === 'undefined' || !state.currentDate || !REMOTE_DB_PATH || !draggedRow) return;
+    // --- Firebase Order Sync: Isolated Execution ---
+    async function syncTableOrder(rowToSync, prevRow, nextRow) {
+        if (typeof firebaseDB === 'undefined' || !state.currentDate || !REMOTE_DB_PATH || !rowToSync) return;
 
         const currentDateData = state.dates[state.currentDate];
         if (!currentDateData || !currentDateData.items) return;
 
-        const itemId = draggedRow.dataset.itemId;
+        const itemId = rowToSync.dataset.itemId;
         const originalItem = currentDateData.items[itemId];
         if (!originalItem) return;
 
-        // 1. Identify neighboring DOM elements relative to the new drop position
-        const prevRow = draggedRow.previousElementSibling;
-        const nextRow = draggedRow.nextElementSibling;
-
-        // 2. Fetch positions of adjacent items from the current state
+        // Fetch positions using captured contextual nodes
         let positionAbove = prevRow ? currentDateData.items[prevRow.dataset.itemId]?.position : null;
         let positionBelow = nextRow ? currentDateData.items[nextRow.dataset.itemId]?.position : null;
 
         let newPosition;
 
-        // 3. Midpoint Calculation Strategies
         if (positionAbove !== null && positionAbove !== undefined && positionBelow !== null && positionBelow !== undefined) {
             newPosition = (positionAbove + positionBelow) / 2;
         } else if (positionAbove !== null && positionAbove !== undefined) {
@@ -3791,7 +3805,6 @@ body.select-mode-active #statsTableBody tr {
             const tapLength = currentTime - lastClickTime;
 
             if (tapLength < 300 && tapLength > 0) {
-                // Intercept execution here if network conditions are poor/offline
                 if (isOfflineOrPoorConnection()) {
                     console.log('item drag and drop feature is unavailable in offline mode');
                     e.preventDefault();
@@ -3827,6 +3840,7 @@ body.select-mode-active #statsTableBody tr {
     });
 })();
 </script>
+
 
 
 
