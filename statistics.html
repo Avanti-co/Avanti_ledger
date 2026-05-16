@@ -616,76 +616,158 @@ margin: 5px;
 
 
 
-<div class="floating-actions">
+<div class="floating-actions collapsed" id="floatingActionsContainer" onclick="handleContainerClick(event)">
     <div class="total-badge">
         Total Sales 
-        <span id="totalSalesAmount2" >K0.00</span>
+        <span id="totalSalesAmount2">K0.00</span>
     </div>
-    <button id="whatsappShareBtn" class="btn-whatsapp" onclick="sendToWhatsApp()">
-        <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/></svg>
-        Share Report 
+    <button id="whatsappShareBtn" class="btn-whatsapp" onclick="handleWhatsAppClick(event)">
+        <!-- WhatsApp Icon -->
+        <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/>
+        </svg>
+        <!-- Text Element -->
+        <span class="btn-text">Share Report</span>
     </button>
 </div>
 
-
-
 <style>
- :root {
-            --bg-gradient: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-            --accent: #6366f1;
-            --accent-glow: rgba(99, 102, 241, 0.4);
-            --wa-green: #25D366;
-            --wa-glow: rgba(37, 211, 102, 0.4);
-            --glass: rgba(255, 255, 255, 0.8);
-            --text: #1e293b;
-        }
- .floating-actions {
-            position: fixed;
-            bottom: 115px;
-            left: 1em;
-            
-            background: rgba(30, 41, 59, 0.9);
-            backdrop-filter: blur(10px);
-            padding: 12px 24px;
-            border-radius: 50px;
-            display: flex;
-            align-items: center;
-            gap: 20px;
-            box-shadow: 0 20px 25px -5px rgba(0,0,0,0.3);
-            z-index: 1000;
-            border: 1px solid rgba(255,255,255,0.1);
-width: 23em;
+:root {
+    --bg-gradient: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+    --accent: #6366f1;
+    --accent-glow: rgba(99, 102, 241, 0.4);
+    --wa-green: #25D366;
+    --wa-glow: rgba(37, 211, 102, 0.4);
+    --glass: rgba(255, 255, 255, 0.8);
+    --text: #1e293b;
+}
 
-        }
+.floating-actions {
+    position: fixed;
+    bottom: 115px;
+    left: 1em;
+    background: rgba(30, 41, 59, 0.95);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    box-shadow: 0 20px 25px -5px rgba(0,0,0,0.4);
+    z-index: 1000;
+    border: 1px solid rgba(255,255,255,0.15);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    overflow: hidden;
+    
+    /* Spring-loaded transition performance */
+    transition: width 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.15), 
+                padding 0.35s ease, 
+                gap 0.35s ease,
+                border-radius 0.35s ease;
+}
 
-        .total-badge {
-            color: white;
-            font-size: 0.9rem;
-            padding-right: 20px;
-            border-right: 1px solid rgba(255,255,255,0.2);
-        }
+/* NATURAL STATE (Circular) */
+.floating-actions.collapsed {
+    width: 60px;
+    height: 60px;
+    padding: 0;
+    gap: 0;
+    border-radius: 50%;
+    cursor: pointer;
+}
 
-        .total-badge span { display: block; font-size: 1.1rem; font-weight: 800; color: #fbbf24; }
+/* EXTENDED STATE */
+.floating-actions.expanded {
+    width: 23em;
+    height: 60px;
+    padding: 12px 24px;
+    gap: 20px;
+    border-radius: 50px;
+    cursor: default;
+}
 
-        .btn-whatsapp {
-            background: var(--wa-green);
-            color: white;
-            border: none;
-            padding: 12px 28px;
-            border-radius: 30px;
-            font-weight: 700;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            cursor: pointer;
-            box-shadow: 0 4px 15px var(--wa-glow);
-            transition: all 0.3s;
-        }
+/* Total Badge Area */
+.total-badge {
+    color: white;
+    font-size: 0.9rem;
+    padding-right: 20px;
+    border-right: 1px solid rgba(255,255,255,0.2);
+    white-space: nowrap;
+    transition: opacity 0.2s ease, transform 0.25s ease;
+}
 
-        .btn-whatsapp:hover {
-            transform: translateY(-3px) scale(1.05);
-            box-shadow: 0 8px 25px var(--wa-glow);
-        }
+.floating-actions.collapsed .total-badge {
+    opacity: 0;
+    transform: scale(0.8) translateX(-15px);
+    width: 0;
+    padding: 0;
+    border: none;
+    pointer-events: none;
+}
+
+.floating-actions.expanded .total-badge {
+    opacity: 1;
+    transform: scale(1) translateX(0);
+}
+
+.total-badge span { 
+    display: block; 
+    font-size: 1.1rem; 
+    font-weight: 800; 
+    color: #fbbf24; 
+}
+
+/* WhatsApp Button Adjustments */
+.btn-whatsapp {
+    background: var(--wa-green);
+    color: white;
+    border: none;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 15px var(--wa-glow);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.floating-actions.collapsed .btn-whatsapp {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    padding: 0;
+    background: transparent;
+    box-shadow: none;
+}
+
+.floating-actions.expanded .btn-whatsapp {
+    padding: 12px 28px;
+    border-radius: 30px;
+    gap: 10px;
+}
+
+.btn-whatsapp:hover {
+    
+    box-shadow: 0 8px 25px var(--wa-glow);
+}
+
+/* Typography Visibility Architecture */
+.btn-text {
+    white-space: nowrap;
+    transition: max-width 0.3s ease, opacity 0.2s ease;
+    overflow: hidden;
+}
+
+.floating-actions.collapsed .btn-text {
+    max-width: 0;
+    opacity: 0;
+    display: none;
+}
+
+.floating-actions.expanded .btn-text {
+    max-width: 150px;
+    opacity: 1;
+    display: inline-block;
+}
+
 </style>
 
    
@@ -767,9 +849,7 @@ Income List
             </div>
         </div>
 
-        <a href="accounting-report.html" class="generate-reports" style="display: block; text-align: center; padding: 18px; background-color: #3f72af; color: #ffffff; font-weight: 600; text-decoration: none; font-size: 0.95rem; transition: background 0.3s;">
-            Generate Reports
-        </a>
+       
         
     </div>
 <!-- Avanti AI Insight Engine UI -->
@@ -894,11 +974,11 @@ font-size: calc(1em + 2px) !important;
     .fill-green { background: var(--av-green); }
     .fill-blue { background: var(--av-blue); }
 </style>
-
+<div id="runAuditBtn">
 <div id="dailyInsightCard" class="ai-insight-card" style="display:none;">
     <div class="ai-insight-header">
         <span><i class="fas fa-brain"></i> AI Daily Insights</span>
-        <button id="runAuditBtn" class="audit-btn"><i class="fas fa-shield-alt"></i> Comprehensive Audit</button>
+        <button  class="audit-btn"><i class="fas fa-shield-alt"></i> Comprehensive Audit</button>
     </div>
     <div id="insightBody" class="ai-insight-body">Analyzing ledger integrity...</div>
 </div>
@@ -912,7 +992,7 @@ font-size: calc(1em + 2px) !important;
         </div>
         <div id="analysisModalBody"></div>
     </div>
-</div>
+</div></div>
 
 <!-- Comprehensive Audit Modal -->
 <div id="auditModal" class="ios-modal-overlay">
@@ -1181,8 +1261,8 @@ if (FIREBASE_CONFIG) {
     }
 }
 
-window.addEventListener('online', () => { isOnline = true; console.log('online'); });
-window.addEventListener('offline', () => { isOnline = false; console.log('offline'); });
+window.addEventListener('online', () => { isOnline = true; console.log('back online'); });
+window.addEventListener('offline', () => { isOnline = false; console.log('offline mode'); });
 
 /* ---------- User Context & Paths (Dynamically Updated) ---------- */
 let AV_LEDGER_ACCOUNT_KEY = localStorage.getItem('AV_ledger_account_key');
@@ -3496,6 +3576,21 @@ body.select-mode-active #statsTableBody tr {
     let lastClickTime = 0;
     let isReadyToDrag = false;
 
+    // --- Network Guard Utility ---
+    function isOfflineOrPoorConnection() {
+        // Check for complete lack of network connectivity
+        if (!navigator.onLine) return true;
+        
+        // Check for poor/low-speed connection thresholds (2G / Slow-2G)
+        const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+        if (connection) {
+            if (connection.effectiveType === 'slow-2g' || connection.effectiveType === '2g') {
+                return true;
+            }
+        }
+        return false;
+    }
+
     // --- Drag Core Logic ---
 
     function startDrag(e, row) {
@@ -3621,26 +3716,19 @@ body.select-mode-active #statsTableBody tr {
 
         // 3. Midpoint Calculation Strategies
         if (positionAbove !== null && positionAbove !== undefined && positionBelow !== null && positionBelow !== undefined) {
-            // Dropped between two items: Calculate average midpoint
             newPosition = (positionAbove + positionBelow) / 2;
         } else if (positionAbove !== null && positionAbove !== undefined) {
-            // Dropped at the very bottom of the table
             newPosition = positionAbove + 1;
         } else if (positionBelow !== null && positionBelow !== undefined) {
-            // Dropped at the very top of the table
             newPosition = positionBelow / 2;
         } else {
-            // Fallback safety threshold
             newPosition = originalItem.position || 1;
         }
 
         const updates = {};
-
-        // 4. Update the position locally and prepare DB payload for current date
         originalItem.position = newPosition;
         updates[`${REMOTE_DB_PATH}/dates/${state.currentDate}/items/${itemId}/position`] = newPosition;
 
-        // 5. Forward-propagate the single altered record down the future window timeline
         const futureDays = state.futureWindowDays || 30;
 
         for (let i = 1; i <= futureDays; i++) {
@@ -3654,7 +3742,7 @@ body.select-mode-active #statsTableBody tr {
 
             const updatedItem = {
                 id: itemId,
-                position: newPosition, // Inject the updated midpoint position
+                position: newPosition,
                 name: existing?.name || originalItem.name || "Item",
                 price: existing?.price ?? originalItem.price ?? 0,
                 opening: existing?.opening ?? (i === 1 ? (originalItem.closing || 0) : 0),
@@ -3662,7 +3750,6 @@ body.select-mode-active #statsTableBody tr {
                 closing: existing?.closing ?? 0
             };
 
-            // Stage updates exclusively for the dragged item
             updates[`${itemPath}/id`] = updatedItem.id;
             updates[`${itemPath}/name`] = updatedItem.name;
             updates[`${itemPath}/position`] = updatedItem.position;
@@ -3676,9 +3763,8 @@ body.select-mode-active #statsTableBody tr {
         }
 
         try {
-            // Single batch update payload containing only the modified item across dates
             await firebaseDB.ref().update(updates);
-            console.log(`Propagation complete: Midpoint position (${newPosition}) saved for item: ${itemId}`);
+            console.log(`Layout Updated Successfully.`);
         } catch (err) {
             console.error("Propagation Error:", err);
             if (typeof renderTable === 'function') renderTable();
@@ -3705,6 +3791,13 @@ body.select-mode-active #statsTableBody tr {
             const tapLength = currentTime - lastClickTime;
 
             if (tapLength < 300 && tapLength > 0) {
+                // Intercept execution here if network conditions are poor/offline
+                if (isOfflineOrPoorConnection()) {
+                    console.log('item drag and drop feature is unavailable in offline mode');
+                    e.preventDefault();
+                    return;
+                }
+
                 isReadyToDrag = true;
                 row.classList.add('draggable-ready');
                 startDrag(e, row);
@@ -3734,6 +3827,9 @@ body.select-mode-active #statsTableBody tr {
     });
 })();
 </script>
+
+
+
 
 <script>
 (function() {
@@ -4017,11 +4113,12 @@ body.select-mode-active #statsTableBody tr {
 (function() {
     // 1. Dynamic Notification Engine Configuration
     const CONFIG = {
-        maxActiveBanners: 3,         // Prevents visual layout overflow
+        maxActiveBanners: 4,         // Strict max cap at 2 banners at a time
         baseSpeedMs: 1500,           // Constant overhead allocation time (ms)
-        msPerCharacter: 45,          // Variable read speed weighting factor per character
-        maxDurationMs: 12000,        // Absolute layout display cap for very long texts
-        animationDurationMs: 300     // Matches Tailwind transform utility transitions
+        msPerCharacter:60,          // Variable read speed weighting factor per character
+        maxDurationMs: 12000,        // Absolute layout display cap for standard text
+        animationDurationMs: 300,    // Matches Tailwind transform utility transitions
+        truncatedCharLimit: 140      // Split point boundary used to gauge visible reading proportions
     };
 
     let container = null;
@@ -4031,7 +4128,6 @@ body.select-mode-active #statsTableBody tr {
     function initContainer() {
         container = document.createElement('div');
         container.id = 'avanti-console-banner-stack';
-        // Matches your exact padding-top structural space perfectly (85px)
         container.style.cssText = `
             position: fixed;
             top: 90px;
@@ -4048,9 +4144,11 @@ body.select-mode-active #statsTableBody tr {
         document.body.appendChild(container);
     }
 
-    // 3. Mathematical Reading Time Engine
-    function calculateDisplayDuration(text) {
-        const dynamicTime = CONFIG.baseSpeedMs + (text.length * CONFIG.msPerCharacter);
+    // 3. Proportional Reading Time Engine
+    function calculateDisplayDuration(text, isTruncated = false) {
+        // If truncated, calculate timing strictly based on the character limit slice visible
+        const evaluatedLength = isTruncated ? CONFIG.truncatedCharLimit : text.length;
+        const dynamicTime = CONFIG.baseSpeedMs + (evaluatedLength * CONFIG.msPerCharacter);
         return Math.min(dynamicTime, CONFIG.maxDurationMs);
     }
 
@@ -4058,7 +4156,6 @@ body.select-mode-active #statsTableBody tr {
     function displayConsoleNotification(type, argumentsList) {
         if (!container) initContainer();
 
-        // Safe evaluation mapping structure for nested objects or standard messages
         const formattedMessage = argumentsList.map(item => {
             if (typeof item === 'object') {
                 try { return JSON.stringify(item); } catch (e) { return String(item); }
@@ -4066,34 +4163,23 @@ body.select-mode-active #statsTableBody tr {
             return String(item);
         }).join(' ');
 
-        // Visual Context mapping parameters using exact colors from your example
         const designDefinitions = {
-            log: {
-                icon: 'fa-check-circle text-green-500',
-                title: 'Console Log'
-            },
-            error: {
-                icon: 'fa-exclamation-circle text-red-500',
-                title: 'System Error'
-            },
-            warn: {
-                icon: 'fa-exclamation-triangle text-amber-500',
-                title: 'System Warning'
-            },
-            info: {
-                icon: 'fa-info-circle text-blue-500',
-                title: 'System Info'
-            }
+            log: { icon: 'fa-check-circle text-green-500', title: 'Console Log' },
+            error: { icon: 'fa-exclamation-circle text-red-500', title: 'System Error' },
+            warn: { icon: 'fa-exclamation-triangle text-amber-500', title: 'System Warning' },
+            info: { icon: 'fa-info-circle text-blue-500', title: 'System Info' }
         };
 
         const theme = designDefinitions[type] || designDefinitions.log;
 
-        // Build base DOM Node structure copying your exact markup tokens and tailwind utilities
+        // Condition Check: Determine truncation threshold state
+        const needsTruncation = formattedMessage.length > CONFIG.truncatedCharLimit;
+
         const bannerElement = document.createElement('div');
-        bannerElement.className = 'transform translate-x-full transition-transform duration-300 w-full bg-white shadow-lg rounded-lg pointer-events-auto flex ring-1 ring-black ring-opacity-5 relative';
+        bannerElement.className = 'transform translate-x-full transition-all duration-300 w-full bg-white shadow-lg rounded-lg pointer-events-auto flex ring-1 ring-black ring-opacity-5 relative';
         bannerElement.style.boxShadow = '0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.05)';
 
-        // Positioned close button absolutely at the top right with dedicated padding bounds
+        // Structuring layout with conditional max-height masking and anchors
         bannerElement.innerHTML = `
             <div class="flex-1 w-0 p-4 pr-10">
                 <div class="flex items-start">
@@ -4102,7 +4188,10 @@ body.select-mode-active #statsTableBody tr {
                     </div>
                     <div class="ml-3 flex-1 min-w-0">
                         <p class="text-sm font-bold text-gray-900">${theme.title}</p>
-                        <p class="mt-1 text-sm text-gray-500 break-words font-mono">${formattedMessage}</p>
+                        <div class="mt-1 message-viewport transition-all duration-300 ease-out overflow-hidden" style="max-height: ${needsTruncation ? '4.5em' : 'none'};">
+                            <p class="text-sm text-gray-500 break-words font-mono message-body">${formattedMessage}</p>
+                        </div>
+                        ${needsTruncation ? `<a href="#" class="inline-block mt-1.5 text-xs font-semibold text-indigo-600 hover:text-indigo-500 focus:outline-none more-toggle-anchor">See more</a>` : ''}
                     </div>
                 </div>
             </div>
@@ -4111,14 +4200,53 @@ body.select-mode-active #statsTableBody tr {
             </button>
         `;
 
-        // Scoped target selection to trigger swift interactive exit animations
+        // Handle Close Events
         const closeBtn = bannerElement.querySelector('#close-trigger');
         closeBtn.addEventListener('click', (e) => {
-            e.stopPropagation(); // Avoid event cascading loops
+            e.stopPropagation();
             clearBanner(bannerElement);
         });
 
-        // Layout stack boundary check evaluation
+        // Set variable read-time loop logic based on layout preview threshold
+        const initialAdaptiveDuration = calculateDisplayDuration(formattedMessage, needsTruncation);
+        
+        let autoDismissTimer = setTimeout(() => {
+            clearBanner(bannerElement);
+        }, initialAdaptiveDuration);
+
+        bannerElement.dataset.timerId = autoDismissTimer;
+
+        // Truncation expansion binding controller
+        if (needsTruncation) {
+            const moreAnchor = bannerElement.querySelector('.more-toggle-anchor');
+            const viewport = bannerElement.querySelector('.message-viewport');
+            const bodyText = bannerElement.querySelector('.message-body');
+
+            moreAnchor.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+
+                // Clear proportional timer to protect reading flow
+                if (bannerElement.dataset.timerId) {
+                    clearTimeout(Number(bannerElement.dataset.timerId));
+                }
+
+                // Smooth structural scrollHeight extension
+                viewport.style.maxHeight = bodyText.offsetHeight + 'px';
+                moreAnchor.remove(); // Remove anchor cleanly after usage
+
+                // Calculate the remaining reading duration based exclusively on full content profile
+                const fullTextDuration = calculateDisplayDuration(formattedMessage, false);
+                
+                const finalDismissTimer = setTimeout(() => {
+                    clearBanner(bannerElement);
+                }, fullTextDuration);
+
+                bannerElement.dataset.timerId = finalDismissTimer;
+            });
+        }
+
+        // Layout stack boundary boundary rule check: Restrict strictly to 2 Banners max
         if (activeBanners.length >= CONFIG.maxActiveBanners) {
             clearBanner(activeBanners[0]);
         }
@@ -4126,29 +4254,19 @@ body.select-mode-active #statsTableBody tr {
         container.appendChild(bannerElement);
         activeBanners.push(bannerElement);
 
-        // Hardware accelerated layout loop assignment execution
+        // Run deployment entry animations
         requestAnimationFrame(() => {
             setTimeout(() => {
                 bannerElement.classList.remove('translate-x-full');
                 bannerElement.classList.add('translate-x-0');
             }, 20);
         });
-
-        // Set variable read-time trigger loop execution
-        const adaptiveDuration = calculateDisplayDuration(formattedMessage);
-        const autoDismissTimer = setTimeout(() => {
-            clearBanner(bannerElement);
-        }, adaptiveDuration);
-
-        // Store reference to timer on the element to prevent double-clearing bugs
-        bannerElement.dataset.timerId = autoDismissTimer;
     }
 
     function clearBanner(bannerElement) {
         const trackingIndex = activeBanners.indexOf(bannerElement);
         if (trackingIndex === -1) return;
 
-        // Clear existing automatic dismissal timers to save resources
         if (bannerElement.dataset.timerId) {
             clearTimeout(Number(bannerElement.dataset.timerId));
         }
@@ -4164,19 +4282,12 @@ body.select-mode-active #statsTableBody tr {
         }, CONFIG.animationDurationMs);
     }
 
-    // 5. Interception Architecture Layer (Preserves native execution pipelines)
-    const baselineMethods = {
-        log: console.log,
-        error: console.error,
-        warn: console.warn,
-        info: console.info
-    };
+    // 5. Interception Architecture Layer
+    const baselineMethods = { log: console.log, error: console.error, warn: console.warn, info: console.info };
 
     Object.keys(baselineMethods).forEach(methodName => {
         console[methodName] = function(...interceptedArguments) {
-            // Standard runtime evaluation forward execution
             baselineMethods[methodName].apply(console, interceptedArguments);
-            
             try {
                 displayConsoleNotification(methodName, interceptedArguments);
             } catch (failSecureContext) {
@@ -4188,21 +4299,31 @@ body.select-mode-active #statsTableBody tr {
 </script>
 
 
+
 <script>
 /**
  * ============================================================================
- * Avanti Ledger - Controlled Console Notification Interceptor
- * Architecture: Proxy Interceptor (Deduplicated Single-Trigger Alerts)
+ * Avanti Ledger - Scope-Aware Controlled Interceptor
+ * Architecture: Proxy Interceptor (Profile & Global Ledger Isolated Sandbox)
  * ============================================================================
  */
 (function() {
     const SYNC_REGISTRY_KEY = 'AV_ledger_pending_sync_registry';
-    let localCache = { currentDate: null, dates: {} };
     let firebaseSyncTimer = null;
     
-    // Notification deduplication states to ensure banners fire exactly once
+    // Notification deduplication states
     let fallbackModeActive = false;
     let lastSyncStateWasClean = true;
+
+    /**
+     * Dynamically generates a storage key unique to the active profile or global scope.
+     * Prevents cross-contamination when switching ledger scopes.
+     */
+    function getActiveScopeCacheKey() {
+        const accountKey = localStorage.getItem('AV_ledger_account_key') || 'default_account';
+        const scopeTarget = TARGET_PROFILE_USERNAME || localStorage.getItem('AV_ledger_username') || 'fallback';
+        return `AV_ledger_cache_${accountKey}_${scopeTarget}`;
+    }
 
     function verifyLocalStorageStructure() {
         if (!localStorage.getItem(SYNC_REGISTRY_KEY)) {
@@ -4214,18 +4335,42 @@ body.select-mode-active #statsTableBody tr {
         return btoa(unescape(encodeURIComponent(JSON.stringify(data || ''))));
     }
 
+    /**
+     * Saves cache data to the dynamically resolved scope-specific key
+     */
     function commitToLocalCache(currentDate, datesData) {
+        const scopeKey = getActiveScopeCacheKey();
+        const localCache = { currentDate: null, dates: {} };
+        
         if (currentDate) localCache.currentDate = currentDate;
         if (datesData) {
             localCache.dates = JSON.parse(JSON.stringify(datesData));
         }
-        localStorage.setItem('AV_ledger_offline_cache', JSON.stringify(localCache));
+        localStorage.setItem(scopeKey, JSON.stringify(localCache));
     }
 
     /**
-     * Checks tracking queues and handles a single console status update notice 
-     * only when shifting between a completely clean or pending data backlog.
+     * Restores state definitions explicitly belonging to the active data path context
      */
+    function bootstrapStateFromActiveScope() {
+        const scopeKey = getActiveScopeCacheKey();
+        const historicalCache = localStorage.getItem(scopeKey);
+        
+        if (historicalCache) {
+            try {
+                const parsedCache = JSON.parse(historicalCache);
+                if (parsedCache.dates) state.dates = parsedCache.dates;
+                if (parsedCache.currentDate) state.currentDate = parsedCache.currentDate;
+            } catch (err) {
+                console.error('[Avanti Storage] Error reading isolated scope cache buffer strings:', err);
+            }
+        } else {
+            // Clear layout memory if no previous scoped cache exists to safely await sync
+            state.dates = {};
+            state.currentDate = null;
+        }
+    }
+
     function logSynchronizationState() {
         const registry = JSON.parse(localStorage.getItem(SYNC_REGISTRY_KEY) || '{}');
         const pendingCount = Object.keys(registry).length;
@@ -4235,7 +4380,7 @@ body.select-mode-active #statsTableBody tr {
             console.warn(`[Avanti Sync] ⚠️ Changes are pending in Local Storage. Status: Not Saved to Cloud.`);
         } else if (pendingCount === 0 && !lastSyncStateWasClean) {
             lastSyncStateWasClean = true;
-            console.log('✅ All local entries have been cleanly saved up to Firebase.');
+            console.log('✅ All changes have been saved in the database.');
         }
     }
 
@@ -4300,26 +4445,22 @@ body.select-mode-active #statsTableBody tr {
         }
     }
 
-    /**
-     * Deduplicates system state triggers to fire exactly ONE console notification banner
-     */
     function evaluateOperationalMode(shouldBeLocalOnly) {
         if (shouldBeLocalOnly && !fallbackModeActive) {
             fallbackModeActive = true;
-            lastSyncStateWasClean = false; // Sync is now locked/dirty
+            lastSyncStateWasClean = false;
             
             console.error(
-                '🚨 CRITICAL FLIGHT MODE: Running on LOCAL DATA ONLY. Network is down or traffic is choked. Edits are safely buffered in local storage.'
+                '🚨 OFFLINE MODE: Data is saving locally.'
             );
         } else if (!shouldBeLocalOnly && fallbackModeActive) {
             const registry = JSON.parse(localStorage.getItem(SYNC_REGISTRY_KEY) || '{}');
-            // Only claim full recovery when background arrays are 100% flushed
             if (Object.keys(registry).length === 0) {
                 fallbackModeActive = false;
                 lastSyncStateWasClean = true;
                 
                 console.log(
-                    '🌐 ONLINE RECOVERY: Reconnected to Firebase cloud infrastructure. Local-only sandbox deactivated.'
+                    '🌐 ONLINE RECOVERY: Data has been saved in the database.'
                 );
             }
         }
@@ -4328,18 +4469,13 @@ body.select-mode-active #statsTableBody tr {
     async function executeInterceptionLayer() {
         verifyLocalStorageStructure();
         
-        const historicalCache = localStorage.getItem('AV_ledger_offline_cache');
-        if (historicalCache) {
-            try {
-                const parsedCache = JSON.parse(historicalCache);
-                if (parsedCache.dates) state.dates = parsedCache.dates;
-                if (parsedCache.currentDate) state.currentDate = parsedCache.currentDate;
-                localCache = parsedCache;
-            } catch (err) {
-                console.error('[Avanti Storage] Error parsing historical cache data strings:', err);
-            }
-        }
+        // 1. Resolve configuration references first to identify path scope rules
+        await checkProfileAndSyncSettings();
+        
+        // 2. Safely read cache tailored strictly for this path scope configuration
+        bootstrapStateFromActiveScope();
 
+        // Overwrite persistence loops
         window.saveState = function() {
             if (!state.currentDate) return;
             ensureDateExists(state.currentDate);
@@ -4363,8 +4499,6 @@ body.select-mode-active #statsTableBody tr {
 
             stageDataForUpload(REMOTE_DB_PATH, updates);
         };
-
-        await checkProfileAndSyncSettings();
 
         if (firebaseDB && REMOTE_DB_PATH !== DEFAULT_FALLBACK_PATH) {
             firebaseDB.ref(REMOTE_DB_PATH).on('value', (snapshot) => {
@@ -4409,6 +4543,25 @@ body.select-mode-active #statsTableBody tr {
         }, 4000);
     }
 
+    // Intercept user account switching routines to hot-swap cache targets smoothly
+    const nativeUserSwitchHook = window.switchUser;
+    if (typeof nativeUserSwitchHook === 'function') {
+        window.switchUser = async function(newAccountKey, newUsername) {
+            console.log(`[Avanti Interceptor] Intercepting switchUser context payload allocation for: ${newUsername}`);
+            
+            // Reassign underlying browser parameters natively first
+            localStorage.setItem('AV_ledger_account_key', newAccountKey);
+            localStorage.setItem('AV_ledger_username', newUsername);
+            
+            // Re-evaluate settings to re-compute target paths and isolate local scopes
+            await checkProfileAndSyncSettings();
+            bootstrapStateFromActiveScope();
+            
+            // Forward execution back down to native codebase workflows
+            await nativeUserSwitchHook(newAccountKey, newUsername);
+        };
+    }
+
     window.addEventListener('online', () => {
         triggerUpstreamSynchronization();
     });
@@ -4423,6 +4576,90 @@ body.select-mode-active #statsTableBody tr {
         document.addEventListener('DOMContentLoaded', executeInterceptionLayer);
     }
 })();
+</script>
+
+
+<script>
+    let collapseTimer = null;
+
+    // Starts or resets the 3-second auto-collapse window
+    function initCollapseTimer() {
+        clearTimeout(collapseTimer);
+        collapseTimer = setTimeout(() => {
+            collapseContainer();
+        }, 3000); // 3000 milliseconds = 3 seconds
+    }
+
+    function collapseContainer() {
+        const container = document.getElementById('floatingActionsContainer');
+        if (container && container.classList.contains('expanded')) {
+            container.classList.remove('expanded');
+            container.classList.add('collapsed');
+        }
+    }
+
+    function expandContainer() {
+        const container = document.getElementById('floatingActionsContainer');
+        if (container && container.classList.contains('collapsed')) {
+            container.classList.remove('collapsed');
+            container.classList.add('expanded');
+            initCollapseTimer();
+        }
+    }
+
+    function handleContainerClick(e) {
+        const container = document.getElementById('floatingActionsContainer');
+        if (container.classList.contains('collapsed')) {
+            expandContainer();
+            e.preventDefault();
+            e.stopPropagation();
+        }
+    }
+
+    function handleWhatsAppClick(e) {
+        const container = document.getElementById('floatingActionsContainer');
+        
+        if (container.classList.contains('collapsed')) {
+            // Safety Block: If clicked while small, only expand it. Do not share.
+            e.preventDefault();
+            e.stopPropagation();
+            expandContainer();
+        } else {
+            // Component is fully open: Clear the auto-timer and execute your sharing logic
+            clearTimeout(collapseTimer);
+            if (typeof sendToWhatsApp === "function") {
+                sendToWhatsApp();
+            } else {
+                console.error("sendToWhatsApp() function is missing or not declared globally.");
+            }
+        }
+    }
+
+    // UX Optimization Hooks: Keeps the container open if the user hovers over it
+    document.addEventListener('DOMContentLoaded', () => {
+        const container = document.getElementById('floatingActionsContainer');
+        if (container) {
+            container.addEventListener('mouseenter', () => {
+                if (container.classList.contains('expanded')) {
+                    clearTimeout(collapseTimer); // Pause closing countdown while user is interacting
+                }
+            });
+            
+            container.addEventListener('mouseleave', () => {
+                if (container.classList.contains('expanded')) {
+                    initCollapseTimer(); // Resume countdown when cursor leaves
+                }
+            });
+        }
+    });
+
+    // Global Dismissal Hook: Collapse immediately if user clicks completely off the widget
+    document.addEventListener('click', function(event) {
+        const container = document.getElementById('floatingActionsContainer');
+        if (container && !container.contains(event.target)) {
+            collapseContainer();
+        }
+    });
 </script>
 
 
