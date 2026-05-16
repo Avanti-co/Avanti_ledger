@@ -488,8 +488,9 @@ table.stats-table td {
                 align-items: center !important;
                 gap: 6px !important;
             ">
-                <span style="width: 6px !important; height: 6px !important; background: #4ade80 !important; border-radius: 50% !important; box-shadow: 0 0 8px #4ade80 !important;"></span>
-                Online
+                <i class="fa-solid fa-spinner fa-spin"></i>
+
+                Loading
             </span>
         </div>
     </div>
@@ -567,46 +568,70 @@ padding-bottom: env(safe-area-inset-bottom, 50px);
     <div style="border: 1px solid #D1D1D6;" class="stats-table-container">
 
 
-      <table style="border: 1px solid #D1D1D6;"class="stats-table" id="statisticsTable">
-        <thead >
-          <tr style="" class="border border-blue-100">
-            <th style="max-width: 2px;"class="select-col hidden"></th>
-            <th >Item</th>
-            <th>Opening Stock</th>
-            <th>Orders</th>
-            <th>Total Stock</th>
-            <th>Price</th>
-            <th>Closing Stock</th>
-            <th>Sales</th>
-            <th>Total</th>
-          </tr>
-        </thead>
-        <tbody id="statsTableBody"></tbody>
-        <tfoot >
-          <tr style="background:#F9F9F9; ">
-            <th  style=""class="table-controls"  style="border-top:1px solid var(--border-color); border-top: 1px solid  #D1D1D6; padding-right: 0 !important;" colspan="2"> <button class="" onclick="addRow()" title="Add new item" style="  background: white;
-            border: 2px dashed #cbd5e1;
-            color: #64748b;
-            padding: 8px 10px;
-            border-radius: 12px;
-            cursor: pointer;
-            font-weight: 600;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-margin: 5px;
- " > <i style="font-size: 18px;
-    font-weight: bold;" class="fas fa-plus" ></i> Add item</button></th>
- <th style="padding-left: 8px;" class="table-controls2" colspan="3" style="border-top:1px solid var(--border-color);">  <!-- WhatsApp Share Button -->
-</th>
-            <th colspan="2" class="table-controls3"  style=" color: gray; font-weight: bold;">Total Sales:</th>
-            <th id="totalSalesAmount" style=" font-weight:800; color: #3f72af border-top: 1px solid  #D1D1D6;">K0</th>
-          </tr>
+   <table style="border: 1px solid #D1D1D6;" class="stats-table" id="statisticsTable">
+  <thead>
+    <tr class="border border-blue-100">
+      <th style="max-width: 2px;" class="select-col hidden"></th>
+      <th>Item</th>
+      <th>Opening Stock</th>
+      <th>Orders</th>
+      <th>Total Stock</th>
+      <th>Price</th>
+      <th>Closing Stock</th>
+      <th>Sales</th>
+      <th>Total</th>
+    </tr>
+    <!-- Loading row kept inside the header exactly per your layout -->
+    <tr id="loadingRow" style="background-color: transparent;">
+      <td colspan="8" style="text-align: center; padding: 2rem 0; vertical-align: middle;">
+        <div style="display: flex; align-items: center; justify-content: center; gap: 0.75rem; font-family: system-ui, -apple-system, sans-serif; color: #6b7280;">
+          <i class="fa-solid fa-spinner fa-spin" style="font-size: 1.25rem;"></i>
+          <span style="font-weight: 500; letter-spacing: -0.01em;">Loading…</span>
+        </div>
+      </td>
+    </tr>
+  </thead>
+  
+  <tbody id="statsTableBody"></tbody>
 
-        </tfoot>
+  <tfoot>
+    <tr style="background:#F9F9F9;">
+      <th class="table-controls" style="border-top: 1px solid #D1D1D6; padding-right: 0 !important;" colspan="2">
+        <button onclick="addRow()" title="Add new item" style="background: white; border: 2px dashed #cbd5e1; color: #64748b; padding: 8px 10px; border-radius: 12px; cursor: pointer; font-weight: 600; display: flex; align-items: center; gap: 10px; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); margin: 5px;">
+          <i style="font-size: 18px; font-weight: bold;" class="fas fa-plus"></i> Add item
+        </button>
+      </th>
+      <th style="padding-left: 8px;" class="table-controls2" colspan="3" style="border-top:1px solid var(--border-color);">
+        <!-- WhatsApp Share Button -->
+      </th>
+      <th colspan="2" class="table-controls3" style="color: gray; font-weight: bold;">Total Sales:</th>
+      <th id="totalSalesAmount" style="font-weight:800; color: #3f72af; border-top: 1px solid #D1D1D6;">K0</th>
+    </tr>
+  </tfoot>
+</table>
 
-      </table>
+<script>
+  (function() {
+    const tbody = document.getElementById('statsTableBody');
+    const loadingRow = document.getElementById('loadingRow');
+
+    if (!tbody || !loadingRow) return;
+
+    // MutationObserver watches the tbody for injected content
+    const observer = new MutationObserver((mutationsList) => {
+      // If any rows are detected inside tbody, clear out the header loader
+      if (tbody.children.length > 0) {
+        loadingRow.remove();
+        
+        // Disconnect immediately to save client machine resources
+        observer.disconnect();
+      }
+    });
+
+    // Begin active tracking of the table body child node list
+    observer.observe(tbody, { childList: true });
+  })();
+</script>
 
 
    
@@ -767,6 +792,12 @@ margin: 5px;
     opacity: 1;
     display: inline-block;
 }
+
+body.is-dragging-now {
+    touch-action: none;
+    overflow: hidden;
+}
+
 
 </style>
 
@@ -4178,7 +4209,7 @@ body.select-mode-active #statsTableBody tr {
         }).join(' ');
 
         const designDefinitions = {
-            log: { icon: 'fa-check-circle text-green-500', title: 'Console Log' },
+            log: { icon: 'fa-check-circle text-green-500', title: 'Notification' },
             error: { icon: 'fa-exclamation-circle text-red-500', title: 'System Error' },
             warn: { icon: 'fa-exclamation-triangle text-amber-500', title: 'System Warning' },
             info: { icon: 'fa-info-circle text-blue-500', title: 'System Info' }
@@ -4759,6 +4790,24 @@ margin-top: -30px;
     evaluateNetworkStatus();
 });
 </script>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    // Target the window for touch moves
+    window.addEventListener('touchmove', function(e) {
+        
+        // Only intercept if the application is currently dragging an item
+        if (document.body.classList.contains('is-dragging-now')) {
+            
+            // Ensure the event can actually be canceled to avoid browser warnings
+            if (e.cancelable) {
+                e.preventDefault(); 
+            }
+        }
+    }, { passive: false }); // CRITICAL: Tells the browser to allow preventDefault()
+});
+</script>
+
 
 
 </body>
