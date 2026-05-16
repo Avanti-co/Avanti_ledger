@@ -1483,6 +1483,11 @@ async function handleClearMyStats() {
             const statsPath = `accounts/${CURRENT_ACCOUNT_KEY}/profiles/${CURRENT_PROFILE_NAME}/avanti_stats`;
             await db.ref(statsPath).remove();
             
+            // --- CORRECTED: Wipe the true sandbox key from the interceptor ---
+            const scopeCacheKey = `AV_ledger_cache_${CURRENT_ACCOUNT_KEY}_${CURRENT_PROFILE_NAME}`;
+            localStorage.removeItem(scopeCacheKey);
+            // -----------------------------------------------------------------
+            
             toast('Stats Cleared', 'All statistics for this profile have been deleted.', true);
             closeModal('deviceModal');
         } catch (error) {
@@ -1899,12 +1904,26 @@ async function executeDataTransfer(sourceName) {
         status.innerText = "Syncing statistics...";
         bar.style.width = "60%";
         
+        // 1. Overwrite cloud database reference
         await db.ref(`accounts/${CURRENT_ACCOUNT_KEY}/profiles/${CURRENT_PROFILE_NAME}/avanti_stats`).set(data);
+        
+        // --- CORRECTED: Assemble and overwrite using the precise interceptor schema ---
+        const scopeCacheKey = `AV_ledger_cache_${CURRENT_ACCOUNT_KEY}_${CURRENT_PROFILE_NAME}`;
+        if (data) {
+            const localCache = {
+                currentDate: data.currentDate || new Date().toISOString().slice(0, 10),
+                dates: data.dates || {}
+            };
+            localStorage.setItem(scopeCacheKey, JSON.stringify(localCache));
+        } else {
+            localStorage.removeItem(scopeCacheKey);
+        }
+        // ------------------------------------------------------------------------------
         
         status.innerText = "Transfer Complete!";
         bar.style.width = "100%";
         
-        // Clean up request
+        // Clean up pending synchronization link request
         await db.ref(`accounts/${CURRENT_ACCOUNT_KEY}/profiles/${sourceName}/pendingRequests/${CURRENT_PROFILE_NAME}`).remove();
 
         setTimeout(() => {
@@ -1916,6 +1935,7 @@ async function executeDataTransfer(sourceName) {
         toast('Error', 'Transfer failed.', false);
     }
 }
+
 
 // Start listener on boot
 document.addEventListener('DOMContentLoaded', startUniversalListener);
