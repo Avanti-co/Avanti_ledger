@@ -1,4 +1,4 @@
- <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8" />
@@ -2073,8 +2073,8 @@ function addRow() {
     // Calculate the next logical position number
     const itemsArray = Object.values(dateObj.items || {});
     const nextPos = itemsArray.length > 0 
-        ? Math.max(...itemsArray.map(i => i.position || 0)) + 1 
-        : 1;
+        ? Math.max(...itemsArray.map(i => i.position || 0)) + 10000 
+        : 10000;
 
     const id = `itm${Date.now()}`;
     const item = makeItem(id, 'new item', 0, 0, 0, 0, nextPos);
@@ -3615,52 +3615,43 @@ body.select-mode-active #statsTableBody tr {
     }
 
     function updateGhostPosition(x, y) {
-    if (!ghost) return;
+        if (!ghost) return;
 
-    const ghostWidth = ghost.offsetWidth;
-    const ghostHeight = ghost.offsetHeight;
-    const padding = 20; // Margin from edges
+        const ghostWidth = ghost.offsetWidth;
+        const ghostHeight = ghost.offsetHeight;
+        const padding = 20;
 
-    // 1. Calculate Top Constraint (35% of the page)
-    const topLimit = window.innerHeight * 0.30;
+        const topLimit = window.innerHeight * 0.30;
 
-    // 2. Clamped Horizontal Position (Stay within left/right edges)
-    let left = x - ghostWidth / 2;
-    left = Math.max(padding, Math.min(left, window.innerWidth - ghostWidth - padding));
+        let left = x - ghostWidth / 2;
+        left = Math.max(padding, Math.min(left, window.innerWidth - ghostWidth - padding));
 
-    // 3. Clamped Vertical Position (Stay below top 35% and above bottom edge)
-    let top = y - 20; 
-    
-    // Clamp 'top' so it cannot be less than topLimit
-    top = Math.max(topLimit, Math.min(top, window.innerHeight - ghostHeight - padding));
+        let top = y - 20; 
+        top = Math.max(topLimit, Math.min(top, window.innerHeight - ghostHeight - padding));
 
-    ghost.style.right = left + 'px';
-    ghost.style.top = top + 'px';
-}
+        ghost.style.left = left + 'px';
+        ghost.style.top = top + 'px';
+    }
 
     function handleAutoScroll(y) {
-    clearInterval(scrollInterval);
-    
-    // Calculate the 20% thresholds based on current screen height
-    const threshold = window.innerHeight * 0.30; 
-    const speed = 10; 
+        clearInterval(scrollInterval);
+        
+        const threshold = window.innerHeight * 0.30; 
+        const speed = 10; 
 
-    if (y < threshold) {
-        // Dragged item is in the top 20% of the screen
-        scrollInterval = setInterval(() => window.scrollBy(0, -speed), 15);
-    } else if (y > window.innerHeight - threshold) {
-        // Dragged item is in the bottom 20% of the screen
-        scrollInterval = setInterval(() => window.scrollBy(0, speed), 15);
+        if (y < threshold) {
+            scrollInterval = setInterval(() => window.scrollBy(0, -speed), 15);
+        } else if (y > window.innerHeight - threshold) {
+            scrollInterval = setInterval(() => window.scrollBy(0, speed), 15);
+        }
     }
-}
 
-    function onPointerMove(e) {
+    onPointerMove = function(e) {
         if (!isDragging) return;
 
         updateGhostPosition(e.clientX, e.clientY);
         handleAutoScroll(e.clientY);
 
-        // Calculate insertion point
         const target = document.elementFromPoint(e.clientX, e.clientY)?.closest('#statsTableBody tr');
         if (target && target !== draggedRow) {
             const rect = target.getBoundingClientRect();
@@ -3683,133 +3674,133 @@ body.select-mode-active #statsTableBody tr {
             draggedRow.classList.remove('draggable-ready');
             if (ghost) ghost.remove();
             
+            // Execute the isolated midpoint synchronization
             await syncTableOrder();
         }
         draggedRow = null;
     }
 
-    // --- Firebase Order Sync ---
+    // --- Firebase Order Sync: Midpoint Optimization ---
+    async function syncTableOrder() {
+        if (typeof firebaseDB === 'undefined' || !state.currentDate || !REMOTE_DB_PATH || !draggedRow) return;
 
-// --- Firebase Order Sync: Re-indexing & Forward Propagation ---
-async function syncTableOrder() {
-    if (typeof firebaseDB === 'undefined' || !state.currentDate || !REMOTE_DB_PATH) return;
+        const currentDateData = state.dates[state.currentDate];
+        if (!currentDateData || !currentDateData.items) return;
 
-    const rows = document.querySelectorAll('#statsTableBody tr');
-    const updates = {};
-    const currentDateData = state.dates[state.currentDate];
-    
-    if (!currentDateData) return;
-
-    rows.forEach((row, index) => {
-        const itemId = row.dataset.itemId;
-        const newPosition = index + 1;
+        const itemId = draggedRow.dataset.itemId;
         const originalItem = currentDateData.items[itemId];
+        if (!originalItem) return;
 
-        if (originalItem) {
-            // 1. Update the CURRENT date's position
-            originalItem.position = newPosition;
-            updates[`${REMOTE_DB_PATH}/dates/${state.currentDate}/items/${itemId}/position`] = newPosition;
+        // 1. Identify neighboring DOM elements relative to the new drop position
+        const prevRow = draggedRow.previousElementSibling;
+        const nextRow = draggedRow.nextElementSibling;
 
-            const futureDays = state.futureWindowDays || 30;
+        // 2. Fetch positions of adjacent items from the current state
+        let positionAbove = prevRow ? currentDateData.items[prevRow.dataset.itemId]?.position : null;
+        let positionBelow = nextRow ? currentDateData.items[nextRow.dataset.itemId]?.position : null;
 
-            for (let i = 1; i <= futureDays; i++) {
-                const futureDateKey = addDays(state.currentDate, i);
-                const futureDateData = state.dates[futureDateKey];
+        let newPosition;
 
-                if (!futureDateData || futureDateData.balanced) continue;
-
-                const itemPath = `${REMOTE_DB_PATH}/dates/${futureDateKey}/items/${itemId}`;
-                
-                // "Retrieve" existing data from local state if it exists
-                const existing = (futureDateData.items && futureDateData.items[itemId]) ? futureDateData.items[itemId] : null;
-
-                /**
-                 * RECONSTRUCTION LOGIC
-                 * We gather all fields. If 'existing' has them, we use them.
-                 * If not, we fall back to defaults (initialization).
-                 */
-                const updatedItem = {
-                    id: itemId,
-                    position: newPosition, // The new position is always applied
-                    name: existing?.name || originalItem.name || "Item",
-                    price: existing?.price ?? originalItem.price ?? 0,
-                    // Opening Rule: If it exists, keep it. If not, only Day 1 gets today's closing.
-                    opening: existing?.opening ?? (i === 1 ? (originalItem.closing || 0) : 0),
-                    orders: existing?.orders ?? 0,
-                    closing: existing?.closing ?? 0
-                };
-
-                // Apply the full object to the updates map to prevent ghosting
-                updates[`${itemPath}/id`] = updatedItem.id;
-                updates[`${itemPath}/name`] = updatedItem.name;
-                updates[`${itemPath}/position`] = updatedItem.position;
-                updates[`${itemPath}/price`] = updatedItem.price;
-                updates[`${itemPath}/opening`] = updatedItem.opening;
-                updates[`${itemPath}/orders`] = updatedItem.orders;
-                updates[`${itemPath}/closing`] = updatedItem.closing;
-
-                // Sync the local state so the UI reflects the "whole" item immediately
-                if (!futureDateData.items) futureDateData.items = {};
-                futureDateData.items[itemId] = updatedItem;
-            }
+        // 3. Midpoint Calculation Strategies
+        if (positionAbove !== null && positionAbove !== undefined && positionBelow !== null && positionBelow !== undefined) {
+            // Dropped between two items: Calculate average midpoint
+            newPosition = (positionAbove + positionBelow) / 2;
+        } else if (positionAbove !== null && positionAbove !== undefined) {
+            // Dropped at the very bottom of the table
+            newPosition = positionAbove + 1;
+        } else if (positionBelow !== null && positionBelow !== undefined) {
+            // Dropped at the very top of the table
+            newPosition = positionBelow / 2;
+        } else {
+            // Fallback safety threshold
+            newPosition = originalItem.position || 1;
         }
-    });
 
-    try {
-        await firebaseDB.ref().update(updates);
-        console.log("Propagation complete: All items verified as 'whole' records.");
-    } catch (err) {
-        console.error("Propagation Error:", err);
-        if (typeof renderTable === 'function') renderTable();
+        const updates = {};
+
+        // 4. Update the position locally and prepare DB payload for current date
+        originalItem.position = newPosition;
+        updates[`${REMOTE_DB_PATH}/dates/${state.currentDate}/items/${itemId}/position`] = newPosition;
+
+        // 5. Forward-propagate the single altered record down the future window timeline
+        const futureDays = state.futureWindowDays || 30;
+
+        for (let i = 1; i <= futureDays; i++) {
+            const futureDateKey = addDays(state.currentDate, i);
+            const futureDateData = state.dates[futureDateKey];
+
+            if (!futureDateData || futureDateData.balanced) continue;
+
+            const itemPath = `${REMOTE_DB_PATH}/dates/${futureDateKey}/items/${itemId}`;
+            const existing = (futureDateData.items && futureDateData.items[itemId]) ? futureDateData.items[itemId] : null;
+
+            const updatedItem = {
+                id: itemId,
+                position: newPosition, // Inject the updated midpoint position
+                name: existing?.name || originalItem.name || "Item",
+                price: existing?.price ?? originalItem.price ?? 0,
+                opening: existing?.opening ?? (i === 1 ? (originalItem.closing || 0) : 0),
+                orders: existing?.orders ?? 0,
+                closing: existing?.closing ?? 0
+            };
+
+            // Stage updates exclusively for the dragged item
+            updates[`${itemPath}/id`] = updatedItem.id;
+            updates[`${itemPath}/name`] = updatedItem.name;
+            updates[`${itemPath}/position`] = updatedItem.position;
+            updates[`${itemPath}/price`] = updatedItem.price;
+            updates[`${itemPath}/opening`] = updatedItem.opening;
+            updates[`${itemPath}/orders`] = updatedItem.orders;
+            updates[`${itemPath}/closing`] = updatedItem.closing;
+
+            if (!futureDateData.items) futureDateData.items = {};
+            futureDateData.items[itemId] = updatedItem;
+        }
+
+        try {
+            // Single batch update payload containing only the modified item across dates
+            await firebaseDB.ref().update(updates);
+            console.log(`Propagation complete: Midpoint position (${newPosition}) saved for item: ${itemId}`);
+        } catch (err) {
+            console.error("Propagation Error:", err);
+            if (typeof renderTable === 'function') renderTable();
+        }
     }
-}
-
-
 
     // --- Event Listeners ---
 
- // Replace your existing initRowListeners with this:
-function initRowListeners() {
-    const tbody = document.getElementById('statsTableBody');
-    if (!tbody || tbody.dataset.delegationInited === 'true') return;
+    function initRowListeners() {
+        const tbody = document.getElementById('statsTableBody');
+        if (!tbody || tbody.dataset.delegationInited === 'true') return;
 
-    tbody.addEventListener('pointerdown', (e) => {
-        // 1. MUST be in select mode to drag
-        if (!state.selectMode) return;
+        tbody.addEventListener('pointerdown', (e) => {
+            if (!state.selectMode) return;
 
-        // Find the row, even if they clicked a cell or a span inside it
-        const row = e.target.closest('tr');
-        if (!row) return;
+            const row = e.target.closest('tr');
+            if (!row) return;
 
-        // 2. Ignore actual checkbox clicks so they still work
-        if (e.target.tagName === 'INPUT' && e.target.type === 'checkbox') {
-            return; 
-        }
+            if (e.target.tagName === 'INPUT' && e.target.type === 'checkbox') {
+                return; 
+            }
 
-        const currentTime = new Date().getTime();
-        const tapLength = currentTime - lastClickTime;
+            const currentTime = new Date().getTime();
+            const tapLength = currentTime - lastClickTime;
 
-        // Detect Double Tap
-        if (tapLength < 300 && tapLength > 0) {
-            isReadyToDrag = true;
-            row.classList.add('draggable-ready');
-            startDrag(e, row);
-            
-            // Critical: prevents the browser from trying to select text 
-            // or perform default "touch" actions
-            e.preventDefault(); 
-        }
+            if (tapLength < 300 && tapLength > 0) {
+                isReadyToDrag = true;
+                row.classList.add('draggable-ready');
+                startDrag(e, row);
+                e.preventDefault(); 
+            }
 
-        lastClickTime = currentTime;
-    });
+            lastClickTime = currentTime;
+        });
 
-    tbody.dataset.delegationInited = 'true';
-}
+        tbody.dataset.delegationInited = 'true';
+    }
 
-    // Monitor table changes
     const observer = new MutationObserver(() => {
         initRowListeners();
-        // Control global classes based on selectMode state
         if (state.selectMode) {
             document.body.classList.add('select-mode-active');
         } else {
@@ -3826,6 +3817,281 @@ function initRowListeners() {
 })();
 </script>
 
+<script>
+(function() {
+    // Safety lock to prevent infinite execution loops during database updates
+    let isReindexingInProgress = false;
+    let databaseListenerRef = null;
+
+    // --- UI Component: Premium Glassmorphic Progress Modal ---
+    function createReindexModal() {
+        if (document.getElementById('reindex-modal-backdrop')) return;
+
+        const backdrop = document.createElement('div');
+        backdrop.id = 'reindex-modal-backdrop';
+        
+        Object.assign(backdrop.style, {
+            position: 'fixed',
+            top: '0',
+            left: '0',
+            width: '100vw',
+            height: '100vh',
+            backgroundColor: 'rgba(0, 0, 0, 0.75)',
+            backdropFilter: 'blur(20px)',
+            webkitBackdropFilter: 'blur(20px)',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            zIndex: '99999',
+            opacity: '0',
+            transition: 'opacity 0.4s ease'
+        });
+
+        const modal = document.createElement('div');
+        modal.id = 'reindex-modal-box';
+        Object.assign(modal.style, {
+            width: '90%',
+            maxWidth: '400px',
+            backgroundColor: 'rgba(20, 20, 20, 0.85)',
+            border: '1px solid rgba(255, 255, 255, 0.1)',
+            borderRadius: '24px',
+            padding: '32px',
+            textAlign: 'center',
+            boxShadow: '0 24px 48px rgba(0, 0, 0, 0.8)',
+            transform: 'scale(0.95)',
+            transition: 'transform 0.4s ease'
+        });
+
+        const title = document.createElement('h3');
+        title.innerText = 'Reassigning item positions';
+        Object.assign(title.style, {
+            color: '#FFFFFF',
+            fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, sans-serif',
+            fontSize: '20px',
+            fontWeight: '600',
+            margin: '0 0 12px 0',
+            letterSpacing: '-0.4px'
+        });
+
+        const subtitle = document.createElement('p');
+        subtitle.id = 'reindex-modal-status';
+        subtitle.innerText = 'Initializing optimization...';
+        Object.assign(subtitle.style, {
+            color: 'rgba(255, 255, 255, 0.5)',
+            fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif',
+            fontSize: '14px',
+            margin: '0 0 24px 0'
+        });
+
+        const progressTrack = document.createElement('div');
+        Object.assign(progressTrack.style, {
+            width: '100%',
+            height: '6px',
+            backgroundColor: 'rgba(255, 255, 255, 0.08)',
+            borderRadius: '3px',
+            overflow: 'hidden',
+            position: 'relative'
+        });
+
+        const progressBar = document.createElement('div');
+        progressBar.id = 'reindex-progress-bar';
+        Object.assign(progressBar.style, {
+            width: '0%',
+            height: '100%',
+            backgroundColor: '#007AFF', 
+            borderRadius: '3px',
+            transition: 'width 0.2s ease'
+        });
+
+        progressTrack.appendChild(progressBar);
+        modal.appendChild(title);
+        modal.appendChild(subtitle);
+        modal.appendChild(progressTrack);
+        backdrop.appendChild(modal);
+        document.body.appendChild(backdrop);
+
+        requestAnimationFrame(() => {
+            backdrop.style.opacity = '1';
+            modal.style.transform = 'scale(1)';
+        });
+    }
+
+    function updateProgressBar(percentage, message) {
+        const bar = document.getElementById('reindex-progress-bar');
+        const text = document.getElementById('reindex-modal-status');
+        if (bar) bar.style.width = `${percentage}%`;
+        if (text && message) text.innerText = message;
+    }
+
+    function removeReindexModal() {
+        const backdrop = document.getElementById('reindex-modal-backdrop');
+        const modal = document.getElementById('reindex-modal-box');
+        if (!backdrop) return;
+
+        backdrop.style.opacity = '0';
+        if (modal) modal.style.transform = 'scale(0.95)';
+
+        setTimeout(() => {
+            backdrop.remove();
+        }, 400);
+    }
+
+    // --- Core Algorithmic Re-indexing Logic with Explicit 10s Pacing ---
+    async function executePositionReindexing(items) {
+        const startTime = Date.now();
+        createReindexModal();
+
+        // 1. Establish a continuous progress interval ticker to manage steady visual feedback
+        let visualProgress = 0;
+        const progressInterval = setInterval(() => {
+            if (visualProgress < 92) {
+                visualProgress += 1;
+                
+                // Context-aware status string changes over the 10-second lifecycle window
+                let statusMessage = 'Analyzing item index structures...';
+                if (visualProgress > 25) statusMessage = 'Recalculating 14-day chronological paths...';
+                if (visualProgress > 60) statusMessage = 'Committing updates to database architecture...';
+                if (visualProgress > 80) statusMessage = 'Finalizing structural safety checks...';
+
+                updateProgressBar(visualProgress, statusMessage);
+            }
+        }, 100); // 100ms intervals * 92 steps ensures a gradual growth across ~9.2 seconds
+
+        // 2. Sort current date items sequentially by their layout position
+        const itemArray = Object.keys(items).map(id => ({
+            id: id,
+            ...items[id]
+        })).sort((a, b) => (a.position || 0) - (b.position || 0));
+
+        const updates = {};
+        const futureDays = 14; 
+
+        // 3. Re-map clean integer metrics
+        itemArray.forEach((item, index) => {
+            const cleanPosition = index + 1;
+            item.position = cleanPosition; 
+            updates[`${REMOTE_DB_PATH}/dates/${state.currentDate}/items/${item.id}/position`] = cleanPosition;
+        });
+
+        // 4. Trace changes uniformly down the 2-week window payload
+        for (let dayOffset = 1; dayOffset <= futureDays; dayOffset++) {
+            const futureDateKey = addDays(state.currentDate, dayOffset);
+            const futureDateData = state.dates[futureDateKey];
+
+            if (!futureDateData || futureDateData.balanced) continue;
+            if (!futureDateData.items) futureDateData.items = {};
+
+            itemArray.forEach(originalItem => {
+                const itemId = originalItem.id;
+                const existing = futureDateData.items[itemId] || null;
+
+                const updatedItem = {
+                    id: itemId,
+                    position: originalItem.position,
+                    name: existing?.name || originalItem.name || "Item",
+                    price: existing?.price ?? originalItem.price ?? 0,
+                    opening: existing?.opening ?? (dayOffset === 1 ? (originalItem.closing || 0) : 0),
+                    orders: existing?.orders ?? 0,
+                    closing: existing?.closing ?? 0
+                };
+
+                const targetPath = `${REMOTE_DB_PATH}/dates/${futureDateKey}/items/${itemId}`;
+                updates[`${targetPath}/id`] = updatedItem.id;
+                updates[`${targetPath}/name`] = updatedItem.name;
+                updates[`${targetPath}/position`] = updatedItem.position;
+                updates[`${targetPath}/price`] = updatedItem.price;
+                updates[`${targetPath}/opening`] = updatedItem.opening;
+                updates[`${targetPath}/orders`] = updatedItem.orders;
+                updates[`${targetPath}/closing`] = updatedItem.closing;
+
+                futureDateData.items[itemId] = updatedItem;
+            });
+        }
+
+        try {
+            // Commit atomic updates immediately to Firebase while visual tracking fills the remaining time
+            await firebaseDB.ref().update(updates);
+        } catch (error) {
+            console.error("Critical Re-indexing Failure:", error);
+            clearInterval(progressInterval);
+            if (typeof renderTable === 'function') renderTable();
+            removeReindexModal();
+            return;
+        }
+
+        // 5. Calculate residual execution time to guarantee a full 10-second user-facing display
+        const totalElapsedTime = Date.now() - startTime;
+        const remainingRequiredTime = 10000 - totalElapsedTime;
+
+        if (remainingRequiredTime > 0) {
+            await new Promise(resolve => setTimeout(resolve, remainingRequiredTime));
+        }
+
+        // 6. Halt active background interval ticker and snap gracefully to absolute resolution
+        clearInterval(progressInterval);
+        updateProgressBar(100, 'Database optimization complete.');
+
+        // Allow the bar to rest complete momentarily before animating outward
+        setTimeout(() => {
+            removeReindexModal();
+        }, 800);
+    }
+
+    // --- Active Database Watch Manager ---
+    function initializeDecimalGuardListener() {
+        if (typeof firebaseDB === 'undefined' || !state.currentDate || !REMOTE_DB_PATH) return;
+
+        if (databaseListenerRef) {
+            databaseListenerRef.off();
+        }
+
+        const currentItemsTargetRef = firebaseDB.ref(`${REMOTE_DB_PATH}/dates/${state.currentDate}/items`);
+        databaseListenerRef = currentItemsTargetRef;
+
+        currentItemsTargetRef.on('value', async (snapshot) => {
+            if (isReindexingInProgress) return;
+
+            const items = snapshot.val();
+            if (!items) return;
+
+            // Trigger criteria: Check if fraction length exceeds 10 decimals
+            const triggersReindex = Object.values(items).some(item => {
+                if (typeof item.position !== 'number') return false;
+                const positionString = item.position.toString();
+                if (!positionString.includes('.')) return false;
+                
+                return positionString.split('.')[1].length > 10;
+            });
+
+            if (triggersReindex) {
+                isReindexingInProgress = true;
+                await executePositionReindexing(items);
+                isReindexingInProgress = false;
+            }
+        });
+    }
+
+    // --- State Invalidation & Lifecycle Setup ---
+    document.addEventListener('DOMContentLoaded', () => {
+        initializeDecimalGuardListener();
+
+        if (typeof state !== 'undefined') {
+            const originalHandler = Object.getOwnPropertyDescriptor(state, 'currentDate');
+            let dateCache = state.currentDate;
+
+            Object.defineProperty(state, 'currentDate', {
+                get() { return dateCache; },
+                set(newVal) {
+                    dateCache = newVal;
+                    initializeDecimalGuardListener();
+                },
+                configurable: true,
+                enumerable: true
+            });
+        }
+    });
+})();
+</script>
 
 
 
