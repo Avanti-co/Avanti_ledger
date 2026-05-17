@@ -437,7 +437,7 @@ table.stats-table td {
         <i class="fas fa-ellipsis-h" id="moreIcon"></i>
         <div class="dropdown" id="moreDropdown">
           <div onclick="enterSelectMode()">Edit</div>
-        <div onclick="window.location.href='accounting-report.html'">Reports</div>
+        <div id="runAuditBtn">Reports</div>
 <div onclick="window.location.href='notes.html'">Notes</div>
 </div>
       </div>
@@ -1011,7 +1011,7 @@ font-size: calc(1em + 2px) !important;
     .fill-green { background: var(--av-green); }
     .fill-blue { background: var(--av-blue); }
 </style>
-<div id="runAuditBtn">
+<div >
 <div id="dailyInsightCard" class="ai-insight-card" style="display:none;">
     <div class="ai-insight-header">
         <span><i class="fas fa-brain"></i> AI Daily Insights</span>
@@ -4278,7 +4278,7 @@ body.select-mode-active #statsTableBody tr {
         container.id = 'avanti-push-notification-stack';
         container.style.cssText = `
             position: fixed;
-            top: 16px;
+            bottom: 7.5em;
             left: 0;
             right: 0;
             z-index: 99999;
@@ -5094,6 +5094,212 @@ document.addEventListener('DOMContentLoaded', () => {
       console.log("Welcome back, continue from where you left off.");
     }
   })();
+</script>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const container = document.getElementById('floatingActionsContainer');
+    if (!container) return;
+
+    // ==========================================
+    // CONFIGURATION: Set edge margin parameter (in pixels)
+    // ==========================================
+    const SCREEN_MARGIN = 16; 
+
+    let isDragging = false;
+    let hasMoved = false;
+    let startX, startY;
+    let initialLeft, initialTop;
+
+    // Enforce robust layout properties
+    container.style.position = 'fixed';
+    container.style.zIndex = '9999';
+    container.style.cursor = 'grab';
+    container.style.boxSizing = 'border-box';
+
+    const clamp = (val, min, max) => Math.max(min, Math.min(val, max));
+
+    // 1. Intelligent Positioning Matrix with Expansion Protection
+    const repositionContainer = () => {
+        const rect = container.getBoundingClientRect();
+        const maxLeft = window.innerWidth - rect.width - SCREEN_MARGIN;
+        const maxTop = window.innerHeight - rect.height - SCREEN_MARGIN;
+
+        const edge = localStorage.getItem('fa_snapped_edge') || 'right';
+        const axisRatio = parseFloat(localStorage.getItem('fa_axis_ratio')) || 0.8;
+
+        let targetLeft = SCREEN_MARGIN;
+        let targetTop = SCREEN_MARGIN;
+
+        // Dynamic Anchor Tuning: Dictates which way the element grows when its HTML content changes/extends
+        if (edge === 'left') {
+            targetLeft = SCREEN_MARGIN;
+            targetTop = clamp(axisRatio * window.innerHeight, SCREEN_MARGIN, maxTop);
+            container.style.transformOrigin = 'left center';
+        } else if (edge === 'right') {
+            targetLeft = maxLeft;
+            targetTop = clamp(axisRatio * window.innerHeight, SCREEN_MARGIN, maxTop);
+            container.style.transformOrigin = 'right center';
+        } else if (edge === 'top') {
+            targetLeft = clamp(axisRatio * window.innerWidth, SCREEN_MARGIN, maxLeft);
+            targetTop = SCREEN_MARGIN;
+            container.style.transformOrigin = 'center top';
+        } else if (edge === 'bottom') {
+            targetLeft = clamp(axisRatio * window.innerWidth, SCREEN_MARGIN, maxLeft);
+            targetTop = maxTop;
+            container.style.transformOrigin = 'center bottom';
+        }
+
+        // Hard Boundary Safety Clamp
+        targetLeft = clamp(targetLeft, SCREEN_MARGIN, maxLeft);
+        targetTop = clamp(targetTop, SCREEN_MARGIN, maxTop);
+
+        container.style.left = `${targetLeft}px`;
+        container.style.top = `${targetTop}px`;
+        container.style.right = 'auto';
+        container.style.bottom = 'auto';
+    };
+
+    // Initialize layout position
+    repositionContainer();
+
+    // 2. Drag Initialization Engine
+    const onStart = (e) => {
+        const clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
+        const clientY = e.type.includes('touch') ? e.touches[0].clientY : e.clientY;
+        
+        isDragging = true;
+        hasMoved = false;
+        
+        container.style.transition = 'none';
+        container.style.cursor = 'grabbing';
+
+        const rect = container.getBoundingClientRect();
+        startX = clientX;
+        startY = clientY;
+        initialLeft = rect.left;
+        initialTop = rect.top;
+
+        if (e.type === 'mousedown') {
+            e.preventDefault(); 
+        }
+    };
+
+    // 3. Live Move Calculations
+    const onMove = (e) => {
+        if (!isDragging) return;
+
+        const clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
+        const clientY = e.type.includes('touch') ? e.touches[0].clientY : e.clientY;
+
+        const deltaX = clientX - startX;
+        const deltaY = clientY - startY;
+
+        if (Math.abs(deltaX) > 4 || Math.abs(deltaY) > 4) {
+            hasMoved = true;
+        }
+
+        if (hasMoved) {
+            if (e.cancelable) e.preventDefault();
+
+            let newLeft = initialLeft + deltaX;
+            let newTop = initialTop + deltaY;
+
+            const rect = container.getBoundingClientRect();
+            const maxLeft = window.innerWidth - rect.width - SCREEN_MARGIN;
+            const maxTop = window.innerHeight - rect.height - SCREEN_MARGIN;
+
+            newLeft = clamp(newLeft, SCREEN_MARGIN, maxLeft);
+            newTop = clamp(newTop, SCREEN_MARGIN, maxTop);
+
+            container.style.left = `${newLeft}px`;
+            container.style.top = `${newTop}px`;
+        }
+    };
+
+    // 4. Drag Release & Edge Detection Commit
+    const onEnd = () => {
+        if (!isDragging) return;
+        isDragging = false;
+        container.style.cursor = 'grab';
+
+        if (hasMoved) {
+            // Apply fluid deceleration curve transitions for repositioning and scaling
+            container.style.transition = 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)';
+
+            const rect = container.getBoundingClientRect();
+            const maxLeft = window.innerWidth - rect.width - SCREEN_MARGIN;
+            const maxTop = window.innerHeight - rect.height - SCREEN_MARGIN;
+
+            const distLeft = rect.left - SCREEN_MARGIN;
+            const distRight = maxLeft - rect.left;
+            const distTop = rect.top - SCREEN_MARGIN;
+            const distBottom = maxTop - rect.top;
+
+            const minDist = Math.min(distLeft, distRight, distTop, distBottom);
+
+            let chosenEdge = 'right';
+            let axisRatio = 0;
+
+            if (minDist === distLeft) {
+                chosenEdge = 'left';
+                axisRatio = rect.top / window.innerHeight;
+            } else if (minDist === distRight) {
+                chosenEdge = 'right';
+                axisRatio = rect.top / window.innerHeight;
+            } else if (minDist === distTop) {
+                chosenEdge = 'top';
+                axisRatio = rect.left / window.innerWidth;
+            } else if (minDist === distBottom) {
+                chosenEdge = 'bottom';
+                axisRatio = rect.left / window.innerWidth;
+            }
+
+            localStorage.setItem('fa_snapped_edge', chosenEdge);
+            localStorage.setItem('fa_axis_ratio', axisRatio.toString());
+
+            repositionContainer();
+        }
+    };
+
+    // Device Pointer Event Hookups
+    container.addEventListener('mousedown', onStart);
+    document.addEventListener('mousemove', onMove, { passive: false });
+    document.addEventListener('mouseup', onEnd);
+
+    container.addEventListener('touchstart', onStart, { passive: true });
+    document.addEventListener('touchmove', onMove, { passive: false });
+    document.addEventListener('touchend', onEnd);
+
+    // Click Suppression Shield
+    container.addEventListener('click', (e) => {
+        if (hasMoved) {
+            e.stopImmediatePropagation();
+            e.preventDefault();
+        }
+    }, true);
+
+    // 5. Continuous Extension Watchdog
+    // Automatically triggers if your other code modifies classes, heights, or widths dynamically
+    const resizeObserver = new ResizeObserver(() => {
+        if (!isDragging) {
+            repositionContainer();
+        }
+    });
+    resizeObserver.observe(container);
+
+    // 6. Real-time Window Parameter Watchdog
+    let resizeTimeout;
+    window.addEventListener('resize', () => {
+        container.style.transition = 'none';
+        repositionContainer();
+        
+        clearTimeout(resizeTimeout);
+        resizeTimeout = setTimeout(() => {
+            container.style.transition = 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)';
+        }, 100);
+    });
+});
 </script>
 
 
