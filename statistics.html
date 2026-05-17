@@ -2367,7 +2367,7 @@ function propagateNameAcrossDates(itemId, newName){
         const dKey = addDays(state.currentDate, i);
         const dateData = state.dates[dKey];
         if(dateData && dateData.balanced === true) {
-            console.log(`Skipping name propagation of item ${itemId} on balanced date ${dKey}.`);
+            
             continue; // Skip this balanced day, but check following days
         }
         
@@ -2389,7 +2389,7 @@ function propagatePriceToFuture(itemId, newPrice){
         const dateData = state.dates[dKey];
         
         if(dateData && dateData.balanced === true) {
-            console.log(`Skipping price propagation of item ${itemId} on balanced date ${dKey}.`);
+            
             continue;
         }
         
@@ -2423,10 +2423,7 @@ const copy = makeItem(itemId, thisItem.name, thisItem.closing, 0, thisItem.price
 
             copy.batches = clone(thisItem.batches || []);
             state.dates[nextDate].items[itemId] = copy;
-        } else {
-             // If balanced and item doesn't exist, we do nothing to the next day's structure.
-            console.log(`Skipping item creation on balanced next date ${nextDate}.`);
-        }
+        } 
     } else {
         // If the item exists, update the opening stock regardless of balanced status
         state.dates[nextDate].items[itemId].opening = Number(thisItem.closing||0);
@@ -2445,7 +2442,7 @@ function propagateItemToFuture(item, fromDateKey){
         const dateData = state.dates[dKey];
 
         if(dateData && dateData.balanced === true) {
-            console.log(`Skipping new item creation for item ${item.id} on balanced date ${dKey}.`);
+            
             continue; 
         }
 
