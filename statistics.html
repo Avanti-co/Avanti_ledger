@@ -224,9 +224,9 @@ border: 1px solid #d1d5db;
     justify-content:space-between;
     align-items:center;
     margin:0 0 8px 0;
-    font-weight:600;
-    color:#3f72af;
-    font-size:0.95rem;
+    font-weight:900;
+
+    font-size:1.05rem;
     padding-bottom:8px;
     border-bottom:1px solid var(--border-color);
 
@@ -235,13 +235,13 @@ border: 1px solid #d1d5db;
     display:flex;
     gap: 7px;
     align-items:center;
-    padding:5px 0;
+    padding:1px 0;
     border-bottom:1px solid var(--border-color);
 text-align: left;
   }
   .finance-item:last-child { border-bottom: none; }
-  .finance-amount{ font-weight:500; font-size:1rem; color:var(--text-color); }
-  .finance-description{ font-size:0.85rem; color:var(--muted-color); }
+  .finance-amount{ font-weight:700; font-size:1rem; color:var(--text-color); }
+  .finance-description{ font-size:0.85rem; color:var(--muted-color); font-weight:600;}
 
   /* Totals */
   .totals-section{ padding:0; }
@@ -813,7 +813,7 @@ body.is-dragging-now {
           <div class="finance-grid">
             <div class="expenses-section">
               <div class="finance-header">
-                <span style="font-weight: bold;">
+                <span style="font-weight: bold; color: #64748b;" >
     
 
 Expenses</span>
@@ -822,20 +822,20 @@ Expenses</span>
               <div id="expensesList">
               
               </div>
-Expense List
+
             </div>
 
             <div class="finance-divider"></div>
 
             <div class="incomes-section">
               <div class="finance-header">
-                <span style="font-weight: bold;">Incomes</span>
+                <span style="font-weight: bold; color: #64748b;">Incomes</span>
                 <div class="edit-btn1" id="edit-btn-inc"><button class="more1-btn" id="addIncomeBtn" onclick="addIncome()" title="Add Income"><i class="fas fa-plus"></i></button></div>
               </div>
               <div id="incomesList">
                
               </div>
-Income List
+
             </div>
 
           </div>
@@ -852,7 +852,7 @@ Income List
     <div class="totals-section" style="width: 100%; background: #ffffff; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); border: 1px solid rgba(0,0,0,0.05); overflow: hidden;border: 1px solid #D1D1D6;">
 
         
-        <h3 style="margin: 0; padding: 20px 24px; background: #ffffff; border-bottom: 1px solid #eeeeee; font-size: 1rem; font-weight: 900; color: #3f72af; text-transform: uppercase; letter-spacing: 1px;">
+        <h3 style="margin: 0; padding: 20px 24px; background: #ffffff; border-bottom: 1px solid #eeeeee; font-size: 1rem; font-weight: 900; color: #64748b; text-transform: uppercase; letter-spacing: 1px;">
             Summary </h3>
 <div class="balancing-switch-group" style=" position: absolute; right: 2em; margin-top: -48px;  background: #ffffff; font-size: 1em;   letter-spacing: 1px;">
         <span>balanced</span>
@@ -865,19 +865,19 @@ Income List
 
 
         <div style="padding: 8px 0;">
-            <div class="total-item" style="display: flex; justify-content: space-between; padding: 12px 24px; color: #3f72af;">
+            <div class="total-item" style="display: flex; justify-content: space-between; padding: 12px 24px; color: #64748b;">
                 <span>Net Sales</span>
-                <span id="netSalesAmount" style="font-weight: 600; color: #3f72af;">K0</span>
+                <span id="netSalesAmount" style="font-weight: 600; color: #64748b;">K0</span>
             </div>
             
-            <div class="total-item" style="display: flex; justify-content: space-between; padding: 12px 24px; color: #3f72af;">
+            <div class="total-item" style="display: flex; justify-content: space-between; padding: 12px 24px; color: #64748b;">
                 <span>Net Income</span>
-                <span id="netIncomeAmount" style="font-weight: 600; color: #3f72af;">K0</span>
+                <span id="netIncomeAmount" style="font-weight: 600; color: #64748b;">K0</span>
             </div>
             
-            <div class="total-item" style="display: flex; justify-content: space-between; padding: 12px 24px; color: #3f72af;">
+            <div class="total-item" style="display: flex; justify-content: space-between; padding: 12px 24px; color: #64748b;">
                 <span>Net Expenses</span>
-                <span id="netExpensesAmount" style="font-weight: 600; color: #3f72af;">K0</span>
+                <span id="netExpensesAmount" style="font-weight: 600; color: #64748b;">K0</span>
             </div>
 
             <div class="total-item" style="display: flex; justify-content: space-between; padding: 16px 24px; margin-top: 8px; background-color: rgba(63, 114, 175, 0.04); border-top: 1px solid rgba(63, 114, 175, 0.1); border-bottom: 1px solid rgba(63, 114, 175, 0.1);">
@@ -1296,6 +1296,7 @@ if (FIREBASE_CONFIG) {
     } catch (e) {
         console.warn('Firebase init failed', e);
     }
+
 }
 
 window.addEventListener('online', () => { isOnline = true; console.log("Connection restored! You are back online. Avanti has successfully re-synchronized your ledger states, secure audit logs, and inventory balances with the main server network.");
@@ -1307,6 +1308,7 @@ window.addEventListener('offline', () => { isOnline = false; console.log("Networ
 let AV_LEDGER_ACCOUNT_KEY = localStorage.getItem('AV_ledger_account_key');
 let AV_LEDGER_USERNAME = localStorage.getItem('AV_ledger_username');
 const DEFAULT_FALLBACK_PATH = 'avanti_stats_default'; 
+
 
 let TARGET_PROFILE_USERNAME = AV_LEDGER_USERNAME; 
 // REMOTE_DB_PATH is the path where data is READ FROM and WRITTEN TO.
@@ -1365,6 +1367,7 @@ function updateSyncDisplay() {
 
     if (syncSpan) syncSpan.textContent = "Loading...";
 
+
     const settingsRef    = firebaseDB.ref(`accounts/${accountName}/settings`);
     const syncingToRef   = firebaseDB.ref(`accounts/${accountName}/profiles/${username}/syncingTo`);
     const syncingWithRef = firebaseDB.ref(`accounts/${accountName}/profiles/${username}/syncingWith`);
@@ -1386,6 +1389,7 @@ function updateSyncDisplay() {
         if (syncMode === "all") {
             newSource = "all";
             if (syncSpan) syncSpan.textContent = "Syncing All Profiles";
+
         } else {
             const sourceTarget = getTarget(syncingWith);
             const sendTarget   = getTarget(syncingTo);
@@ -1402,6 +1406,7 @@ function updateSyncDisplay() {
                 newSource = "none";
                 if (syncSpan) syncSpan.textContent = "Not syncing";
             }
+
         }
 
         // 🔁 Reload page ONLY if the source changed
@@ -1444,6 +1449,7 @@ function setupSyncListeners() {
     syncingWithRef.on("value", updateSyncDisplay);
 
 renderAll();
+
 
 }
 
@@ -1549,7 +1555,8 @@ async function checkProfileAndSyncSettings() {
 
         if (USER_SETTINGS.synchronization === 'all') {
             syncSourceUsername = 'GLOBAL_LEDGER';
-            console.log(`Synchronization: GLOBAL. Using path for ${syncSourceUsername}`);
+            console.log(`Global Sync is ON: This ledger is now being shared across your entire account. Any updates, changes, or entries made here can be viewed and edited in real-time by all profiles under "${AV_LEDGER_ACCOUNT_KEY}".`);
+
 
         } else if (profileData.syncingWith && typeof profileData.syncingWith === 'object') {
             const targets = Object.keys(profileData.syncingWith).filter(
@@ -4218,7 +4225,7 @@ body.select-mode-active #statsTableBody tr {
     const CONFIG = {
         maxActiveBanners: 1,         // Strict max cap: Only one notification can show at a time
         baseSpeedMs: 2500,           // Base interaction/reading overhead (ms)
-        msPerCharacter: 45,          // Variable read speed weighting factor per character
+        msPerCharacter: 65,          // Variable read speed weighting factor per character
         maxDurationMs: 10000,        // Absolute layout display cap for standard text
         animationDurationMs: 400,    // Smooth slide-down transition velocity
         truncatedCharLimit: 250      // Expanded boundary limit matching larger layout profile
@@ -5071,6 +5078,26 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 </script>
 
+<script>
+  (function() {
+    // 1. Define a unique key for the Avanti Ledger platform
+    const STORAGE_KEY = 'hasVisitedAvantiLedger1';
+
+    // 2. Check if the key already exists in the user's browser storage
+    const hasVisited = localStorage.getItem(STORAGE_KEY);
+
+    if (!hasVisited) {
+      // --- FIRST TIME USER ---
+      console.log("Welcome to Avanti Ledger Statistics!! Your personal accounting and bookkeeping digital tool. Enjoy.");
+      
+      // Save the visit status so they are recognized next time
+      localStorage.setItem(STORAGE_KEY, 'true');
+    } else {
+      // --- RETURNING USER ---
+      console.log("Welcome back, continue from where you left off.");
+    }
+  })();
+</script>
 
 
 </body>
