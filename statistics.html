@@ -98,27 +98,96 @@ padding:8px 12px;
     cursor:pointer;
     font-weight:600;
   }
-  .more-btn .dropdown{
-    position:absolute;
-    top:65px;
-    right:0;
-    background:var(--card);
-    border:1px solid var(--border-color);
-    border-radius:10px;
-    box-shadow: 0 4px 12px rgba(0,0,0,.15); /* Light, subtle iOS shadow for popovers */
-    display:none;
-    min-width:140px;
-    z-index:30;
-    overflow:hidden;
-transform: scale(1.2);
-  }
-  .more-btn .dropdown.active{ display:block; }
-  .more-btn .dropdown div{
-    padding:10px 12px;
-    cursor:pointer;
-    font-size:1rem;
-    color:var(--text-color);
-    border-bottom:1px solid var(--border-color);
+/* Container alignment context */
+
+
+/* The Dropdown Panel */
+.more-btn .dropdown {
+  position: absolute;
+  top: calc(100% + 10px); /* Generous spacing below the trigger button */
+  right: 0;
+  min-width: 220px; /* Wider footprint to accommodate larger typography */
+  padding: 8px; /* Internal cushion so items don't hug the edges */
+  
+  /* Modern Premium Dark Aesthetic (OLED / Glassmorphism blend) */
+  background: rgba(28, 28, 30, 0.94); /* Deep iOS-style material sheet */
+  backdrop-filter: blur(20px); /* Beautiful background glass diffusion */
+  -webkit-backdrop-filter: blur(20px);
+  
+  /* Crisp high-contrast borders that hold up at 0.8 zoom */
+  border: 1px solid rgba(255, 255, 255, 0.12); 
+  border-radius: 14px; /* Smooth, prominent corner rounding */
+  
+  /* Multi-layered Deep Shadow for genuine elevation and separation */
+  box-shadow: 
+    0 10px 30px rgba(0, 0, 0, 0.5), 
+    0 4px 12px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1); /* Subtle inner edge light */
+  
+  /* Hardware-accelerated fluid entry animation */
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-4px) scale(0.98);
+  transform-origin: top right;
+  transition: 
+    opacity 0.18s cubic-bezier(0.16, 1, 0.3, 1), 
+    transform 0.18s cubic-bezier(0.16, 1, 0.3, 1), 
+    visibility 0.18s;
+  z-index: 100;
+}
+
+/* Smooth active state triggers */
+.more-btn .dropdown.active {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0) scale(1);
+}
+
+/* Dropdown Menu Items */
+.more-btn .dropdown div {
+  display: flex;
+  align-items: center;
+  padding: 12px 16px; /* Increased hitboxes for comfortable clicking */
+  
+  /* Upscaled typography specifically optimized for a 0.8 zoomed page */
+  font-size: 1.2rem; 
+  font-weight: 500;
+  letter-spacing: -0.01em; /* Tightens text tracking for a premium editorial look */
+  color: rgba(255, 255, 255, 0.9); /* High contrast readable off-white */
+  
+  border-radius: 10px; /* Matches the outer shell curve perfectly */
+  cursor: pointer;
+  user-select: none;
+  transition: background-color 0.12s ease, color 0.12s ease;
+  
+  border-bottom: none; /* Removed ugly separator lines for a cleaner UI flow */
+}
+
+/* Interactive States */
+.more-btn .dropdown div:hover {
+  background-color: rgba(255, 255, 255, 0.12); /* Clean, illuminated highlight */
+  color: #ffffff; /* Brilliant white on focus */
+}
+
+/* Optional: Structural divider to group actions cleanly */
+.more-btn .dropdown .divider {
+  height: 1px;
+  background-color: rgba(255, 255, 255, 0.1);
+  margin: 6px 8px;
+  padding: 0;
+  pointer-events: none;
+}
+
+/* Optional: Destructive action state (e.g., Delete, Clear) */
+.more-btn .dropdown div.danger {
+  color: #ff453a; /* Vivid system red */
+}
+
+.more-btn .dropdown div.danger:hover {
+  background-color: rgba(255, 69, 58, 0.15);
+  color: #ff453a;
+}
+
 
     
   }
@@ -437,7 +506,7 @@ table.stats-table td {
         <i class="fas fa-ellipsis-h" id="moreIcon"></i>
         <div class="dropdown" id="moreDropdown">
           <div onclick="enterSelectMode()">Edit</div>
-        <div id="runAuditBtn">Reports</div>
+        <div id="runAuditBtn">Check errors</div>
 <div onclick="window.location.href='notes.html'">Notes</div>
 </div>
       </div>
@@ -666,9 +735,7 @@ padding-bottom: env(safe-area-inset-bottom, 50px);
 }
 
 .floating-actions {
-    position: fixed;
-    bottom: 115px;
-    left: 1em;
+    
     background: rgba(30, 41, 59, 0.95);
     backdrop-filter: blur(50px);
     -webkit-backdrop-filter: blur(50px);
@@ -930,12 +997,12 @@ Expenses</span>
     align-items: center;
     margin-bottom: 12px;
     font-weight: 600;
-    font-size: 15px;
+    font-size: 17px;
     color: var(--av-blue);
 }
 
 .ai-insight-body { 
-    font-size: 14px; 
+    font-size: 15px; 
     line-height: 1.4; 
     color: var(--av-text-secondary);
 }
@@ -1013,7 +1080,7 @@ Expenses</span>
     width: 100%;
     max-width: 600px; 
     height: 85vh; 
-    max-height: 85vh;
+    max-height: 70vh;
     box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.08);
     display: flex;
     flex-direction: column;
@@ -1098,6 +1165,15 @@ Expenses</span>
 
 </style>
 
+<div id="runAuditBtn2">
+<div id="dailyInsightCard" class="ai-insight-card" style="display:none;">
+    <div class="ai-insight-header">
+        <span><i class="fas fa-brain"></i> Bookkeeping Integrity Audit</span>
+       
+    </div>
+    <div id="insightBody" class="ai-insight-body">Analyzing ledger integrity...</div>
+</div>
+
 <div id="auditModal" class="ios-modal-overlay" onclick="if(event.target === this) closeAuditModal();">
     <div class="ios-modal-content">
         <!-- Native drag indicator visual anchor -->
@@ -1114,7 +1190,7 @@ Expenses</span>
         <div style="border-bottom:1px solid var(--av-border); padding: 0 60px 16px 24px; background: transparent;">
             <div style="display:flex; align-items:center; gap: 10px;">
                 <i class="fas fa-file-contract" style="color:var(--av-blue); font-size: 20px;"></i>
-                <h2 style="margin:0; font-family:-apple-system, BlinkMacSystemFont, sans-serif; font-size: 19px; font-weight: 700; color: var(--av-text-primary);">Comprehensive Audit Report</h2>
+                <h2 style="margin:0; font-family:-apple-system, BlinkMacSystemFont, sans-serif; font-size: 19px; font-weight: 700; color: var(--av-text-primary);">Bookkeeping Integrity Audit </h2>
             </div>
         </div>
         
@@ -2147,6 +2223,14 @@ function updateTotalsNumbers(){
     if(netExpensesEl) netExpensesEl.textContent = `K${netExpenses}`;
     const saleRevenueEl = document.getElementById('saleRevenueAmount');
     if(saleRevenueEl) saleRevenueEl.textContent = `K${saleRevenue}`;
+const saleRevenueEl2 = document.getElementById('saleRevenueAmount2');
+    if(saleRevenueEl2) saleRevenueEl2.textContent = `Revenue K${saleRevenue}`;
+const netSalesEl2 = document.getElementById('netSalesAmount2');
+    if(netSalesEl2) netSalesEl2.textContent = `K${netSales}`;
+    const netIncomeEl2 = document.getElementById('netIncomeAmount2');
+    if(netIncomeEl2) netIncomeEl2.textContent = `K${netIncome}`;
+    const netExpensesEl2 = document.getElementById('netExpensesAmount2');
+    if(netExpensesEl2) netExpensesEl2.textContent = `K${netExpenses}`;
 }
 
 /* ---------- Expenses/Incomes render ---------- */
@@ -3209,7 +3293,10 @@ const AvantiInsights = {
         }
         const auditBtn = document.getElementById('runAuditBtn');
         if(auditBtn) auditBtn.addEventListener('click', () => this.generateAuditReport());
+
+
     },
+
 
     applyTableHooks() {
         const tbody = document.getElementById('statsTableBody');
@@ -3414,41 +3501,102 @@ const AvantiInsights = {
     },
 
     updateDailyCard() {
-        const card = document.getElementById('dailyInsightCard');
-        const body = document.getElementById('insightBody');
-        const dateData = state.dates[state.currentDate];
-        if (!dateData) return;
+    const card = document.getElementById('dailyInsightCard');
+    const body = document.getElementById('insightBody');
+    const dateData = state.dates[state.currentDate];
+    if (!dateData) return;
 
-        let totalRevenue = 0;
-        let anomalyCount = 0;
-        
-        const prevDateKey = addDays(state.currentDate, -1);
-        const prevDateData = state.dates[prevDateKey];
+    let salesRevenue = 0;
+    let anomalyCount = 0;
+    
+    const prevDateKey = addDays(state.currentDate, -1);
+    const prevDateData = state.dates[prevDateKey];
 
-        Object.values(dateData.items || {}).forEach(item => {
-            const sales = Math.max(0, (Number(item.opening) + Number(item.orders)) - Number(item.closing));
-            totalRevenue += sales * Number(item.price);
-            const analysis = this.analyzeItem(item, prevDateData);
-            if(analysis.status !== 'healthy') anomalyCount++;
-        });
+    // 1. Calculate Gross Sales Revenue safely
+    Object.values(dateData.items || {}).forEach(item => {
+        const sales = Math.max(0, (Number(item.opening) + Number(item.orders)) - Number(item.closing));
+        salesRevenue += sales * Number(item.price);
+        const analysis = this.analyzeItem(item, prevDateData);
+        if(analysis.status !== 'healthy') anomalyCount++;
+    });
 
-        const totalExpenses = (dateData.expenses || []).reduce((s,i) => s + Number(i.amount), 0);
-        const totalIncomes = (dateData.incomes || []).reduce((s,i) => s + Number(i.amount), 0);
-        totalRevenue += totalIncomes;
+    // 2. Aggregate Incomes and Expenses
+    const totalExpenses = (dateData.expenses || []).reduce((s, i) => s + Number(i.amount), 0);
+    const totalIncomes = (dateData.incomes || []).reduce((s, i) => s + Number(i.amount), 0);
+    
+    // 3. Determine Net Position (Surplus/Deficit) without mutating original values
+    const netPosition = salesRevenue + totalIncomes - totalExpenses;
 
-        card.style.display = 'block';
+    card.style.display = 'block';
 
-        let html = `<div style="display:flex; justify-content:space-between; margin-bottom: 8px;">
-            <span>Gross Value Moved: <strong>K${totalRevenue.toLocaleString()}</strong></span>
-            <span>Anomalies: <strong style="color:${anomalyCount > 0 ? '#FF453A' : '#32D74B'};">${anomalyCount}</strong></span>
-        </div>`;
+    // 4. Generate Professional UI Layout
+    let html = `
+        <div style="display: flex; flex-direction: column; gap: 14px; font-family: system-ui, -apple-system, sans-serif;">
+            
+            <!-- Header Status Metrics -->
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #E5E5EA; padding-bottom: 10px;">
+                <span style="font-size: 15px; color: #64748b; font-weight: bold;">Errors of entry: <strong style="color: ${anomalyCount > 0 ? '#FF453A' : '#32D74B'};">${anomalyCount}</strong></span>
+                <span style="font-size: 15px; color: #8E8E93;">Period: ${state.currentDate}</span>
+            </div>
 
-        if (totalExpenses > totalRevenue && totalRevenue > 0) {
-            html += `<div style="color:#FF453A; font-size:14px; margin-top:8px;"><i class="fas fa-exclamation-triangle"></i> Operating at a deficit for this period.</div>`;
-        }
+            <!-- Financial Breakdown Grid -->
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; font-size: 16px; color: 8E8E93; background: #F2F2F7; padding: 12px; border-radius: 8px;">
+                <div>
+                    <span style="display: block; color: #8E8E93; margin-bottom: 2px;">Sales Revenue</span>
+                    <strong id="netSalesAmount2"></strong>
+                </div>
+                <div>
+                    <span style="display: block; color: #8E8E93; margin-bottom: 2px;">Total Incomes</span>
+                    <strong id="netIncomeAmount2"></strong>
+                </div>
+                <div>
+                    <span style="display: block; color: #8E8E93; margin-bottom: 2px;">Total Expenses</span>
+                    <strong id="netExpensesAmount2"></strong>
+                </div>
+            </div>
+    `;
 
-        body.innerHTML = html;
-    },
+    // 5. Dynamic Status Banner Injection
+    if (netPosition < 0) {
+        const deficitAmount = Math.abs(netPosition);
+        html += `
+            <div style="background-color: rgba(255, 69, 58, 0.1); border-left: 4px solid #FF453A; padding: 12px; border-radius: 6px;">
+                <div style="color: #FF453A; font-weight: 600; font-size: 14px; display: flex; align-items: center; gap: 6px;">
+                    <i class="fas fa-exclamation-triangle"></i> Operating at a Deficit
+                </div>
+                <div id="saleRevenueAmount2" style="font-size: 18px; font-weight: 700; color: #FF453A; margin-top: 4px;">
+                    
+                </div>
+            </div>
+        `;
+    } else if (netPosition > 0) {
+        html += `
+            <div style="background-color: rgba(50, 215, 75, 0.1); border-left: 4px solid #32D74B; padding: 12px; border-radius: 6px;">
+                <div style="color: #32D74B; font-weight: 600; font-size: 14px; display: flex; align-items: center; gap: 6px;">
+                    <i class="fas fa-check-circle"></i> Operating at a Surplus
+                </div>
+                <div id="saleRevenueAmount2" style="font-size: 18px; font-weight: 700; color: #32D74B; margin-top: 4px;">
+                   
+                </div>
+            </div>
+        `;
+    } else {
+        html += `
+            <div style="background-color: rgba(142, 142, 147, 0.1); border-left: 4px solid #8E8E93; padding: 12px; border-radius: 6px;">
+                <div style="color: #1C1C1E; font-weight: 600; font-size: 14px; display: flex; align-items: center; gap: 6px;">
+                    <i class="fas fa-balance-scale"></i> Balanced Position
+                </div>
+                <div style="font-size: 14px; color: #8E8E93; margin-top: 4px;">
+                    Total sales and incomes completely match your expenses.
+                </div>
+            </div>
+        `;
+    }
+
+    html += `</div>`;
+    body.innerHTML = html;
+}
+,
 
     generateAuditReport() {
         const dateData = state.dates[state.currentDate];
@@ -4326,7 +4474,7 @@ body.select-mode-active #statsTableBody tr {
         baseSpeedMs: 2500,           // Base interaction/reading overhead (ms)
         msPerCharacter: 65,          // Variable read speed weighting factor per character
         maxDurationMs: 10000,        // Absolute layout display cap for standard text
-        animationDurationMs: 400,    // Smooth slide-down transition velocity
+        animationDurationMs: 400,    // Smooth slide-up transition velocity
         truncatedCharLimit: 250      // Expanded boundary limit matching larger layout profile
     };
 
@@ -4334,13 +4482,51 @@ body.select-mode-active #statsTableBody tr {
     let activeBanner = null;         
     const notificationQueue = [];    
     let isProcessingQueue = false;   
+    let activeOutsideListener = null; // Track global tap-to-close listener
 
-    // 2. High-Fidelity Audio Synthesis Engine
+    // 2. Global Unified Audio Context & Instant-Unlock System
+    let globalAudioCtx = null;
+
+    function initAudioContext() {
+        if (!globalAudioCtx) {
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            if (AudioContext) {
+                globalAudioCtx = new AudioContext();
+            }
+        }
+    }
+
+    // Passive unlock listener to prime the audio context on the user's first subtle interaction
+    const unlockAudioEngine = () => {
+        initAudioContext();
+        if (globalAudioCtx && globalAudioCtx.state === 'suspended') {
+            globalAudioCtx.resume().then(() => {
+                cleanupUnlockListeners();
+            });
+        } else if (globalAudioCtx) {
+            cleanupUnlockListeners();
+        }
+    };
+
+    function cleanupUnlockListeners() {
+        window.removeEventListener('click', unlockAudioEngine, { capture: true });
+        window.removeEventListener('touchstart', unlockAudioEngine, { capture: true });
+        window.removeEventListener('keydown', unlockAudioEngine, { capture: true });
+        window.removeEventListener('pointerdown', unlockAudioEngine, { capture: true });
+    }
+
+    // Register high-priority passive hooks
+    window.addEventListener('click', unlockAudioEngine, { capture: true, passive: true });
+    window.addEventListener('touchstart', unlockAudioEngine, { capture: true, passive: true });
+    window.addEventListener('keydown', unlockAudioEngine, { capture: true, passive: true });
+    window.addEventListener('pointerdown', unlockAudioEngine, { capture: true, passive: true });
+
     function playNotificationChime() {
         try {
-            const AudioContext = window.AudioContext || window.webkitAudioContext;
-            if (!AudioContext) return;
-            const ctx = new AudioContext();
+            initAudioContext();
+            if (!globalAudioCtx || globalAudioCtx.state === 'suspended') return;
+            
+            const ctx = globalAudioCtx;
             
             // Primary Ping
             const osc1 = ctx.createOscillator();
@@ -4373,7 +4559,7 @@ body.select-mode-active #statsTableBody tr {
         }
     }
 
-    // 3. Build Full-Width Push Stack Layout Container
+    // 3. Build Full-Width Push Stack Layout Container (Bottom Anchor)
     function initContainer() {
         if (document.getElementById('avanti-push-notification-stack')) return;
         container = document.createElement('div');
@@ -4389,9 +4575,9 @@ body.select-mode-active #statsTableBody tr {
             align-items: center;
             pointer-events: none;
             width: 100%;
-            padding: 0 16px; /* Strategic outer display edge margins */
-padding-bottom: constant(safe-area-inset-bottom, 50px);
-padding-bottom: env(safe-area-inset-bottom, 50px);
+            padding: 0 16px; 
+            padding-bottom: constant(safe-area-inset-bottom, 50px);
+            padding-bottom: env(safe-area-inset-bottom, 50px);
         `;
         document.body.appendChild(container);
     }
@@ -4409,6 +4595,15 @@ padding-bottom: env(safe-area-inset-bottom, 50px);
             }
             return String(item);
         }).join(' ');
+
+        // --- FIREBASE FILTERING LOGIC ---
+        // Exclude logs stemming from Firebase network traffic, authentication setups, or indexing
+        const firebasePatterns = [/firebase/i, /\[@firebase\]/i, /firestore/i, /grecaptcha/i, /fcm/i];
+        const isFirebaseLog = firebasePatterns.some(pattern => pattern.test(formattedMessage));
+        
+        if (isFirebaseLog) {
+            return; // Quietly drop Firebase system traffic
+        }
 
         notificationQueue.push({ type, message: formattedMessage });
         processQueue();
@@ -4438,8 +4633,8 @@ padding-bottom: env(safe-area-inset-bottom, 50px);
 
         const bannerElement = document.createElement('div');
         
-        // Full width design targeting up to max-w-5xl with glassmorphic depth filters
-        bannerElement.className = 'transform -translate-y-40 opacity-0 transition-all duration-400 cubic-bezier(0.16, 1, 0.3, 1) w-full max-w-5xl bg-neutral-950/95 text-white rounded-2xl pointer-events-auto flex flex-col overflow-hidden backdrop-blur-md border border-neutral-800/80';
+        // UI Customization: Setup with 'translate-y-32' and 'opacity-0' to slide elegantly upwards from the bottom
+        bannerElement.className = 'transform translate-y-32 opacity-0 transition-all duration-400 cubic-bezier(0.16, 1, 0.3, 1) w-full max-w-5xl bg-neutral-950/95 text-white rounded-2xl pointer-events-auto flex flex-col overflow-hidden backdrop-blur-md border border-neutral-800/80 cursor-pointer';
         bannerElement.style.boxShadow = '0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.03)';
         
         bannerElement.innerHTML = `
@@ -4449,7 +4644,7 @@ padding-bottom: env(safe-area-inset-bottom, 50px);
                     <div class="flex items-center justify-center h-6 w-6 rounded-md border text-xs ${theme.icon.split(' ').slice(1).join(' ')}">
                         <i class="fas ${theme.icon.split(' ')[0]}"></i>
                     </div>
-                    <span class="text-[20px] font-black  text-neutral-100  tracking-tight text-white">Avanti<span class="text-blue-300">.ledger</span></span>
+                    <span class="text-[20px] font-black text-neutral-100 tracking-tight text-white">Avanti<span class="text-blue-300">.ledger</span></span>
                     <span class="text-[15px] text-neutral-400 font-medium">· &nbsp;${theme.subtitle}</span>
                 </div>
                 <div class="flex items-center space-x-4">
@@ -4462,12 +4657,12 @@ padding-bottom: env(safe-area-inset-bottom, 50px);
             <!-- Scaled Push Body Content -->
             <div class="px-5 pb-4 pt-3.5">
                 <div class="message-viewport transition-all duration-300 ease-out overflow-hidden" style="max-height: ${needsTruncation ? '4.5em' : 'none'};">
-                    <p  class="text-[16px] leading-relaxed font-sans text-neutral-200 antialiased break-words message-body" style="padding: 5px; font-weight: 300;">${formattedMessage}</p>
+                    <p class="text-[16px] leading-relaxed font-sans text-neutral-200 antialiased break-words message-body" style="padding: 5px; font-weight: 300;">${formattedMessage}</p>
                 </div>
                 ${needsTruncation ? `
                     <div class="mt-2.5 flex justify-end toggle-container">
                         <button class="text-xs font-semibold text-neutral-400 hover:text-white transition-colors duration-150 focus:outline-none more-toggle-anchor">
-                            Tap to expand message details
+                            Tap banner to expand details
                         </button>
                     </div>
                 ` : ''}
@@ -4480,45 +4675,58 @@ padding-bottom: env(safe-area-inset-bottom, 50px);
             clearBanner(bannerElement);
         });
 
-        if (needsTruncation) {
-            const moreAnchor = bannerElement.querySelector('.more-toggle-anchor');
-            const toggleContainer = bannerElement.querySelector('.toggle-container');
-            const viewport = bannerElement.querySelector('.message-viewport');
-            const bodyText = bannerElement.querySelector('.message-body');
-
-            const expandAction = (e) => {
-                e.preventDefault();
-                e.stopPropagation();
+        // Tap Execution Logic (Expansion Mode vs Standard Interaction)
+        bannerElement.addEventListener('click', (e) => {
+            if (needsTruncation && bannerElement.dataset.expanded !== 'true') {
+                e.stopPropagation(); // Avoid triggering any bubble conditions
 
                 if (bannerElement.dataset.timerId) {
                     clearTimeout(Number(bannerElement.dataset.timerId));
                 }
 
-                viewport.style.maxHeight = bodyText.offsetHeight + 'px';
-                if (toggleContainer) toggleContainer.remove();
+                const viewport = bannerElement.querySelector('.message-viewport');
+                const bodyText = bannerElement.querySelector('.message-body');
+                const toggleContainer = bannerElement.querySelector('.toggle-container');
 
+                viewport.style.maxHeight = bodyText.offsetHeight + 50 + 'px';
+                if (toggleContainer) toggleContainer.remove();
+                
+                bannerElement.dataset.expanded = 'true';
+                bannerElement.classList.remove('cursor-pointer');
+
+                // Recalculate extended reading window
                 const fullTextDuration = calculateDisplayDuration(formattedMessage, false);
                 bannerElement.dataset.timerId = setTimeout(() => {
                     clearBanner(bannerElement);
                 }, fullTextDuration);
-            };
-
-            bannerElement.addEventListener('click', expandAction);
-            if (moreAnchor) moreAnchor.addEventListener('click', expandAction);
-        }
+            }
+        });
 
         container.appendChild(bannerElement);
         activeBanner = bannerElement;
 
         playNotificationChime();
 
-
+        // Animate up from bottom smoothly
         requestAnimationFrame(() => {
             setTimeout(() => {
-                bannerElement.classList.remove('-translate-y-40', 'opacity-0');
+                bannerElement.classList.remove('translate-y-32', 'opacity-0');
                 bannerElement.classList.add('translate-y-0', 'opacity-100');
             }, 40);
         });
+
+        // --- GLOBAL TAP-ANYWHERE-ELSE-TO-CLOSE LOGIC ---
+        // Native timeout ensures the event loop isolates this listener from the layout phase
+        setTimeout(() => {
+            if (activeBanner === bannerElement) {
+                activeOutsideListener = (event) => {
+                    if (!bannerElement.contains(event.target)) {
+                        clearBanner(bannerElement);
+                    }
+                };
+                document.addEventListener('click', activeOutsideListener, { capture: true });
+            }
+        }, 50);
 
         const initialAdaptiveDuration = calculateDisplayDuration(formattedMessage, needsTruncation);
         bannerElement.dataset.timerId = setTimeout(() => {
@@ -4534,8 +4742,15 @@ padding-bottom: env(safe-area-inset-bottom, 50px);
             clearTimeout(Number(bannerElement.dataset.timerId));
         }
 
+        // Clean up global click-away listeners safely
+        if (activeOutsideListener) {
+            document.removeEventListener('click', activeOutsideListener, { capture: true });
+            activeOutsideListener = null;
+        }
+
+        // Return components back to hidden state downward
         bannerElement.classList.remove('translate-y-0', 'opacity-100');
-        bannerElement.classList.add('-translate-y-40', 'opacity-0');
+        bannerElement.classList.add('translate-y-32', 'opacity-0');
 
         setTimeout(() => {
             if (bannerElement.parentNode) {
@@ -4560,6 +4775,8 @@ padding-bottom: env(safe-area-inset-bottom, 50px);
         };
     });
 })();
+
+
 </script>
 
 
@@ -4993,7 +5210,6 @@ padding-bottom: env(safe-area-inset-bottom, 50px);
 })();
 
 </script>
-
 
 <script>
     let collapseTimer = null;
