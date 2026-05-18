@@ -2,56 +2,52 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=0.85, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=0.97, user-scalable=no, viewport-fit=cover">
     <title>Avanti Ledger | Dashboard</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
-    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
-<link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#3f72af">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#f2f2f7">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
 
-<script>
-  if ("serviceWorker" in navigator) {
-    window.addEventListener("load", () => {
-      navigator.serviceWorker.register("/service-worker.js")
-        .then(reg => console.log("Service worker registered:", reg))
-        .catch(err => console.error("Service worker error:", err));
-    });
-  }
-</script>
+    <script>
+      if ("serviceWorker" in navigator) {
+        window.addEventListener("load", () => {
+          navigator.serviceWorker.register("/service-worker.js")
+            .then(reg => console.log("Service worker registered:", reg))
+            .catch(err => console.error("Service worker error:", err));
+        });
+      }
+    </script>
     
     <script>
         tailwind.config = {
             theme: {
                 extend: {
                     fontFamily: {
-                        sans: ['-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'Helvetica', 'Arial', 'sans-serif'],
+                        sans: ['-apple-system', 'BlinkMacSystemFont', '"SF Pro Display"', '"SF Pro Text"', 'Segoe UI', 'Roboto', 'sans-serif'],
                     },
                     colors: {
-                        'avanti-blue': '#3f72af', // Avanti Header Color
-                        'neutral-light': '#f9f9f9', // Merging reports color
-                        'neutral-dark': '#333333', // Merging reports color
+                        'ios-bg': '#f2f2f7',
+                        'ios-card': '#ffffff',
+                        'ios-card-elevated': '#f9f9f9',
+                        'ios-blue': '#3f72af', /* Themed explicitly to Avanti Brand Accent Primary */
+                        'ios-blue-light': 'rgba(63, 114, 175, 0.1)',
+                        'ios-green': '#34c759',
+                        'ios-orange': '#ff9500',
+                        'ios-red': '#ff3b30',
+                        'ios-gray': '#8e8e93',
+                        'ios-text-secondary': '#636366'
                     },
-                    animation: {
-                        'slide-in-left': 'slideInLeft 0.3s ease-out forwards',
-                        'fade-in': 'fadeIn 0.2s ease-out forwards',
-                    },
-                    keyframes: {
-                        slideInLeft: {
-                            '0%': { transform: 'translateX(-100%)' },
-                            '100%': { transform: 'translateX(0)' },
-                        },
-                        fadeIn: {
-                            '0%': { opacity: '0' },
-                            '100%': { opacity: '1' },
-                        }
+                    borderRadius: {
+                        'ios': '14px',
+                        'ios-lg': '20px'
                     }
                 }
             }
@@ -59,187 +55,494 @@
     </script>
 
     <style>
-        /* Ensures 100% height and width */
-        html, body, #root {
-            height: 100%;
-            width: 100%;
-            overflow: hidden; /* Prevent body scroll, main handles its own scroll */
-padding-top: 12px;
-        }
-        
         body {
+            background-color: #f2f2f7;
+            color: #000000;
+            -webkit-font-smoothing: antialiased;
             -webkit-tap-highlight-color: transparent;
-            background: linear-gradient(180deg,#f2f6fb 0%, #eef2f7 100%);
         }
-
-        /* Hide scrollbar for Chrome, Safari and Opera */
+        .ios-glass {
+            background: rgba(255, 255, 255, 0.82);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(0, 0, 0, 0.05);
+        }
         .no-scrollbar::-webkit-scrollbar {
             display: none;
         }
         .no-scrollbar {
-            -ms-overflow-style: none;  /* IE and Edge */
-            scrollbar-width: none;  /* Firefox */
+            -ms-overflow-style: none;
+            scrollbar-width: none;
         }
-        
-        /* Custom class for the slim/extended menu - Menu does not push content, it overlays */
-        .sidebar {
-            width: 65px; /* Fixed slim width */
-            transition: width 0.3s ease-out;
-            will-change: width, transform;
-            height: 100%; /* Full height to expand over content */
-            position: fixed; /* Fixed position */
-            top: 0; /* Align to top */
-            left: 0;
-            z-index: 50; /* Above all content */
+        .safe-pb {
+            padding-bottom: calc(75px + env(safe-area-inset-bottom));
         }
-        
-        .sidebar.expanded {
-            width: 280px; /* Wider expanded width for better display */
+        .safe-pt {
+            padding-top: calc(16px + env(safe-area-inset-top));
         }
-        
-        /* The backdrop for the expanded menu */
-        .backdrop {
-            position: fixed;
-            inset: 0;
-            background-color: rgba(0, 0, 0, 0.5);
-            z-index: 49;
+        .av-sheet {
+            transform: translateY(100%);
+            transition: transform 0.4s cubic-bezier(0.15, 1, 0.3, 1);
+        }
+        .av-sheet.active {
+            transform: translateY(0);
+        }
+        .av-overlay {
             opacity: 0;
-            transition: opacity 0.3s ease-in-out;
             pointer-events: none;
-
+            transition: opacity 0.3s ease;
         }
-        
-        .backdrop.visible {
+        .av-overlay.active {
             opacity: 1;
-            pointer-events: all;
-        }
-        
-        /* Main content needs to accommodate the slim sidebar */
-        .main-content {
-            margin-left: 65px; 
-            width: calc(100% - 65px);
-            min-height: 100vh; /* Ensure full page height */
-        }
-        
-        /* Chart grid styling for professional look */
-        .chart-grid {
-             border-radius: 12px;
-             border: 1px solid #e5e7eb;
-             background-color: #fff;
-             padding: 1rem;
-        }
-
-        /* Custom chart container for fixed height and internal grid */
-        .chart-container {
-            height: 250px;
-        }
-
-        .chart-container canvas {
-            max-height: 100%;
-            max-width: 100%;
-        }
-
-        /* Chart.js grid line styling */
-        .chart-grid-container .chart-grid canvas {
-             /* Customize grid lines if needed, better to do this in chart options */
+            pointer-events: auto;
         }
     </style>
 </head>
-<body class="bg-gray-100">
-    <div id="root" class="flex w-full h-full"></div>
+<body class="font-sans antialiased select-none bg-ios-bg text-black">
+  
+  <!-- BRAND TOP FIXED HEADER -->
+  <header class="fixed top-0 left-0 right-0 z-50 flex h-16 w-full items-center justify-between px-4 shadow-sm backdrop-blur-md transition-all duration-300 border-b border-black/5" style="background-color: #3f72af;">
+    <!-- Left Section: Logo & Branding -->
+    <div class="flex items-center gap-3">
+      <img 
+        src="https://ik.imagekit.io/3mtmeexff/IMG_8590_E6Ai7mKZx.jpeg?" 
+        alt="Avanti Ledger Logo" 
+        class="h-9 w-9 rounded-lg object-cover shadow-sm ring-2 ring-white/20"
+      />
+      <h1 class="text-xl font-black tracking-tight text-white select-none"> 
+        Avanti<span class="text-blue-300">.ledger</span>
+      </h1>
+    </div>
 
-    <script type="text/babel">
-        const { useState, useEffect, useMemo, useCallback, useRef } = React;
+    <!-- Center Section: Navigation (Hidden on Mobile) -->
+  
 
-        // --- FIREBASE CONFIGURATION AND INITIALIZATION ---
+    <!-- Right Section: Actions / Profile -->
+    <div class="flex items-center gap-4">
+      <button class="hidden sm:inline-flex items-center justify-center rounded-lg bg-white/10 px-4 py-2 text-sm font-semibold text-white hover:bg-white/20 transition-all active:scale-95">
+        New Transaction
+      </button>
+      <!-- User Profile Dropdown Trigger -->
+      <div class="h-8 w-8 cursor-pointer rounded-full bg-blue-300/30 ring-2 ring-white/50 transition-transform hover:scale-105">
+        <div class="flex h-full w-full items-center justify-center text-xs font-bold text-white">AV</div>
+      </div>
+    </div>
+  </header>
+
+   <header class="w-full mb-5 flex flex-col space-y-3 bg-white rounded-ios-lg p-4 border border-black/5 shadow-xl pt-20" style="margin-right: -4em; margin-left: -4px; border-radius: 0; position: sticky; top: 0; z-index: 9">
+        <div class="flex items-center justify-between">
+            <div class="flex items-center space-x-3" onclick="window.location.href='profile.html'">
+                <div class="relative">
+                    <img id="sidebar-profile-img" alt="User Profile" class="w-11 h-11 rounded-full object-cover border-2 border-[#3f72af] shadow-sm" src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSrBDjPmUP48_kvQ04ekRPwqTM6z9y9ukp0EyjqAAwBZiwMpKJOhDoVqSY&s">
+                    <div class="absolute bottom-0 right-0 w-3 h-3 bg-ios-green border-2 border-white rounded-full"></div>
+                </div>
+                <div class="flex flex-col">
+                    <div class="flex items-center space-x-1">
+                        <span id="accName" class="font-bold text-base leading-tight tracking-tight text-black">Account</span>
+                        <i class="fas fa-chevron-right text-[10px] text-ios-gray"></i>
+                    </div>
+                    <p id="usrName" class="text-xs font-medium text-ios-text-secondary leading-tight">@username</p>
+                </div>
+            </div>
+            
+            <div class="flex items-center space-x-2">
+                <button onclick="window.location.href='manage-devices.html'" class="p-2.5 rounded-full bg-ios-bg border border-black/5 text-[#3f72af] text-xs active:scale-90 transition-transform">
+                    <i class="fas fa-laptop-code"></i>
+                </button>
+                <button id="logout-btn" class="p-2.5 rounded-full bg-ios-bg border border-black/5 text-ios-red text-xs active:scale-90 transition-transform">
+                    <i class="fas fa-sign-out"></i>
+                </button>
+            </div>
+        </div>
+
+        <div class="flex flex-wrap gap-2 pt-2.5 border-t border-black/5">
+            <div class="flex items-center space-x-1.5 px-2.5 py-1 rounded-full bg-[#3f72af]/10 border border-[#3f72af]/20">
+                <span class="w-1.5 h-1.5 rounded-full bg-[#3f72af] animate-pulse"></span>
+                <span id="auth-status-display" class="text-[10px] font-bold tracking-wide uppercase text-[#3f72af]">AuthStatus: Loading</span>
+            </div>
+            <div class="flex items-center space-x-1.5 px-2.5 py-1 rounded-full bg-black/5 border border-black/5">
+                <i class="fas fa-mobile-alt text-[10px] text-ios-text-secondary"></i>
+                <span id="meta-device-name" class="text-[10px] font-bold tracking-wide text-ios-text-secondary">Device: iPhone 15 Pro</span>
+            </div>
+        </div>
+    </header>
+
+  <!-- ROOT INTERFACE CONTAINER -->
+  <!-- FIXED: Added pt-20 (clear top header), pb-28 (clear bottom nav), and px-4 for uniform side margins -->
+  <div id="root" class="min-h-screen flex flex-col justify-between pb-28 px-4 max-w-md mx-auto">
+
+    <!-- USER APP HEADER -->
+ 
+
+    <!-- WEEK PICKER -->
+    <div class="w-full p-1.5 rounded-ios bg-ios-card border border-black/5 flex items-center justify-between mb-4 shadow-sm">
+        <button id="prev-week-btn" class="w-9 h-9 flex items-center justify-center rounded-lg text-[#3f72af] hover:bg-black/5 active:scale-90 transition-transform">
+            <i class="fas fa-chevron-left text-sm"></i>
+        </button>
+        <div class="text-center">
+            <p id="week-identifier" class="text-xs font-bold text-black tracking-tight uppercase"></p>
+            <p id="date-range" class="text-[11px] font-semibold text-ios-text-secondary mt-0.5"></p>
+        </div>
+        <button id="next-week-btn" class="w-9 h-9 flex items-center justify-center rounded-lg text-[#3f72af] hover:bg-black/5 active:scale-90 transition-transform">
+            <i class="fas fa-chevron-right text-sm"></i>
+        </button>
+    </div>
+
+    <div id="unbalanced-alert-container" class="mb-5"></div>
+
+    <!-- STREAK TRACKER -->
+    <section class="w-full p-4 rounded-ios-lg bg-ios-card border border-black/5 mb-5 flex flex-col space-y-3.5 shadow-sm">
+        <div class="flex items-center justify-between">
+            <div class="flex items-center space-x-2">
+                <div class="w-8 h-8 rounded-lg bg-ios-orange/10 border border-ios-orange/20 flex items-center justify-center text-ios-orange">
+                    <i class="fas fa-fire-alt text-base"></i>
+                </div>
+                <div>
+                    <h4 class="text-sm font-bold text-black tracking-tight">Bookkeeping Streak</h4>
+                    <p class="text-[11px] font-medium text-ios-text-secondary">Keep daily ledgers verified</p>
+                </div>
+            </div>
+            <div class="flex items-baseline space-x-1 bg-black/5 px-3 py-1.5 rounded-full border border-black/5">
+                <span id="streak-count-display" class="text-xl font-black text-ios-orange tracking-tight">0</span>
+                <span class="text-[10px] font-bold uppercase tracking-wider text-ios-orange/80">Days</span>
+            </div>
+        </div>
+        
+        <div class="grid grid-cols-7 gap-2 pt-2 border-t border-black/5">
+            <div id="check-Mon" class="flex flex-col items-center p-1.5 rounded-lg bg-black/5 border border-black/5">
+                <span class="text-[10px] font-bold text-ios-text-secondary uppercase mb-1">M</span>
+                <div class="chk-indicator w-5 h-5 rounded-full bg-black/5 border border-black/10 flex items-center justify-center text-[10px] text-ios-gray"><i class="fas fa-minus"></i></div>
+            </div>
+            <div id="check-Tue" class="flex flex-col items-center p-1.5 rounded-lg bg-black/5 border border-black/5">
+                <span class="text-[10px] font-bold text-ios-text-secondary uppercase mb-1">T</span>
+                <div class="chk-indicator w-5 h-5 rounded-full bg-black/5 border border-black/10 flex items-center justify-center text-[10px] text-ios-gray"><i class="fas fa-minus"></i></div>
+            </div>
+            <div id="check-Wed" class="flex flex-col items-center p-1.5 rounded-lg bg-black/5 border border-black/5">
+                <span class="text-[10px] font-bold text-ios-text-secondary uppercase mb-1">W</span>
+                <div class="chk-indicator w-5 h-5 rounded-full bg-black/5 border border-black/10 flex items-center justify-center text-[10px] text-ios-gray"><i class="fas fa-minus"></i></div>
+            </div>
+            <div id="check-Thu" class="flex flex-col items-center p-1.5 rounded-lg bg-black/5 border border-black/5">
+                <span class="text-[10px] font-bold text-ios-text-secondary uppercase mb-1">T</span>
+                <div class="chk-indicator w-5 h-5 rounded-full bg-black/5 border border-black/10 flex items-center justify-center text-[10px] text-ios-gray"><i class="fas fa-minus"></i></div>
+            </div>
+            <div id="check-Fri" class="flex flex-col items-center p-1.5 rounded-lg bg-black/5 border border-black/5">
+                <span class="text-[10px] font-bold text-ios-text-secondary uppercase mb-1">F</span>
+                <div class="chk-indicator w-5 h-5 rounded-full bg-black/5 border border-black/10 flex items-center justify-center text-[10px] text-ios-gray"><i class="fas fa-minus"></i></div>
+            </div>
+            <div id="check-Sat" class="flex flex-col items-center p-1.5 rounded-lg bg-black/5 border border-black/5">
+                <span class="text-[10px] font-bold text-ios-text-secondary uppercase mb-1">S</span>
+                <div class="chk-indicator w-5 h-5 rounded-full bg-black/5 border border-black/10 flex items-center justify-center text-[10px] text-ios-gray"><i class="fas fa-minus"></i></div>
+            </div>
+            <div id="check-Sun" class="flex flex-col items-center p-1.5 rounded-lg bg-black/5 border border-black/5">
+                <span class="text-[10px] font-bold text-ios-text-secondary uppercase mb-1">S</span>
+                <div class="chk-indicator w-5 h-5 rounded-full bg-black/5 border border-black/10 flex items-center justify-center text-[10px] text-ios-gray"><i class="fas fa-minus"></i></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- METRICS CAROUSEL -->
+    <div class="w-full mb-6">
+        <!-- FIXED: Removed negative margins (-mx-4) to contain cards strictly within screen padding limits -->
+        <div id="metrics-carousel" class="px-0 overflow-x-auto flex space-x-4 no-scrollbar snap-x snap-mandatory">
+            
+            <!-- FIXED: Changed card widths to w-[280px] to keep snapping layout uniform and eliminate browser overflow layouts -->
+            <div class="snap-start shrink-0 w-[100%] p-4 rounded-ios-lg bg-gradient-to-br from-ios-card to-ios-card-elevated border border-black/5  flex flex-col justify-between h-52 relative overflow-hidden" onclick="window.location.href = 'inventory-report.html'">
+                <div class="absolute -right-4 -top-4 w-24 h-24 bg-[#3f72af]/5 rounded-full blur-2xl"></div>
+                <div class="flex justify-between items-start">
+                    <div>
+                        <div class="flex items-center space-x-1.5">
+                            <span class="w-2 h-2 rounded-full bg-[#3f72af]"></span>
+                            <p class="text-[10px] font-bold uppercase tracking-wider text-[#3f72af]">Inventory Metrics</p>
+                        </div>
+                        <h3 id="card-expected-return" class="text-2xl font-black mt-2 mb-0.5 tracking-tight text-black">K0</h3>
+                        <p class="text-[11px] font-medium text-ios-text-secondary">Expected Return on Current Stock</p>
+                    </div>
+                    <div class="w-9 h-9 rounded-full bg-black/5 border border-black/10 flex items-center justify-center text-[#3f72af]">
+                        <i class="fas fa-box-open text-sm"></i>
+                    </div>
+                </div>
+                <div class="pt-3 border-t border-black/5 space-y-2">
+                    <div class="flex justify-between items-center">
+                        <span class="text-[13px] font-medium text-ios-text-secondary">Total Units in Stock</span>
+                        <span id="card-stock-units" class="text-sm font-bold text-black bg-black/5 px-2 py-0.5 rounded-md">0</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-[13px] font-medium text-ios-text-secondary">Total Empty Bottles</span>
+                        <span id="card-empty-bottles" class="text-sm font-bold text-ios-orange bg-ios-orange/10 px-2 py-0.5 rounded-md">0</span>
+                    </div>
+                    <div class="flex items-center space-x-1 text-[10px] text-ios-gray mt-1">
+                        <i class="far fa-clock"></i>
+                        <span id="card-inventory-date">Inventory as at N/A</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="snap-start shrink-0 w-[100%] p-4 rounded-ios-lg bg-gradient-to-br from-ios-card to-ios-card-elevated border border-black/5  flex flex-col justify-between h-52 relative overflow-hidden" onclick="window.location.href = 'sales-report.html'">
+                <div class="absolute -right-4 -top-4 w-24 h-24 bg-ios-green/5 rounded-full blur-2xl"></div>
+                <div class="flex justify-between items-start">
+                    <div>
+                        <div class="flex items-center space-x-1.5">
+                            <span class="w-2 h-2 rounded-full bg-ios-green"></span>
+                            <p class="text-[10px] font-bold uppercase tracking-wider text-ios-green">Weekly Performance</p>
+                        </div>
+                        <p id="card-total-revenue" class="text-2xl font-black text-black mt-2 mb-0.5 tracking-tight">K0</p>
+                        <p class="text-[11px] font-medium text-ios-text-secondary">Total Operational Flow Gross</p>
+                    </div>
+                    <div class="w-9 h-9 rounded-full bg-black/5 border border-black/10 flex items-center justify-center text-ios-green">
+                        <i class="fas fa-wallet text-sm"></i>
+                    </div>
+                </div>
+                <div class="pt-3 border-t border-black/5 space-y-2">
+                    <div class="flex justify-between items-center">
+                        <p class="text-[13px] font-medium text-black">Net Sale Revenue</p>
+                        <p id="card-net-revenue" class="text-base font-black text-ios-green">K0</p>
+                    </div>
+                    <div class="flex items-center justify-between pt-1">
+                        <p class="text-[11px] text-ios-text-secondary">Variance Analysis</p>
+                        <div class="flex items-center space-x-1">
+                            <span id="card-trend-icon-container"></span>
+                            <p id="card-revenue-trend" class="text-xs font-bold text-ios-green">0.0% vs Last Week</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="flex justify-center items-center space-x-1.5 mt-3">
+            <span id="metric-dot-0" class="w-2 h-2 rounded-full bg-[#3f72af] transition-all duration-200"></span>
+            <span id="metric-dot-1" class="w-1.5 h-1.5 rounded-full bg-black/15 transition-all duration-200"></span>
+        </div>
+    </div>
+
+    <!-- CHARTS SECTION -->
+    <div class="flex flex-col space-y-5">
+        <div class="w-full p-4 rounded-ios-lg bg-ios-card border border-black/5 shadow-sm">
+            <div class="flex items-center justify-between mb-4 pb-2 border-b border-black/5">
+                <div class="flex items-center space-x-2">
+                    <i class="fas fa-chart-line text-[#3f72af] text-xs"></i>
+                    <h3 class="text-xs font-bold uppercase tracking-wider text-ios-text-secondary">Weekly Revenue Trend (K)</h3>
+                </div>
+            </div>
+            <div class="h-48 relative w-full" id="line-chart-holder">
+                <canvas id="lineChart"></canvas>
+            </div>
+        </div>
+
+        <div class="w-full p-4 rounded-ios-lg bg-ios-card border border-black/5 shadow-sm">
+            <div class="flex items-center justify-between mb-2 pb-2 border-b border-black/5">
+                <div class="flex items-center space-x-2">
+                    <i class="fas fa-chart-pie text-ios-green text-xs"></i>
+                    <h3 class="text-xs font-bold uppercase tracking-wider text-ios-text-secondary">Sales vs Incomes vs Expenses</h3>
+                </div>
+            </div>
+            <div class="h-44 flex items-center justify-center relative" id="doughnut-chart-holder">
+                <canvas id="doughnutChart"></canvas>
+                <div class="absolute inset-0 flex items-center justify-center pointer-events-none" id="doughnut-center-text-box">
+                    <span id="doughnut-center-text" class="text-center text-[13px] font-bold text-black leading-tight bg-white/90 px-2.5 py-1.5 rounded-full border border-black/5 shadow-md" style="margin-left: -90px;">Total<br>K0</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="w-full p-4 rounded-ios-lg bg-ios-card border border-black/5 shadow-sm">
+            <div class="flex items-center justify-between mb-4 pb-2 border-b border-black/5">
+                <div class="flex items-center space-x-2">
+                    <i class="fas fa-crown text-ios-orange text-xs"></i>
+                    <h3 class="text-xs font-bold uppercase tracking-wider text-ios-text-secondary">Top 5 Inventory Products</h3>
+                </div>
+                <select id="top5-metric-select" class="bg-transparent border border-black/10 text-black font-medium rounded-md text-[11px] px-2 py-1 outline-none text-right">
+                    <option value="units" selected>By Units Sold</option>
+                    <option value="revenue">By Revenue Generated</option>
+                </select>
+            </div>
+            <div class="h-48 relative w-full" id="bar-chart-holder">
+                <canvas id="barChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- HIGH VALUE ACTIONS -->
+    <section class="mt-6 w-full">
+        <div class="flex items-center justify-between mb-3 px-1">
+            <h3 class="text-xs font-bold uppercase tracking-wider text-ios-text-secondary">Weekly High-Value Actions</h3>
+            <span class="text-[11px] font-semibold text-[#3f72af]">Horizontal Stream</span>
+        </div>
+        <div class="relative w-full">
+            <div id="transactions-container" class="flex overflow-x-auto no-scrollbar space-x-3.5 pb-1 snap-x snap-mandatory">
+                <p class="p-4 text-ios-gray text-xs italic">No structural logs parsed on current runtime period.</p>
+            </div>
+            <div id="transactions-dots-container" class="flex justify-center items-center space-x-1.5 mt-2.5 h-2"></div>
+        </div>
+    </section>
+    
+  </div>
+
+  <!-- FIXED BOTTOM NAVIGATION BAR -->
+<nav style="
+    position: fixed; 
+    bottom: 0; 
+    left: 0; 
+    width: 100%; 
+    
+    background: rgba(255, 255, 255, 0.85); 
+    backdrop-filter: blur(20px); 
+    -webkit-backdrop-filter: blur(20px); 
+    border-top: 1px solid rgba(0, 0, 0, 0.05); 
+    display: flex; 
+    justify-content: space-around; 
+    align-items: center; 
+    z-index: 9999; 
+    padding-top: 14px; 
+    padding-bottom: constant(safe-area-inset-bottom, 20px);
+padding-bottom: env(safe-area-inset-bottom, 20px);
+    font-family: 'Inter', sans-serif;
+">
+    
+    <a href="dashboard.html" style="display: flex; flex-direction: column; align-items: center; text-decoration: none; color: #3f72af; flex: 1; transition: 0.2s;">
+ <div style="position: absolute; top: 0px; width: 20px; height: 3px; background: #3f72af; border-radius: 0 0 4px 4px;"></div>
+
+        <svg style="width: 22px; height: 22px; fill: rgba(37, 99, 235, 0.1); stroke: currentColor; stroke-width: 2;" viewBox="0 0 24 24">
+
+            <rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect>
+        </svg>
+        <span style="font-size: 11px; margin-top: 4px; font-weight: 600;">Home</span>
+    </a>
+
+    <a href="inventory.html" style="display: flex; flex-direction: column; align-items: center; text-decoration: none; color: #64748b; flex: 1; position: relative;">
+       
+        
+        <svg style="width: 22px; height: 22px; fill: white; stroke: currentColor; stroke-width: 2;" viewBox="0 0 24 24">
+            <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+            <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+            <line x1="12" y1="22.08" x2="12" y2="12"></line>
+        </svg>
+        <span style="font-size: 11px; margin-top: 4px; font-weight: 500;">Inventory</span>
+    </a>
+
+    <a href="accounting-report.html" style="display: flex; flex-direction: column; align-items: center; text-decoration: none; color: #64748b; flex: 1;">
+        <svg style="width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2;" viewBox="0 0 24 24">
+            <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline><polyline points="17 6 23 6 23 12"></polyline>
+        </svg>
+        <span style="font-size: 11px; margin-top: 4px; font-weight: 500;">Reports</span>
+    </a>
+
+    <a href="statistics.html" style="display: flex; flex-direction: column; align-items: center; text-decoration: none; color: #64748b; flex: 1;">
+        <svg style="width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2;" viewBox="0 0 24 24">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+            <polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line>
+        </svg>
+        <span style="font-size: 11px; margin-top: 4px; font-weight: 500;">Stats</span>
+    </a>
+
+    <a href="settings.html" style="display: flex; flex-direction: column; align-items: center; text-decoration: none; color: #64748b; flex: 1; position: relative;">
+ 
+        <svg style="width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2;" viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="3"></circle>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0-.33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0 .33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+        </svg>
+        <span style="font-size: 11px; margin-top: 4px; font-weight: 500;">Settings</span>
+    </a>
+</nav>
+
+  <!-- ALERTS & OVERLAYS SYSTEM -->
+  <div id="error-overlay" class="fixed bottom-24 left-4 right-4 p-3.5 bg-ios-red/90 border border-ios-red rounded-ios shadow-md z-50 hidden text-white backdrop-blur-md">
+      <div class="flex items-center space-x-2">
+          <i class="fas fa-exclamation-circle text-base"></i>
+          <div>
+              <p class="font-bold text-xs uppercase tracking-wider">System Alert</p>
+              <p id="error-message" class="text-xs text-white/90"></p>
+          </div>
+      </div>
+  </div>
+  
+  <div id="loading-overlay" class="fixed inset-0 bg-white/80 backdrop-blur-md flex items-center justify-center z-50">
+      <div class="p-5 rounded-ios-lg bg-ios-card border border-black/5 shadow-xl flex flex-col items-center space-y-3">
+          <i class="fas fa-spinner fa-spin text-2xl text-[#3f72af]"></i>
+          <p class="text-xs font-semibold tracking-wide text-ios-text-secondary">Loading</p>
+      </div>
+  </div>
+
+  <div id="network-overlay" class="fixed inset-0 bg-white/90 backdrop-blur-lg z-50 flex items-center justify-center hidden">
+      <div class="p-6 text-center max-w-xs rounded-ios bg-ios-card border border-black/10 shadow-xl">
+          <i class="fas fa-wifi text-4xl text-ios-red mb-4 animate-pulse"></i>
+          <h3 class="text-base font-bold text-black tracking-tight mb-1">Network Synchronization Lost</h3>
+          <p class="text-xs text-ios-text-secondary leading-normal">Avanti Ledger cannot verify compliance metrics. Please secure your network connection.</p>
+      </div>
+  </div>
+
+  <div id="av-overlay" class="av-overlay fixed inset-0 bg-black/20 backdrop-blur-sm z-40"></div>
+  <div id="av-sheet" class="av-sheet fixed bottom-0 inset-x-0 z-50 bg-ios-card rounded-t-ios-lg border-t border-black/10 px-5 pt-3 pb-8 flex flex-col shadow-2xl">
+      <div class="w-10 h-1 bg-black/20 rounded-full mx-auto mb-5"></div>
+      
+      <div class="flex items-center justify-center space-x-6 mb-5">
+          <div class="flex flex-col items-center">
+              <div class="w-12 h-12 rounded-full bg-[#3f72af]/10 border border-[#3f72af]/20 flex items-center justify-center text-[#3f72af] mb-2 shadow-inner">
+                  <i id="av-src-ico" class="fas fa-mobile-alt text-xl"></i>
+              </div>
+              <div id="av-src-name" class="text-[11px] font-bold tracking-tight text-ios-text-secondary truncate w-16 text-center">Local</div>
+          </div>
+          
+          <div class="flex-1 h-1 bg-black/5 relative rounded-full overflow-hidden">
+              <div id="av-pulse-bar" class="absolute inset-y-0 left-0 w-1/3 bg-gradient-to-r from-transparent via-[#3f72af] to-transparent rounded-full animate-pulse"></div>
+          </div>
+          
+          <div class="flex flex-col items-center">
+              <div class="w-12 h-12 rounded-full bg-ios-green/10 border border-ios-green/20 flex items-center justify-center text-ios-green mb-2 shadow-inner">
+                  <i id="av-trg-ico" class="fas fa-laptop text-xl"></i>
+              </div>
+              <div id="av-trg-name" class="text-[11px] font-bold tracking-tight text-ios-text-secondary truncate w-16 text-center">Target</div>
+          </div>
+      </div>
+
+      <div class="text-center mb-6">
+          <h3 class="text-base font-black tracking-tight text-black mb-1">Download Request Pending</h3>
+          <p class="text-xs text-ios-text-secondary px-2 leading-relaxed">
+              <span id="av-requester-label" class="text-black font-bold">Remote Node</span> requests forensic structural data sync down over authorized secure sync line.
+          </p>
+      </div>
+
+      <div class="flex flex-col space-y-2.5">
+          <button id="av-approve-btn" class="w-full py-3.5 rounded-ios bg-[#3f72af] text-white font-bold text-xs uppercase tracking-wider shadow-md active:scale-95 transition-all">Approve Handshake</button>
+          <button id="av-deny-btn" class="w-full py-3.5 rounded-ios bg-black/5 border border-black/10 text-ios-red font-bold text-xs uppercase tracking-wider active:scale-95 transition-all">Deny Access</button>
+      </div>
+  </div>
+
+
+    <script>
+        // --- SECURE FIREBASE STRUCTURAL CONFIGURATION ---
         const firebaseConfig = {
             apiKey: "AIzaSyDZeQXOHRjhqijerFLyNkOLcbQUIwRLRqY",
-  authDomain: "mwelaisha-shaba.firebaseapp.com",
-  databaseURL: "https://mwelaisha-shaba-default-rtdb.firebaseio.com",
-  projectId: "mwelaisha-shaba",
-  storageBucket: "mwelaisha-shaba.firebasestorage.app",
-  messagingSenderId: "262165456072",
-  appId: "1:262165456072:web:40926b87a0eb513cc971fd",
-  measurementId: "G-LVWW6PJ0P0"
-
+            authDomain: "mwelaisha-shaba.firebaseapp.com",
+            databaseURL: "https://mwelaisha-shaba-default-rtdb.firebaseio.com",
+            projectId: "mwelaisha-shaba",
+            storageBucket: "mwelaisha-shaba.firebasestorage.app",
+            messagingSenderId: "262165456072",
+            appId: "1:262165456072:web:40926b87a0eb513cc971fd",
+            measurementId: "G-LVWW6PJ0P0"
         };
 
         let firebaseApp;
         try {
             firebaseApp = firebase.initializeApp(firebaseConfig);
         } catch (error) {
-            console.error("Firebase Initialization Error:", error);
+            console.error("Firebase Security Handshake Aborted:", error);
         }
         const database = firebaseApp ? firebase.database() : null;
-        const db = database;
 
-
- 
-
-        // --- ICON SYSTEM ---
-        const Icon = ({ path, size = 24, className = "", strokeWidth = 2 }) => (
-            <svg 
-                xmlns="http://www.w3.org/2000/svg" 
-                width={size} 
-                height={size} 
-                viewBox="0 0 24 24" 
-                fill="none" 
-                stroke="currentColor" 
-                strokeWidth={strokeWidth} 
-                strokeLinecap="round" 
-                strokeLinejoin="round" 
-                className={className}
-            >
-                <g dangerouslySetInnerHTML={{ __html: path }} />
-            </svg>
-        );
-
-        const Icons = {
-            ChevronRight: (props) => <Icon path='<polyline points="9 18 15 12 9 6"></polyline>' {...props} />,
-Menu: (props) =>
-  <Icon
-    path='
-      <line x1="4" y1="7" x2="20" y2="7"></line>
-      <line x1="4" y1="12" x2="20" y2="12"></line>
-      <line x1="4" y1="17" x2="20" y2="17"></line>
-    '
-    {...props}
-  />,
-
-            ChevronLeft: (props) => <Icon path='<polyline points="15 18 9 12 15 6"></polyline>' {...props} />,
-            User: (props) => <Icon path='<path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle>' {...props} />,
-            Grid: (props) => <Icon path='<rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect>' {...props} />,
-            Package: (props) => <Icon path='<path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line>' {...props} />,
-            FileText: (props) => <Icon path='<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline>' {...props} />,
-            BookOpen: (props) => <Icon path='<path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path>' {...props} />,
-            Settings: (props) => <Icon path='<circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0-.33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0 .33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>' {...props} />,
-            LogOut: (props) => <Icon path='<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line>' {...props} />,
-            Plus: (props) => <Icon path='<line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line>' {...props} />,
-            DollarSign: (props) => <Icon path='<line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>' {...props} />,
-User: (props) => (
-  <Icon
-    path='<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle>'
-    {...props}
-  />
-),
-            TrendingUp: (props) => <Icon path='<polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline><polyline points="17 6 23 6 23 12"></polyline>' {...props} />,
-            TrendingDown: (props) => <Icon path='<polyline points="23 18 13.5 8.5 8.5 13.5 1 6"></polyline><polyline points="17 18 23 18 23 12"></polyline>' {...props} />,
-            CreditCard: (props) => <Icon path='<rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line>' {...props} />,
-            AlertCircle: (props) => <Icon path='<circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line>' {...props} />,
-            ShoppingCart: (props) => <Icon path='<circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>' {...props} />,
-            Zap: (props) => <Icon path='<polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>' {...props} />,
-            Bell: (props) => <Icon path='<path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path>' {...props} />,
-            ShieldOff: (props) => <Icon path='<path d="M19.69 13A2.81 2.81 0 0 0 21 12V5l-9-4-2.88 1.28M2.21 2.21 4 4M15 13.4V22l-3-1-2.92 1-.95-2.29"></path><line x1="1" y1="1" x2="23" y2="23"></line>' {...props} />,
-        };
-
-        // --- UTILS & DATE FUNCTIONS (Kept as is for functionality) ---
+        // --- CORE LIVE ENGINE DATA STATE REPOSITORIES ---
+        let currentWeekStartDate = null;
+        let fullData = null;
+        let userDetails = { accountName: 'Account', username: '', logoUrl: '', profileUrl: '', authStatus: 'Verified' };
         
+        let lineChartInstance = null;
+        let doughnutChartInstance = null;
+        let barChartInstance = null;
+
+        // --- UTILITY LOGICAL FORMATTERS ---
         const formatCurrency = (amount) => {
             return new Intl.NumberFormat('en-US', {
                 style: 'currency',
-                currency: 'USD', 
+                currency: 'ZMW', 
                 minimumFractionDigits: 0,
-            }).format(amount).replace('$', 'K'); 
+            }).format(amount).replace('ZMW', 'K').trim(); 
         };
 
         const formatTotalUnits = (units) => {
@@ -251,7 +554,6 @@ User: (props) => (
             if (!date) return 'N/A';
             const d = new Date(date);
             if (isNaN(d.getTime())) return 'N/A'; 
-            
             return [
                 d.getFullYear(),
                 String(d.getMonth() + 1).padStart(2, '0'),
@@ -263,7 +565,7 @@ User: (props) => (
             if (!dateKey || dateKey === 'N/A') return 'N/A';
             const [year, month, day] = dateKey.split('-').map(Number);
             const date = new Date(year, month - 1, day); 
-            return date.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' });
+            return date.toLocaleDateString('en-US', { day: 'numeric', month: 'short' });
         };
 
         const getStartOfWeek = (date) => {
@@ -277,7 +579,6 @@ User: (props) => (
             const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
             const start = getStartOfWeek(startDate);
             const week = [];
-            
             for (let i = 0; i < 7; i++) {
                 const date = new Date(start);
                 date.setDate(start.getDate() + i);
@@ -294,34 +595,15 @@ User: (props) => (
             if (weekData.length === 0) return "";
             const start = new Date(weekData[0].date);
             const end = new Date(weekData[6].date);
-            
-            const startDay = start.getDate();
-            const endDay = end.getDate();
-            const startMonth = start.toLocaleString('default', { month: 'short' });
-            const endMonth = end.toLocaleString('default', { month: 'short' });
-            
-            const currentYear = new Date().getFullYear();
-            const showYear = start.getFullYear() !== currentYear || end.getFullYear() !== currentYear;
-            const yearStr = showYear ? `, ${end.getFullYear()}` : '';
-
-            if (startMonth === endMonth) {
-                 return `${startDay} - ${endDay} ${startMonth}${yearStr}`;
-            } else {
-                 return `${startDay} ${startMonth} - ${endDay} ${endMonth}${yearStr}`;
-            }
+            return `${start.getDate()} ${start.toLocaleString('default', { month: 'short' })} - ${end.getDate()} ${end.toLocaleString('default', { month: 'short' })} ${end.getFullYear()}`;
         };
 
         const getWeekIdentifier = (date) => {
             const d = new Date(date);
             const start = getStartOfWeek(d);
-            
-            const startMonthName = start.toLocaleString('default', { month: 'long' });
-            
-            return `${startMonthName}, ${start.getFullYear()}`;
-        }
-        
-        // --- FIREBASE DATA FUNCTIONS (Updated with mock profile url and display name) ---
-        
+            return `${start.toLocaleString('default', { month: 'short' })} ${start.getFullYear()}`;
+        };
+
         const getLocalStorage = () => {
             return new Promise(resolve => {
                 const accountKey = localStorage.getItem('AV_ledger_account_key') || 'sample_account_key'; 
@@ -329,1599 +611,808 @@ User: (props) => (
                 resolve({ 
                     accountKey, 
                     username, 
-                    accountName: accountKey, // MOCK Account Display Name
-                    logoUrl: 'https://i.ibb.co/6R22B2y/avanti-logo.png', // Mock Avanti logo
-                    profileUrl: 'https://i.ibb.co/L5kL2X5/mock-profile.png' // MOCK User Profile Image
+                    accountName: accountKey, 
+                    logoUrl: '', 
+                    profileUrl: 'https://i.ibb.co/L5kL2X5/mock-profile.png' 
                 }); 
             });
         };
 
-        // --- useDashboardData (Kept the core logic) ---
-        
-        const useDashboardData = (weekStartDate) => {
-            // ... (Keep the useDashboardData hook exactly as it was, including all internal functions: calculateSalesMetrics, calculateInventoryMetrics, and useEffect logic)
-            // Note: The original useDashboardData logic is omitted here for brevity but should be included in the final code.
-            
-            const [fullData, setFullData] = useState(null);
-            const [isLoading, setIsLoading] = useState(true);
-            const [error, setError] = useState(null);
-            const [userDetails, setUserDetails] = useState({ accountName: '', username: '', logoUrl: '', profileUrl: '' });
-            
-            // Generate week data
-            const currentWeekData = useMemo(() => getWeekData(weekStartDate), [weekStartDate]);
-            const lastWeekStartDate = useMemo(() => {
-                const d = new Date(weekStartDate);
-                d.setDate(d.getDate() - 7);
-                return d;
-            }, [weekStartDate]);
-            const lastWeekData = useMemo(() => getWeekData(lastWeekStartDate), [lastWeekStartDate]);
+        // --- ACCOUNTING ENGINE PIPELINE WORKER UNITS ---
+        const calculateSalesMetrics = (dailyData) => {
+            let totalSales = 0; 
+            let totalWorkingExpenses = 0;
+            let totalIncome = 0; 
+            let orders = 0;
+            let dailyProductMetrics = {}; 
 
-            // Collect all 14 date keys to fetch relevant data
-            const allDateKeys = useMemo(() => 
-                [...currentWeekData.map(d => d.dateKey), ...lastWeekData.map(d => d.dateKey)]
-            , [currentWeekData, lastWeekData]);
-
-            // --- SALES METRICS CALCULATOR (Copied from Sales Report) ---
-            const calculateSalesMetrics = useCallback((dailyData) => {
-                let totalSales = 0; 
-                let totalWorkingExpenses = 0;
-                let totalIncome = 0; 
-                let orders = 0;
-                let dailyProductMetrics = {}; 
-
-                const items = dailyData.items || {};
-                
-                Object.values(items).forEach(item => {
-                    const salesUnits = (item.opening || 0) + (item.orders || 0) - (item.closing || 0);
-                    
-                    if (salesUnits > 0) {
-                        const revenue = salesUnits * (item.price || 0); 
-                        totalSales += revenue;
-                        
-                        dailyProductMetrics[item.id] = {
-                            id: item.id,
-                            name: item.name || `Item ${item.id}`,
-                            units_sold: salesUnits,
-                            revenue: revenue,
-                        };
-                    }
-                    orders += (item.orders || 0);
-                });
-                
-                const expenses = dailyData.expenses || {};
-                Object.values(expenses).forEach(expense => {
-                    totalWorkingExpenses += parseFloat(expense.amount || 0);
-                });
-                
-                const incomes = dailyData.incomes || {};
-                 Object.values(incomes).forEach(income => {
-                    totalIncome += parseFloat(income.amount || 0);
-                });
-                
-                const totalSalesRevenue = totalSales + totalIncome;
-                const netSaleRevenue = totalSalesRevenue - totalWorkingExpenses;
-                
-                return { 
-                    totalSales, 
-                    totalWorkingExpenses, 
-                    totalIncome, 
-                    totalSalesRevenue,
-                    netSaleRevenue,
-                    expenses: Object.values(expenses).map(e => ({...e, amount: parseFloat(e.amount || 0)})),
-                    incomes: Object.values(incomes).map(i => ({...i, amount: parseFloat(i.amount || 0)})),
-                    orders: orders, 
-                    dailyProductMetrics: Object.values(dailyProductMetrics) 
-                };
-            }, []);
-
-const today = new Date();
-const yesterday = new Date(today);
-yesterday.setDate(today.getDate() - 1);
-const yesterdayStr = yesterday.toISOString().split('T')[0];
-            
-            // --- INVENTORY METRICS CALCULATOR (FIXED) ---
-                        // --- INVENTORY METRICS CALCULATOR (WITH BALANCED LOGIC FOR EMPTIES) ---
-            const calculateInventoryMetrics = useCallback((allDatesData, emptiesData) => {
-                let totalStockUnits = 0;
-                let totalExpectedRevenue = 0;
-                let totalEmptiesUnits = 0;
-                let inventoryDate = 'N/A';
-                
-                const datesKeys = Object.keys(allDatesData).sort();
-
-                // 1. Find the latest BALANCED day for Stock Inventory
-                let latestSnapshot = {};
-                for (let i = datesKeys.length - 1; i >= 0; i--) {
-                    const dateKey = datesKeys[i];
-                    // We check if the day is balanced
-                    if (allDatesData[dateKey] && allDatesData[dateKey].balanced === true) {
-                        inventoryDate = dateKey;
-                        latestSnapshot = allDatesData[dateKey].items || {};
-                        break; // Stop at the most recent balanced day
-                    }
+            const items = dailyData.items || {};
+            Object.values(items).forEach(item => {
+                const salesUnits = (item.opening || 0) + (item.orders || 0) - (item.closing || 0);
+                if (salesUnits > 0) {
+                    const revenue = salesUnits * (item.price || 0); 
+                    totalSales += revenue;
+                    dailyProductMetrics[item.id] = {
+                        id: item.id,
+                        name: item.name || `Item ${item.id}`,
+                        units_sold: salesUnits,
+                        revenue: revenue,
+                    };
                 }
-                
-                // Fallback: If no day is balanced, use the last available day but mark as N/A
-                if (inventoryDate === 'N/A' && datesKeys.length > 0) {
-                    const lastKey = datesKeys[datesKeys.length - 1];
-                    latestSnapshot = allDatesData[lastKey].items || {};
-                }
-                
-                const itemDataMap = {};
-                Object.entries(latestSnapshot).forEach(([itemId, data]) => {
-                    const stock = data.closing || 0; 
-                    const price = data.price || 0;
-                    const name = data.name || `Item ${itemId}`;
-
-                    totalStockUnits += stock;
-                    totalExpectedRevenue += stock * price;
-                    itemDataMap[itemId] = { name, price, stock, lastOrderCost: data.lastOrderCost || 0 };
-                });
-                
-                // 2. Calculate Empties (Strictly using BALANCED days only)
-                Object.entries(emptiesData).forEach(([itemId, emptyItemData]) => {
-                    // Only calculate if the item currently exists in active inventory
-                    if (!itemDataMap[itemId]) return;
-                    
-                    const initialCount = emptyItemData.initialCount || 0;
-                    const startDateKey = emptyItemData.startDate;
-                    if (!startDateKey) return; 
-
-                    let emptiesCount = initialCount;
-                    
-                    // Filter dates: must be >= start date AND explicitly marked as balanced
-                    datesKeys.forEach(dateKey => {
-                        const dayObj = allDatesData[dateKey];
-                        
-                        if (dateKey >= startDateKey && dayObj?.balanced === true) {
-                            const itemDay = dayObj.items && dayObj.items[itemId];
-                            if (itemDay) {
-                                const opening = itemDay.opening || 0;
-                                const orders = itemDay.orders || 0;
-                                const closing = itemDay.closing || 0;
-
-                                // Formula: Gain empty on Sale, Lose empty on Purchase (Orders)
-                                const sales = opening + orders - closing;
-                                emptiesCount += (sales - orders);
-                            }
-                        }
-                    });
-                    
-                    totalEmptiesUnits += Math.max(0, emptiesCount);
-                });
-                
-                return { 
-                    totalStockUnits, 
-                    totalExpectedRevenue, 
-                    totalEmptiesUnits, 
-                    inventoryDate: inventoryDate === 'N/A' ? 'N/A' : formatDateForDisplay(inventoryDate),
-                };
-            }, [yesterdayStr]); // Ensure yesterdayStr is accessible or defined in scope
-
+                orders += (item.orders || 0);
+            });
             
-            const getFirebaseRef = async (accountKey, username) => {
-                if (!database) {
-                    throw new Error("Firebase not initialized.");
+            const expenses = dailyData.expenses || {};
+            Object.values(expenses).forEach(expense => {
+                totalWorkingExpenses += parseFloat(expense.amount || 0);
+            });
+            
+            const incomes = dailyData.incomes || {};
+            Object.values(incomes).forEach(income => {
+                totalIncome += parseFloat(income.amount || 0);
+            });
+            
+            const totalSalesRevenue = totalSales + totalIncome;
+            const netSaleRevenue = totalSalesRevenue - totalWorkingExpenses;
+            
+            return { 
+                totalSales, 
+                totalWorkingExpenses, 
+                totalIncome, 
+                totalSalesRevenue,
+                netSaleRevenue,
+                expenses: Object.values(expenses).map(e => ({...e, amount: parseFloat(e.amount || 0)})),
+                incomes: Object.values(incomes).map(i => ({...i, amount: parseFloat(i.amount || 0)})),
+                orders: orders, 
+                dailyProductMetrics: Object.values(dailyProductMetrics) 
+            };
+        };
+
+        const calculateInventoryMetrics = (allDatesData, emptiesData) => {
+            let totalStockUnits = 0;
+            let totalExpectedRevenue = 0;
+            let totalEmptiesUnits = 0;
+            let inventoryDate = 'N/A';
+            
+            const datesKeys = Object.keys(allDatesData).sort();
+            let latestSnapshot = {};
+            for (let i = datesKeys.length - 1; i >= 0; i--) {
+                const dateKey = datesKeys[i];
+                if (allDatesData[dateKey] && allDatesData[dateKey].balanced === true) {
+                    inventoryDate = dateKey;
+                    latestSnapshot = allDatesData[dateKey].items || {};
+                    break; 
                 }
-firebase.database()
-  .ref(`accounts/${accountKey}/displayName`)
-  .once("value")
-  .then(snapshot => {
-    const nameEl = document.getElementById("accName");
+            }
+            
+            if (inventoryDate === 'N/A' && datesKeys.length > 0) {
+                const lastKey = datesKeys[datesKeys.length - 1];
+                latestSnapshot = allDatesData[lastKey].items || {};
+            }
+            
+            const itemDataMap = {};
+            Object.entries(latestSnapshot).forEach(([itemId, data]) => {
+                const stock = data.closing || 0; 
+                const price = data.price || 0;
+                const name = data.name || `Item ${itemId}`;
 
-    if (!nameEl) return;
+                totalStockUnits += stock;
+                totalExpectedRevenue += stock * price;
+                itemDataMap[itemId] = { name, price, stock, lastOrderCost: data.lastOrderCost || 0 };
+            });
+            
+            Object.entries(emptiesData).forEach(([itemId, emptyItemData]) => {
+                if (!itemDataMap[itemId]) return;
+                const initialCount = emptyItemData.initialCount || 0;
+                const startDateKey = emptyItemData.startDate;
+                if (!startDateKey) return; 
 
-    if (snapshot.exists() && snapshot.val()) {
-      // Put the displayName
-      nameEl.textContent = snapshot.val();
-    } else {
-      // Fallback text if no displayName
-      nameEl.textContent = "Account";
-    }
-  });
-firebase.database()
-  .ref(`accounts/${accountKey}/url`)
-  .once("value")
-  .then(snapshot => {
-    const img = document.getElementById("profileUrl");
-    const container = document.getElementById("profileContainer");
-
-    if (!container) return;
-
-    if (snapshot.exists() && snapshot.val()) {
-      if (img) img.src = snapshot.val();
-    } else {
-      if (img) img.remove();
-
-      container.innerHTML = `
-        <div class="w-10 h-10 rounded-full bg-avanti-blue text-white flex items-center justify-center" onclick="window.location='profile.html'">
-          <!-- User Icon SVG -->
-          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-            <circle cx="12" cy="7" r="4"/>
-          </svg>
-        </div>
-      `;
-    }
-  });
-
-
-                
-                const accountRef = database.ref(`accounts/${accountKey}`);
-                const syncSnapshot = await accountRef.child('settings/synchronization').once('value');
-                const syncSetting = syncSnapshot.val();
-                
-                let dataPath = '';
-                let targetUser = username;
-
-                if (syncSetting === 'all') {
-                    dataPath = `global_ledger`;
-                } else {
-                    const syncUserSnapshot = await accountRef.child(`profiles/${username}/syncingWith`).once('value');
-                    const syncingWith = syncUserSnapshot.val();
-                    
-                    let syncedUser = null;
-                    if (syncingWith) {
-                        const syncedUserKey = Object.keys(syncingWith).find(key => syncingWith[key] === true);
-                        if (syncedUserKey) {
-                            syncedUser = syncedUserKey;
-                            targetUser = syncedUser;
+                let emptiesCount = initialCount;
+                datesKeys.forEach(dateKey => {
+                    const dayObj = allDatesData[dateKey];
+                    if (dateKey >= startDateKey && dayObj?.balanced === true) {
+                        const itemDay = dayObj.items && dayObj.items[itemId];
+                        if (itemDay) {
+                            const opening = itemDay.opening || 0;
+                            const orders = itemDay.orders || 0;
+                            const closing = itemDay.closing || 0;
+                            const sales = opening + orders - closing;
+                            emptiesCount += (sales - orders);
                         }
                     }
-                    dataPath = `profiles/${targetUser}`;
-                }
-                
-                return { 
-                    statsPath: `accounts/${accountKey}/${dataPath}/avanti_stats/dates`,
-                    emptiesPath: `accounts/${accountKey}/${dataPath}/empties_tracking`,
+                });
+                totalEmptiesUnits += Math.max(0, emptiesCount);
+            });
+            
+            return { 
+                totalStockUnits, 
+                totalExpectedRevenue, 
+                totalEmptiesUnits, 
+                inventoryDate: inventoryDate === 'N/A' ? 'N/A' : formatDateForDisplay(inventoryDate),
+            };
+        };
 
-                    targetUser,
-                    accountKey
-
-                };
+        // --- ACCOUNTING ENGINE ADVANCED STREAK CALCULATOR ENGINE ---
+        const evaluateComplianceStreak = (rawDatesData) => {
+            const parseDateKey = (str) => {
+                if (!str || !str.includes('-')) return null;
+                const [y, m, d] = str.split('-').map(Number);
+                return new Date(y, m - 1, d);
             };
 
-                        useEffect(() => {
-                const fetchData = async () => {
-                    setIsLoading(true);
-                    setError(null);
-                    try {
-                        const { accountKey, username, logoUrl, profileUrl } = await getLocalStorage();
+            const sortedDates = Object.keys(rawDatesData)
+                .filter(key => rawDatesData[key] && rawDatesData[key].balanced === true)
+                .sort((a, b) => b.localeCompare(a));
 
-                        if (!accountKey || !username) {
-                            throw new Error("Missing keys in local storage.");
-                        }
+            if (sortedDates.length === 0) return 0;
 
-                        // Fetch account name from Firebase
-                        firebase.database()
-                            .ref(`accounts/${accountKey}/displayName`)
-                            .once("value")
-                            .then(snapshot => {
-                                const accountName = snapshot.exists() && snapshot.val() ? snapshot.val() : "Account";
-                                setUserDetails({ accountName, username, logoUrl, profileUrl });
-                                const el = document.getElementById("accName");
-                                if (el) { el.textContent = accountName; }
-                            });
+            let today = new Date();
+            today.setHours(0, 0, 0, 0);
 
-                        const { statsPath, emptiesPath } = await getFirebaseRef(accountKey, username);
+            const latestBalancedDate = parseDateKey(sortedDates[0]);
+            if (!latestBalancedDate) return 0;
+            
+            const diffTime = today - latestBalancedDate;
+            const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+            
+            if (diffDays > 1) return 0;
 
-                        const [statsSnap, emptiesSnap] = await Promise.all([
-                            database.ref(statsPath).once('value'),
-                            database.ref(emptiesPath).once('value'),
-                        ]);
+            let streak = 1;
+            let trackingDate = latestBalancedDate;
+            
+            for (let i = 1; i < sortedDates.length; i++) {
+                const currentEntryDate = parseDateKey(sortedDates[i]);
+                if (!currentEntryDate) continue;
+                
+                const dayDifference = Math.round((trackingDate - currentEntryDate) / (1000 * 60 * 60 * 24));
+                
+                if (dayDifference === 1) {
+                    streak++;
+                    trackingDate = currentEntryDate;
+                } else if (dayDifference > 1) {
+                    break; 
+                }
+            }
+            return streak;
+        };
+
+        const getFirebasePaths = async (accountKey, username) => {
+            const accountRef = database.ref(`accounts/${accountKey}`);
+            const syncSnapshot = await accountRef.child('settings/synchronization').once('value');
+            const syncSetting = syncSnapshot.val();
+            
+            let dataPath = '';
+            let targetUser = username;
+
+            if (syncSetting === 'all') {
+                dataPath = `global_ledger`;
+            } else {
+                const syncUserSnapshot = await accountRef.child(`profiles/${username}/syncingWith`).once('value');
+                const syncingWith = syncUserSnapshot.val();
+                if (syncingWith) {
+                    const syncedUserKey = Object.keys(syncingWith).find(key => syncingWith[key] === true);
+                    if (syncedUserKey) targetUser = syncedUserKey;
+                }
+                dataPath = `profiles/${targetUser}`;
+            }
+            
+            const deviceSnap = await accountRef.child(`profiles/${username}/deviceName`).once('value');
+            if (deviceSnap.exists()) {
+                document.getElementById('meta-device-name').textContent = `Device: ${deviceSnap.val()}`;
+            }
+            
+            return { 
+                statsPath: `accounts/${accountKey}/${dataPath}/avanti_stats/dates`,
+                emptiesPath: `accounts/${accountKey}/${dataPath}/empties_tracking`
+            };
+        };
+
+        // --- PIPELINE DATA LISTENER SETUP (REALTIME ENGINE) ---
+                // --- PIPELINE DATA LISTENER SETUP (REALTIME ENGINE) ---
+        const initializeRealtimeEngine = async () => {
+            document.getElementById('loading-overlay').style.display = 'flex';
+            document.getElementById('error-overlay').classList.add('hidden');
+
+            try {
+                const { accountKey, username, logoUrl, profileUrl } = await getLocalStorage();
+                if (!accountKey || !username) throw new Error("Critical storage key missing.");
+
+                // Account Title Profile Info Live Hookup
+                database.ref(`accounts/${accountKey}/displayName`).on("value", (accNameSnap) => {
+                    userDetails.accountName = accNameSnap.exists() && accNameSnap.val() ? accNameSnap.val() : "Account Container";
+                    document.getElementById('accName').textContent = userDetails.accountName;
+                });
+                
+                // NEW: Account Image Live Hookup
+                database.ref(`accounts/${accountKey}/url`).on("value", (imgSnap) => {
+                    if (imgSnap.exists() && imgSnap.val()) {
+                        const dbImageUrl = imgSnap.val();
                         
-                        const rawDatesData = statsSnap.val() || {};
-                        const rawEmptiesData = emptiesSnap.val() || {};
-
-                        const processedData = {
-                            sales: {
-                                currentWeekMetrics: [],
-                                lastWeekTotalRevenue: 0,
-                                currentWeekTotalRevenue: 0,
-                                weeklyExpenses: [],
-                                weeklyIncomes: [],
-                                weeklyOrders: [],
-                            },
-                            inventory: {},
-                            productMetrics: new Map(),
-                            unbalancedDays: []
-                        };
+                        // Updates the sidebar profile image
+                        const sidebarImg = document.getElementById('sidebar-profile-img');
+                        if (sidebarImg) sidebarImg.src = dbImageUrl;
                         
-                        const unbalancedDays = [];
+                        // Updates the top header brand logo
+                        
+                    }
+                });
+                
+                database.ref(`accounts/${accountKey}/profiles/${username}/authStatus`).on('value', (authStatusSnap) => {
+                    userDetails.authStatus = authStatusSnap.exists() ? authStatusSnap.val() : 'Verified';
+                    document.getElementById('auth-status-display').textContent = `AuthStatus: ${userDetails.authStatus}`;
+                });
 
-                        allDateKeys.forEach(dateKey => {
-                            const dailyData = rawDatesData[dateKey] || {};
-                            const isCurrentWeek = currentWeekData.some(d => d.dateKey === dateKey);
-                            
-                            if (dailyData.balanced === true) {
-                                const metrics = calculateSalesMetrics(dailyData);
-                                
-                                if (isCurrentWeek) {
-                                    processedData.sales.currentWeekMetrics.push({
-                                        label: currentWeekData.find(d => d.dateKey === dateKey).day,
-                                        dateKey: dateKey,
-                                        ...metrics,
-                                    });
-                                    processedData.sales.currentWeekTotalRevenue += metrics.totalSalesRevenue;
-                                    processedData.sales.weeklyExpenses.push(...metrics.expenses.map(e => ({...e, dateKey})));
-                                    processedData.sales.weeklyIncomes.push(...metrics.incomes.map(i => ({...i, dateKey})));
-                                    processedData.sales.weeklyOrders.push({ dateKey, orders: metrics.orders });
-                                    
-                                    metrics.dailyProductMetrics.forEach(item => {
-                                        if (processedData.productMetrics.has(item.id)) {
-                                            const existing = processedData.productMetrics.get(item.id);
-                                            existing.units_sold += item.units_sold;
-                                            existing.revenue += item.revenue;
-                                        } else {
-                                            processedData.productMetrics.set(item.id, {...item});
-                                        }
-                                    });
-                                } else {
-                                    processedData.sales.lastWeekTotalRevenue += metrics.totalSalesRevenue;
-                                }
-                            } else if (isCurrentWeek) {
-                                const dayObj = currentWeekData.find(d => d.dateKey === dateKey);
-                                if (dayObj) unbalancedDays.push(dayObj.day);
+                userDetails.username = username;
+                userDetails.profileUrl = profileUrl;
+                document.getElementById('usrName').textContent = `@${username}`;
+
+                const { statsPath, emptiesPath } = await getFirebasePaths(accountKey, username);
+
+                // Setup Active Realtime Node Observers on paths
+                database.ref(statsPath).on('value', (statsSnap) => {
+                    database.ref(emptiesPath).on('value', (emptiesSnap) => {
+                        processAndRenderData(statsSnap.val() || {}, emptiesSnap.val() || {});
+                    });
+                });
+
+            } catch (err) {
+                console.error("Critical Execution Fault:", err);
+                document.getElementById('error-message').textContent = err.message;
+                document.getElementById('error-overlay').classList.remove('hidden');
+                document.getElementById('loading-overlay').style.display = 'none';
+            }
+        };
+
+        // --- CORE DATA PROCESSOR FROM OBSERVER THREAD ---
+        const processAndRenderData = (rawDatesData, rawEmptiesData) => {
+            const currentWeekData = getWeekData(currentWeekStartDate);
+            const lastWeekStartDate = new Date(currentWeekStartDate);
+            lastWeekStartDate.setDate(lastWeekStartDate.getDate() - 7);
+            const lastWeekData = getWeekData(lastWeekStartDate);
+
+            const allDateKeys = [...currentWeekData.map(d => d.dateKey), ...lastWeekData.map(d => d.dateKey)];
+            const computedStreak = evaluateComplianceStreak(rawDatesData);
+
+            const processedData = {
+                streak: computedStreak,
+                checklistState: {},
+                sales: {
+                    currentWeekMetrics: [],
+                    lastWeekTotalRevenue: 0,
+                    currentWeekTotalRevenue: 0,
+                    weeklyExpenses: [],
+                    weeklyIncomes: [],
+                    weeklyOrders: [],
+                },
+                inventory: {},
+                productMetrics: new Map(),
+                unbalancedDays: []
+            };
+            
+            const unbalancedDays = [];
+
+            currentWeekData.forEach(day => {
+                const dayData = rawDatesData[day.dateKey];
+                processedData.checklistState[day.day] = dayData && dayData.balanced === true;
+            });
+
+            allDateKeys.forEach(dateKey => {
+                const dailyData = rawDatesData[dateKey] || {};
+                const isCurrentWeek = currentWeekData.some(d => d.dateKey === dateKey);
+                
+                if (dailyData.balanced === true) {
+                    const metrics = calculateSalesMetrics(dailyData);
+                    if (isCurrentWeek) {
+                        processedData.sales.currentWeekMetrics.push({
+                            label: currentWeekData.find(d => d.dateKey === dateKey).day,
+                            dateKey: dateKey,
+                            ...metrics,
+                        });
+                        processedData.sales.currentWeekTotalRevenue += metrics.totalSalesRevenue;
+                        processedData.sales.weeklyExpenses.push(...metrics.expenses.map(e => ({...e, dateKey})));
+                        processedData.sales.weeklyIncomes.push(...metrics.incomes.map(i => ({...i, dateKey})));
+                        processedData.sales.weeklyOrders.push({ dateKey, orders: metrics.orders });
+                        
+                        metrics.dailyProductMetrics.forEach(item => {
+                            if (processedData.productMetrics.has(item.id)) {
+                                const existing = processedData.productMetrics.get(item.id);
+                                existing.units_sold += item.units_sold;
+                                existing.revenue += item.revenue;
+                            } else {
+                                processedData.productMetrics.set(item.id, {...item});
                             }
                         });
-                        
-                        processedData.unbalancedDays = unbalancedDays;
-                        processedData.inventory = calculateInventoryMetrics(rawDatesData, rawEmptiesData);
-                        processedData.productMetrics = Array.from(processedData.productMetrics.values());
-
-                        setFullData(processedData);
-
-                    } catch (err) {
-                        console.error("Dashboard Data Fetching Error:", err);
-                        setError("Failed to fetch dashboard data: " + err.message);
-                    } finally {
-                        setIsLoading(false);
+                    } else {
+                        processedData.sales.lastWeekTotalRevenue += metrics.totalSalesRevenue;
                     }
-                };
-
-                fetchData();
-            }, [allDateKeys, calculateSalesMetrics, calculateInventoryMetrics, currentWeekData]);
-
-            return { fullData, isLoading, error, currentWeekData, userDetails };
-        };
-
-
-
-        // --- UI COMPONENTS ---
-
-        const Card = ({ children, className = "", onClick }) => (
-            <div 
-                onClick={onClick}
-                className={`bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden ${onClick ? 'active:scale-[0.98] transition-transform duration-100 cursor-pointer' : ''} ${className}`}
-            >
-                {children}
-            </div>
-        );
-        
-        // REVISED SIDEBAR/MENU
-        const Sidebar = ({ isExpanded, toggleExpand, userDetails }) => {
-            const navItems = [
-                { icon: Icons.Grid, label: "Dashboard", href: "#", current: true },
-                { icon: Icons.FileText, label: "Statistics", href: "statistics.html" },
-                { icon: Icons.Package, label: "Inventory", href: "inventory.html" },
-                { icon: Icons.TrendingUp, label: "Reports", href: "accounting-report.html" },
-                { icon: Icons.BookOpen, label: "Notes", href: "notes.html" },
-                { icon: Icons.Settings, label: "Settings", href: "settings.html" },
-            ];
-
-const handleLogout = async () => {
-  // 1. Show the confirmation dialog
-  const confirmed = window.confirm(
-    "⚠️ Are you sure you want to log out?\nYou will need to sign in again."
-  );
-
-  // 2. If they click "Cancel", stop here
-  if (!confirmed) return;
-
-  // 3. If they click "OK", clear the data immediately
-  localStorage.removeItem("AV_ledger_account_key");
-  localStorage.removeItem("AV_ledger_username");
-  localStorage.removeItem("AV_ledger_auth_status");
-
-  // 4. Redirect to the home page
-  window.location.href = "index.html";
-};
-
-
-            return (
-                <div className={`sidebar ${isExpanded ? 'expanded animate-slide-in-left' : 'slim'} bg-white border-r border-gray-200 flex flex-col shrink-0 transition-all duration-300 ease-in-out mt-[65px] h-[92vh]`}>
-                    
-                    {/* Top Section - Profile & Account Display Name */}
-                    <div className="p-2 relative flex flex-col items-start justify-start border-b border-gray-200 pt-4">
-                        <div className={`flex items-center w-full ${isExpanded ? 'p-3' : 'justify-center py-2'}`} onclick="window.location='profile.html'">
-                            <div id="profileContainer" onclick="window.location='profile1.html'"><a href="profile.html">
-<img id="profileUrl" alt="User Profile" class="w-10 h-10 rounded-full object-cover" onclick="location.href='profile.html'" />
-</a>
-</div>
-                            
-                            {isExpanded && (
-                                <div className="ml-3 overflow-hidden transition-opacity duration-300 opacity-100" >
-                                    {/* Account Display Name */}
-                                    <span id="accName"className="font-bold text-gray-900 text-m leading-tight truncate" href="profile.html" >{userDetails.accountName}</span>
-                                    <p className="text-s text-gray-500 leading-tight truncate">{userDetails.username}</p>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                    
-                    {/* Navigation Items */}
-                    <nav className="flex-1 p-2 space-y-1 overflow-y-auto no-scrollbar mt-10">
-                        {navItems.map((item) => (
-                            <a 
-                                key={item.label}
-                                href={item.href}
-                                className={`flex items-center ${isExpanded ? 'justify-start px-3' : 'justify-center'} py-3 rounded-lg transition-colors text-gray-700 hover:bg-avanti-blue/10 hover:text-avanti-blue ${item.current ? 'bg-avanti-blue shadow-lg text-white' : ''}`}
-                            >
-                                <item.icon size={25} className={`shrink-0 ${item.current ? 'text-white' : 'text-gray-500'}`} />
-                                {isExpanded && (
-                                    <span className={`ml-4 text-sm font-semibold transition-opacity duration-300 ${item.current ? 'text-white' : ''}`}>{item.label}</span>
-                                )}
-                            </a>
-                        ))}
-                    </nav>
-
-                    {/* Bottom Section - Action Buttons */}
-                    <div className="p-2 border-t border-gray-200 space-y-1 shrink-0">
-                      {isExpanded && (
-  <a
-    href="manage-devices.html"
-    className="flex items-center justify-start px-3 py-3 rounded-lg transition-colors text-gray-700 hover:bg-green-500 hover:text-white group"
-  >
-    <Icons.Plus
-      size={20}
-      className="text-green-500 group-hover:text-white shrink-0"
-      strokeWidth={3}
-    />
-    <span className="ml-4 text-sm font-semibold">Add a device</span>
-  </a>
-)}
-                      {isExpanded && (
-  <a
-    onClick={handleLogout}
-    className="flex items-center justify-start px-3 py-3 rounded-lg transition-colors text-gray-700 hover:bg-red-500 hover:text-white group cursor-pointer"
-  >
-    <Icons.LogOut
-      size={20}
-      className="text-red-500 group-hover:text-white shrink-0"
-    />
-    <span className="ml-4 text-sm font-semibold">Logout</span>
-  </a>
-)}
-                    </div>
-                    
-                    {/* Expander Button - Remains on the slim edge */}
-                    <button 
-                        onClick={toggleExpand} 
-                        className={`absolute top-4 ${isExpanded ? 'right-2' : '-right-3'} transform p-1 bg-white border border-gray-200 rounded-full shadow-lg text-avanti-blue hover:bg-gray-100 active:scale-90 transition-all z-[51]`}
-                    >
-                        <Icon 
-                            path={isExpanded ? Icons.ChevronLeft({}).props.path : Icons.ChevronRight({}).props.path} 
-                            size={16} 
-                            className="transition-transform duration-300" 
-                        />
-                    </button>
-                </div>
-            );
-        };
-        
-        const WeekNavigator = ({ weekData, onNavigate }) => {
-            const dateRange = getDateRangeString(weekData);
-            const weekIdentifier = getWeekIdentifier(weekData[0].date);
+                } else if (isCurrentWeek) {
+                    const dayObj = currentWeekData.find(d => d.dateKey === dateKey);
+                    if (dayObj) unbalancedDays.push(dayObj.day);
+                }
+            });
             
-            return (
-                <div><Card className="p-3 flex items-center justify-between shadow-sm bg-white border-none mt-10">
-                    <button 
-                        onClick={() => onNavigate(-7)} 
-                        className="text-gray-400 hover:text-gray-700 active:scale-95 transition-transform p-1"
-                    >
-                        <Icons.ChevronLeft size={20} />
-                    </button>
-                    <div className="text-center">
-                        <p className="text-sm font-bold text-gray-900 leading-tight">{weekIdentifier}</p>
-                        <p className="text-xs text-gray-500">{dateRange}</p>
-                    </div>
-                    <button 
-                        onClick={() => onNavigate(7)} 
-                        className="text-gray-400 hover:text-gray-700 active:scale-95 transition-transform p-1"
-                    >
-                        <Icons.ChevronRight size={20} />
-                    </button>
+            processedData.unbalancedDays = unbalancedDays;
+            processedData.inventory = calculateInventoryMetrics(rawDatesData, rawEmptiesData);
+            processedData.productMetrics = Array.from(processedData.productMetrics.values());
 
-                </Card>
-<h4 className="flex items-center gap-2 text-4xl font-semibold tracking-tight text-gray-900 mb-5 mt-7">
-  <Icons.Grid size={40} className="text-[#3f72af]" />
-  Dashboard
-</h4></div>
-
-            );
+            fullData = processedData;
+            renderDashboardView();
+            document.getElementById('loading-overlay').style.display = 'none';
         };
 
-        
-        // NEW COMBINED CARD: Sales & Financial Reporting (Black/Dark Gradient)
-        const SalesInfoCard = ({ revenue, netSaleRevenue, trend, onClick }) => {
-            const isIncreasing = trend >= 0;
-            const trendText = `${isIncreasing ? '+' : ''}${trend.toFixed(1)}% vs Last Week`;
-            const trendIcon = isIncreasing ? Icons.TrendingUp : Icons.TrendingDown;
-            const trendColor = isIncreasing ? 'text-emerald-300' : 'text-yellow-300';
-            const netColor = isIncreasing ? 'text-emerald-400' : 'text-yellow-300';
-
-            return (
-<div>
-
-
-
-
-                <Card 
-                    className={`p-5 bg-gradient-to-br from-avanti-blue to-indigo-700 text-white shadow-lg border-none flex flex-col justify-between h-56`}
-                    onClick={onClick}
-                >
-
-                    <div className="flex justify-between items-start">
-                        <div>
-                            <h4 className="text-blue-200 text-sm font-bold uppercase tracking-wider">Weekly Sales Summary</h4>
-                            <p className="text-2xl font-extrabold text-white mt-2 mb-1 truncate">
-                                {formatCurrency(revenue)}
-                            </p>
-                            <p className="text-xs text-blue-200">Total Revenue</p>
-                        </div>
-                        <Icons.DollarSign size={32} className="text-blue-300 opacity-80" strokeWidth={2.5} />
-                    </div>
-                    
-                    <div className="pt-3 border-t border-blue-600 space-y-2">
-                         <div className="flex justify-between items-center mb-1">
-                             <p className="text-lg font-bold text-white">Net Revenue</p>
-                             <p className={`text-xl font-black ${netColor}`}>{formatCurrency(netSaleRevenue)}</p>
-                         </div>
-                        <div className="mt-2 flex items-center justify-between">
-                            <p className="text-xs text-blue-300 ">Revenue Trend</p>
-                            <div className="flex items-center">
-                                <trendIcon size={16} className={`inline mr-1 ${trendColor}`} />
-                                <p className={`text-sm font-semibold ${trendColor}`}>
-                                    {trendText}
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-                </Card></div>
-            );
-        };
-        
-        // NEW COMBINED CARD: Inventory & Stock Status (Blue Gradient)
-        const InventoryInfoCard = ({ expectedReturn, totalUnits, totalEmpties, date, onClick }) => (
-
-            <Card 
-                className="p-5 bg-gradient-to-br from-avanti-blue to-indigo-700 text-white shadow-lg border-none flex flex-col justify-between h-56"
-                onClick={onClick}
-            >
-                <div className="flex justify-between items-start">
-                    <div>
-                        <p className="text-blue-200 text-sm font-bold uppercase tracking-wider">Inventory & Stock Status</p>
-                        <h3 className="text-2xl font-extrabold mt-2 mb-1">{formatCurrency(expectedReturn)}</h3>
-                        <p className="text-xs text-blue-200">Expected Return on Current Stock</p>
-                    </div>
-                    <Icons.Package size={32} className="text-blue-300 opacity-80"/>
-                </div>
-                
-                <div className="pt-3 border-t border-blue-600 space-y-2">
-                    <div className="flex justify-between items-center">
-                        <span className="text-sm font-semibold text-white">Total Units in Stock</span>
-                        <span className="text-base font-bold text-white">{formatTotalUnits(totalUnits)}</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                        <span className="text-sm font-semibold text-blue-200">Total Empty Bottles</span>
-                        <span className="text-base font-bold text-yellow-300">{formatTotalUnits(totalEmpties)}</span>
-                    </div>
-                    <p className="text-xs text-blue-300 mt-2">Inventory as at {date}</p>
-                </div>
-            </Card>
-        );
-        
-                const WeakReportAlert = ({ unbalancedDays }) => {
-            // If there's no data or no unbalanced days, show nothing
-            if (!unbalancedDays || unbalancedDays.length === 0) return null;
-
-            return (
-                <div className="bg-amber-50 border-l-4 border-amber-400 p-4 mb-4 rounded-r-lg shadow-sm">
-                    <div className="flex items-center">
-                        <Icons.AlertCircle className="text-amber-500 mr-3" size={20} />
-                        <div>
-                            <p className="text-sm text-amber-800 font-bold">Partial Weekly Report</p>
-                            <p className="text-xs text-amber-700">
-                                Data for <strong>{unbalancedDays.join(', ')}</strong> is not included because those days are not yet balanced.
-                            </p>
-                        </div>
-                    </div>
-                </div>
-            );
-        };
-
-        
-        // REVISED DoughnutChart (to include comparison)
-        const DoughnutChart = ({ data, labels, title, colors }) => {
-            const chartRef = useRef(null);
-            const chartInstanceRef = useRef(null);
+        // --- GRAPHICS CHANNELS MATRIX (THEMED TO #3f72af AVANTI PRIMARY) ---
+                // --- GRAPHICS CHANNELS MATRIX (THEMED TO #3f72af AVANTI PRIMARY) ---
+        const drawLineChart = (labels, points) => {
+            if(lineChartInstance) lineChartInstance.destroy();
+            const holder = document.getElementById('line-chart-holder');
             
-            // Check if any data exists to prevent chart initialization errors
+            const hasData = points.reduce((sum, v) => sum + v, 0) > 0;
+            if(!hasData) {
+                holder.innerHTML = '<div class="h-full flex items-center justify-center text-ios-gray text-xs italic">No metric trends map recorded.</div>';
+                return;
+            }
+
+            // Re-inject canvas to ensure it exists after an empty state
+            holder.innerHTML = '<canvas id="lineChart"></canvas>';
+            const canvas = document.getElementById('lineChart');
+            const ctx = canvas.getContext('2d');
+            
+            const gradient = ctx.createLinearGradient(0, 0, 0, 180);
+            gradient.addColorStop(0, `rgba(63, 114, 175, 0.25)`);
+            gradient.addColorStop(1, `rgba(63, 114, 175, 0.0)`);
+
+            lineChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: points,
+                        borderColor: '#3f72af',
+                        backgroundColor: gradient,
+                        tension: 0.36,
+                        fill: true,
+                        pointRadius: 2,
+                        pointHoverRadius: 6,
+                        borderWidth: 3
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: { beginAtZero: true, ticks: { color: '#636366', font: { size: 10 }, callback: (val) => 'K' + val }, grid: { color: 'rgba(0,0,0,0.04)' } },
+                        x: { ticks: { color: '#636366', font: { size: 10 } }, grid: { display: false } }
+                    }
+                }
+            });
+        };
+
+        const drawDoughnutChart = (labels, data, proportionalTotal) => {
+            if(doughnutChartInstance) doughnutChartInstance.destroy();
+            const holder = document.getElementById('doughnut-chart-holder');
+            
             const hasData = data.reduce((sum, v) => sum + v, 0) > 0;
-
-            useEffect(() => {
-                if (chartInstanceRef.current) {
-                    chartInstanceRef.current.destroy();
-                }
-
-                if (!chartRef.current || !hasData) {
-                    return;
-                }
-
-                const ctx = chartRef.current.getContext('2d');
-                chartInstanceRef.current = new Chart(ctx, {
-                    type: 'doughnut',
-                    data: {
-                        labels: labels,
-                        datasets: [{
-                            data: data,
-                            backgroundColor: colors,
-                            borderColor: 'white',
-                            borderWidth: 2,
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        cutout: '70%',
-                        plugins: {
-                            legend: { 
-                                position: 'right',
-                                align: 'center',
-                                labels: {
-                                    usePointStyle: true,
-                                    padding: 15,
-                                    boxWidth: 8,
-                                    font: { size: 12 }
-                                }
-                            },
-                            title: {
-                                display: false, // Title moved to Card header
-                            },
-                            tooltip: {
-                                callbacks: {
-                                    label: (context) => {
-                                        const value = context.parsed;
-                                        const total = context.dataset.data.reduce((a, b) => a + b, 0);
-                                        const percentage = total > 0 ? (value / total * 100).toFixed(1) : 0;
-                                        return `${context.label}: ${formatCurrency(value)} (${percentage}%)`;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                });
-
-                return () => {
-                    if (chartInstanceRef.current) {
-                        chartInstanceRef.current.destroy();
-                    }
-                };
-            }, [data, labels, colors, hasData]);
-            
-            if (!hasData) {
-                return <div className="h-full flex items-center justify-center text-gray-400 text-sm">No revenue breakdown data.</div>;
+            if(!hasData) {
+                holder.innerHTML = '<div class="h-full flex items-center justify-center text-ios-gray text-xs italic">No structural splits mapped.</div>';
+                return;
             }
 
-            return (
-                 <div className="relative h-full w-full py-4">
-                    <canvas ref={chartRef} />
-                    {/* Center text shows Total Revenue */}
-                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none ml-[-120px]">
-                        <span className="text-center text-base font-bold text-gray-700 leading-tight">
-                            Total<br/>
-                            {formatCurrency(data.reduce((a, b) => a + b, 0))}
-                        </span>
-                    </div>
+            // Re-inject canvas and center text box
+            holder.innerHTML = `
+                <canvas id="doughnutChart"></canvas>
+                <div class="absolute inset-0 flex items-center justify-center pointer-events-none" id="doughnut-center-text-box">
+                    <span id="doughnut-center-text" class="text-center text-[13px] font-bold text-black leading-tight bg-white/90 px-2.5 py-1.5 rounded-full border border-black/5 shadow-md" style="margin-left: -90px;"></span>
                 </div>
-            );
+            `;
+            
+            const canvas = document.getElementById('doughnutChart');
+            const ctx = canvas.getContext('2d');
+            
+            doughnutChartInstance = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: data,
+                        backgroundColor: ['#3f72af', '#34c759', '#ff9500'],
+                        borderColor: '#ffffff',
+                        borderWidth: 3,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '76%',
+                    plugins: {
+                        legend: { position: 'right', labels: { color: '#000000', usePointStyle: true, pointStyle: 'circle', font: { size: 11, weight: '600' }, padding: 12 } },
+                        tooltip: { callbacks: { label: (context) => ` ${context.label}: ${formatCurrency(context.parsed)}` } }
+                    }
+                }
+            });
+            document.getElementById('doughnut-center-text').innerHTML = `Total<br><span class="text-xs font-bold text-[#3f72af]">${formatCurrency(proportionalTotal)}</span>`;
         };
-        
-        // BarChart - Added grid lines for better professional look
-        const BarChart = ({ data, labels, title, color }) => {
-            const chartRef = useRef(null);
-            const chartInstanceRef = useRef(null);
+
+        const drawBarChart = (labels, data, shouldSlant, isRevenue) => {
+            if(barChartInstance) barChartInstance.destroy();
+            const holder = document.getElementById('bar-chart-holder');
+            
             const hasData = data.reduce((sum, v) => sum + v, 0) > 0;
+            if(!hasData) {
+                holder.innerHTML = '<div class="h-full flex items-center justify-center text-ios-gray text-xs italic">No stock transaction volumes.</div>';
+                return;
+            }
 
-            useEffect(() => {
-                if (chartInstanceRef.current) {
-                    chartInstanceRef.current.destroy();
-                }
-                
-                if (!chartRef.current || !hasData) {
-                    return;
-                }
-
-                const ctx = chartRef.current.getContext('2d');
-                chartInstanceRef.current = new Chart(ctx, {
-                    type: 'bar',
-                    data: {
-                        labels: labels,
-                        datasets: [{
-                            label: title,
-                            data: data,
-                            backgroundColor: color,
-                            borderRadius: 4,
-                        }]
+            // Re-inject canvas 
+            holder.innerHTML = '<canvas id="barChart"></canvas>';
+            const canvas = document.getElementById('barChart');
+            const ctx = canvas.getContext('2d');
+            
+            barChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: data,
+                        backgroundColor: '#3f72af',
+                        borderRadius: 5,
+                        barThickness: 30
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { 
+                        legend: { display: false },
+                        tooltip: { callbacks: { label: (context) => ` ${isRevenue ? formatCurrency(context.parsed || context.raw) : (context.parsed || context.raw) + ' Units'}` } }
                     },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: {
-                            legend: { display: false },
-                            title: { display: false },
-                            tooltip: {
-                                callbacks: {
-                                    label: (context) => {
-                                        let label = context.dataset.label || '';
-                                        if (label) {
-                                            label += ': ';
-                                        }
-                                        label += formatTotalUnits(context.parsed.y) + ' Units';
-                                        return label;
-                                    }
-                                }
-                            }
-                        },
-                        scales: {
-                            y: { 
-                                beginAtZero: true, 
-                                ticks: { callback: (val) => formatTotalUnits(val) },
-                                grid: { color: '#e5e7eb' } // Light grid lines
-                            },
-                            x: { 
-                                grid: { display: false } // No vertical grid lines
-                            }
-                        }
+                    scales: {
+                        y: { beginAtZero: true, ticks: { color: '#636366', font: { size: 10 }, callback: (val) => isRevenue ? 'K' + val : val }, grid: { color: 'rgba(0,0,0,0.04)' } },
+                        x: { ticks: { color: '#000000', font: { size: 10, weight: 'bold' }, maxRotation: shouldSlant ? 45 : 0, minRotation: shouldSlant ? 45 : 0 }, grid: { display: false } }
                     }
-                });
-
-                return () => {
-                    if (chartInstanceRef.current) {
-                        chartInstanceRef.current.destroy();
-                    }
-                };
-            }, [data, labels, title, color, hasData]);
-
-            if (!hasData) {
-                return <div className="h-full flex items-center justify-center text-gray-400 text-sm">No unit sales data this week.</div>;
-            }
-
-            return <div className="relative chart-container w-full"><canvas ref={chartRef} /></div>;
+                }
+            });
         };
-        
-        // LineChart - Added grid lines and Avanti blue color
-        const LineChart = ({ dataPoints, labels, title, color = '#3f72af' }) => {
-            const chartRef = useRef(null);
-            const chartInstanceRef = useRef(null);
-            const hasData = dataPoints.reduce((sum, v) => sum + v, 0) > 0;
 
-            useEffect(() => {
-                if (chartInstanceRef.current) {
-                    chartInstanceRef.current.destroy();
-                }
 
-                if (!chartRef.current || !hasData) {
-                    return;
-                }
-                
-                const ctx = chartRef.current.getContext('2d');
-                const gradient = ctx.createLinearGradient(0, 0, 0, 250);
-                gradient.addColorStop(0, `${color}99`);
-                gradient.addColorStop(1, `${color}00`);
-
-                chartInstanceRef.current = new Chart(ctx, {
-                    type: 'line',
-                    data: {
-                        labels: labels,
-                        datasets: [{
-                            label: title,
-                            data: dataPoints,
-                            borderColor: color,
-                            backgroundColor: gradient,
-                            tension: 0.4,
-                            fill: true,
-                            pointRadius: 4,
-                            pointBackgroundColor: color,
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: {
-                            legend: { display: false },
-                            title: { display: false },
-                            tooltip: {
-                                callbacks: {
-                                    label: (context) => {
-                                        let label = context.dataset.label || '';
-                                        if (label) {
-                                            label += ': ';
-                                        }
-                                        label += formatCurrency(context.parsed.y);
-                                        return label;
-                                    }
-                                }
-                            }
-                        },
-                        scales: {
-                            y: { 
-                                beginAtZero: true, 
-                                ticks: { 
-                                    callback: (val) => formatCurrency(val).replace('K', '') 
-                                },
-                                grid: { color: '#e5e7eb' } // Light grid lines
-                            },
-                            x: { 
-                                grid: { display: false } // No vertical grid lines
-                            }
-                        }
+        // --- DASHBOARD OBJECT DOCUMENT TEMPLATE INJECTION RENDERER ---
+        const renderDashboardView = () => {
+            const currentWeekData = getWeekData(currentWeekStartDate);
+            
+            document.getElementById('week-identifier').textContent = getWeekIdentifier(currentWeekData[0].date);
+            document.getElementById('date-range').textContent = getDateRangeString(currentWeekData);
+            document.getElementById('streak-count-display').textContent = fullData.streak;
+            
+            Object.entries(fullData.checklistState).forEach(([dayName, isBalanced]) => {
+                const dayWidget = document.getElementById(`check-${dayName}`);
+                if (dayWidget) {
+                    const indicator = dayWidget.querySelector('.chk-indicator');
+                    if (isBalanced) {
+                        indicator.className = "chk-indicator w-5 h-5 rounded-full bg-ios-green text-[10px] text-white flex items-center justify-center font-bold shadow-md shadow-ios-green/20 animate-fade-in";
+                        indicator.innerHTML = '<i class="fas fa-check"></i>';
+                        dayWidget.classList.remove('border-black/5');
+                        dayWidget.classList.add('border-ios-green/30', 'bg-ios-green/5');
+                    } else {
+                        indicator.className = "chk-indicator w-5 h-5 rounded-full bg-black/5 border border-black/10 flex items-center justify-center text-[10px] text-ios-gray";
+                        indicator.innerHTML = '<i class="fas fa-minus"></i>';
+                        dayWidget.className = "flex flex-col items-center p-1.5 rounded-lg bg-black/5 border border-black/5";
                     }
-                });
-
-                return () => {
-                    if (chartInstanceRef.current) {
-                        chartInstanceRef.current.destroy();
-                    }
-                };
-            }, [dataPoints, labels, title, color, hasData]);
-
-            if (!hasData) {
-                return <div className="h-full flex items-center justify-center text-gray-400 text-sm">No financial data for line chart.</div>;
-            }
-
-            return <div className="relative chart-container w-full"><canvas ref={chartRef} /></div>;
-        };
-        
-        // CarouselCard (Kept as is)
-        const CarouselCard = ({ title, value, sub, icon: Icon, colorClass, dateKey, expenseType }) => (
-            <Card className={`flex-none w-60 p-4 rounded-xl border border-gray-200 shadow-sm bg-white transition-transform active:scale-[0.98] ${colorClass}`} onClick={() => alert(`${expenseType || 'Transaction'} Detail:\nTitle: ${title}\nValue: ${value}\nDate: ${formatDateForDisplay(dateKey)}`)}>
-                <div className="flex items-center justify-between mb-2">
-                    <span className="text-[11px] font-medium text-gray-500 uppercase">{expenseType || 'Transaction'}</span>
-                    <Icon size={16} className="text-gray-400" />
-                </div>
-
-                <p className="text-[22px] font-semibold text-gray-900 mb-1 truncate">
-                    {value}
-                </p>
-
- <span className="text-[15px] font-medium text-gray-500 uppercase">{title || 'Transaction'}</span>
-
-                <p className="text-[13px] text-gray-600 leading-snug line-clamp-2 ">
-                    {sub}
-                </p>
-            </Card>
-        );
-
-        // --- MAIN DASHBOARD APP ---
-        function AvantiLedgerDashboard() {
-            const [isMenuExpanded, setIsMenuExpanded] = useState(false);
-            const [currentWeekStartDate, setCurrentWeekStartDate] = useState(() => getStartOfWeek(new Date()));
-            
-            const { fullData, isLoading, error, currentWeekData, userDetails } = useDashboardData(currentWeekStartDate);
-            
-            const handleWeekNavigation = useCallback((days) => {
-                setCurrentWeekStartDate(prevDate => {
-                    const newDate = new Date(prevDate);
-                    newDate.setDate(prevDate.getDate() + days);
-                    return newDate;
-                });
-            }, []);
-            
-            const salesData = fullData?.sales;
-            const inventoryData = fullData?.inventory;
-            
-            // --- SALES METRICS ---
-            const currentRevenue = salesData?.currentWeekTotalRevenue || 0;
-            const lastRevenue = salesData?.lastWeekTotalRevenue || 0;
-            const revenueTrend = lastRevenue > 0 ? ((currentRevenue - lastRevenue) / lastRevenue) * 100 : (currentRevenue > 0 ? 100 : 0);
-            
-            const totalExpenses = salesData?.currentWeekMetrics.reduce((sum, d) => sum + d.totalWorkingExpenses, 0) || 0;
-            const totalIncomes = salesData?.currentWeekMetrics.reduce((sum, d) => sum + d.totalIncome, 0) || 0;
-            const netSaleRevenue = currentRevenue - totalExpenses; // Recalculate based on fetched totals
-            
-            // --- INVENTORY METRICS ---
-            const totalStockUnits = inventoryData?.totalStockUnits || 0;
-            const totalExpectedRevenue = inventoryData?.totalExpectedRevenue || 0;
-            const totalEmptiesUnits = inventoryData?.totalEmptiesUnits || 0;
-            const inventoryDate = inventoryData?.inventoryDate || 'N/A';
-
-            // --- CHART DATA GENERATION ---
-            
-            // 1. Revenue Breakdown (Doughnut) - Sales, Income, and Expenses for comparison
-            const goodsSales = Math.max(0, currentRevenue - totalIncomes); // Sales from Goods (Total Revenue - Other Income)
-            
-            // For Doughnut (Part-to-Whole), we use Total Revenue + Total Expenses as the "whole" for a comparative view.
-            // A clearer approach for a Doughnut chart is to break down Total Revenue only.
-            // I will use Total Revenue (Sales + Income) for the chart, but include Net Revenue line chart.
-            const doughnutData = [ goodsSales, totalIncomes, totalExpenses ];
-            const doughnutLabels = ['Total Sales', 'Total Incomes', 'Total Expenses'];
-            const doughnutColors = ['#3498db', '#2ecc71', '#f39c12']; // Dark Blue, Green, Red
-            
-            // 2. Unit Sales (Bar)
-            const top5Products = useMemo(() => {
-                return fullData?.productMetrics
-                    .sort((a, b) => b.units_sold - a.units_sold)
-                    .slice(0, 5) || [];
-            }, [fullData]);
-            
-            const barChartData = top5Products.map(p => p.units_sold);
-            const barChartLabels = top5Products.map(p => p.name.split(' ')[0]); 
-            
-            // 3. Net Revenue (Line)
-            const netRevenueChartData = currentWeekData.map(day => {
-  const dayMetric = salesData?.currentWeekMetrics.find(
-    d => d.dateKey === day.dateKey
-  );
-
-  return dayMetric ? dayMetric.netSaleRevenue : 0;
-});
-            const netRevenueChartLabels = currentWeekData.map(d => d.day);
-            
-            // 4. Carousels
-            const allTransactions = [
-                ...salesData?.weeklyExpenses.map(e => ({
-                    ...e, type: 'Expense', icon: Icons.CreditCard, colorClass: 'bg-red-50/70',
-                    title: e.description, value: formatCurrency(e.amount), sub: `Recorded on ${formatDateForDisplay(e.dateKey)}`,
-                })) || [],
-                ...salesData?.weeklyIncomes.map(i => ({
-                    ...i, type: 'Income', icon: Icons.DollarSign, colorClass: 'bg-green-50/70',
-                    title: i.description, value: formatCurrency(i.amount), sub: `Recorded on ${formatDateForDisplay(i.dateKey)}`,
-                })) || [],
-            ];
-            
-            const top5Transactions = allTransactions
-                .sort((a, b) => b.amount - a.amount)
-                .slice(0, 1000)
-                .map(t => ({
-                    title: t.title,
-                    value: t.value,
-                    sub: t.sub,
-                    icon: t.icon,
-                    colorClass: t.colorClass,
-                    dateKey: t.dateKey,
-                    expenseType: t.type
-                }));
-
-
-            return (
-                <div id="root-container" className="flex w-full h-full">
-                    {/* Menu Backdrop for overlay effect */}
-                    <div 
-                        className={`backdrop ${isMenuExpanded ? 'visible' : ''}`}
-                        onClick={() => setIsMenuExpanded(false)}
-                    ></div>
-
-                    <Sidebar 
-                        isExpanded={isMenuExpanded} 
-                        toggleExpand={() => setIsMenuExpanded(!isMenuExpanded)} 
-                        userDetails={userDetails} 
-                    />
-                    
-                    {/* Main Content Area - Must accommodate the slim menu width (65px) */}
- <header className="fixed top-0 z-20 bg-avanti-blue shadow-lg h-16 flex items-center justify-between px-4 sm:px-6 shrink-0 min-w-full w-screen ">
-                             {/* Left: Avanti Logo + Dashboard Title */}
-                            <h1 className="text-xl font-black tracking-tight text-white flex items-center">
-                                {/* Avanti Logo at the left of the dashboard header */}
-                                {userDetails.logoUrl ? (
-                                    <img src="https://ik.imagekit.io/3mtmeexff/IMG_8590_E6Ai7mKZx.jpeg?updatedAt=1755383517851" alt="Avanti Logo" className="w-12 h-12 m-[-5px] p-1  fit " />
-                                ) : (
-                                    <div className="w-8 h-8 rounded-full bg-white text-avanti-blue flex items-center justify-center shrink-0 p-1 mr-2">
-                                        <Icons.Zap size={18} />
-                                    </div>
-                                )}
-                                <span>Avanti<span class="text-blue-200">.ledger</span></span>
-                            </h1>
-                            
-                            {/* Right: Menu Expander for mobile/initial state */}
-                            <button 
-                                onClick={() => setIsMenuExpanded(true)} 
-                                className="lg:hidden text-white p-2 rounded-lg hover:bg-avanti-blue/80 active:scale-95 transition-transform"
-                            >
-                                <Icons.Menu size={24} />
-                            </button>
-                        </header>
-                    <div className="main-content flex flex-col max-w-full bg-gray-100 relative">
-                        
-                        {/* Header */}
-                       
-                        
-                        {/* Scrollable Dashboard Body */}
-                        <main className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
-                            
-                            {/* Weak Report Highlight */}
-                            
-
-                            
-                            {/* Week Navigator */}
-                            <WeekNavigator weekData={currentWeekData} onNavigate={handleWeekNavigation} />
-
-<WeakReportAlert unbalancedDays={fullData?.unbalancedDays} />
-
-                           {/* Reports Carousel */}
-<div
-  style={{
-    position: "relative",
-    marginLeft: "-16px",
-    marginRight: "-16px",
-    paddingLeft: "16px",
-    paddingRight: "16px",
-  }}
->
-  <div
-    style={{
-      display: "flex",
-      gap: "24px",
-      overflowX: "auto",
-      scrollSnapType: "x mandatory",
-      scrollBehavior: "smooth",
-      WebkitOverflowScrolling: "touch",
-      scrollbarWidth: "none",
-    }}
-  >
-    
-
-    {/* Inventory Card */}
-    <div
-      style={{
-        minWidth: "100%",
-        scrollSnapAlign: "start",
-        flexShrink: 0,
-      }}
-    >
-      <InventoryInfoCard
-        expectedReturn={totalExpectedRevenue}
-        totalUnits={totalStockUnits}
-        totalEmpties={totalEmptiesUnits}
-        date={inventoryDate}
-        onClick={() => (window.location.href = "inventory-report.html")}
-      />
-    </div>
-{/* Sales Card */}
-    <div
-      style={{
-        minWidth: "100%",
-        scrollSnapAlign: "start",
-        flexShrink: 0,
-      }}
-    >
-      <SalesInfoCard
-        revenue={currentRevenue}
-        netSaleRevenue={netSaleRevenue}
-        trend={revenueTrend}
-        onClick={() => (window.location.href = "sales-report.html")}
-      />
-    </div>
-  </div>
-
-
-  {/* Static swipe dots */}
-  <div
-    style={{
-      display: "flex",
-      justifyContent: "center",
-      marginTop: "12px",
-      gap: "8px",
-    }}
-  >
-    <div
-      style={{
-        width: "8px",
-        height: "8px",
-        borderRadius: "50%",
-        backgroundColor: "#000", // active dot
-      }}
-    />
-    <div
-      style={{
-        width: "8px",
-        height: "8px",
-        borderRadius: "50%",
-        backgroundColor: "#ccc", // inactive dot
-      }}
-    />
-  </div>
-</div>
-
-  {/* Charts Grid - 3 columns on large screens for professional display */}
-                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 chart-grid-container">
-                                {/* Weekly Net Sale Revenue Trend (Line Chart) */}
-                                <div className="chart-grid lg:col-span-2">
-                                    <h3 className="text-sm font-bold text-gray-700 mb-4 uppercase tracking-wider border-b pb-2 border-gray-100">Weekly Net Sale Revenue Trend (K)</h3>
-                                    <div className="chart-container">
-                                        <LineChart 
-                                            dataPoints={netRevenueChartData} 
-                                            labels={netRevenueChartLabels} 
-                                            title="Net Revenue"
-                                            color="#3f72af"
-                                        />
-                                    </div>
-                                </div>
-
-{/* Revenue & Expenses Breakdown (Doughnut Chart) */}
-                                <div className="chart-grid">
-                                    <h3 className="text-sm font-bold text-gray-700 mb-4 uppercase tracking-wider border-b pb-2 border-gray-100">Revenue & Expense Sources</h3>
-                                    <div className="chart-container flex items-center justify-center">
-                                        <DoughnutChart 
-                                            data={doughnutData} 
-                                            labels={doughnutLabels} 
-                                            title="Revenue Breakdown"
-                                            colors={doughnutColors}
-                                        />
-                                    </div>
-                                </div>
-           
-                                
-                            
-                          
-                                
-                                                     
-                                {/* Top 5 Products by Units Sold (Bar Chart) - Full width for better visualization */}
-                                <div className="chart-grid lg:col-span-3">
-                                    <h3 className="text-sm font-bold text-gray-700 mb-4 uppercase tracking-wider border-b pb-2 border-gray-100">Top 5 Products by Units Sold</h3>
-                                    <div className="chart-container">
-                                        <BarChart 
-                                            data={barChartData} 
-                                            labels={barChartLabels} 
-                                            title="Units Sold" 
-                                            color="#10b981"
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-
-
-                            
-                            {/* Transactions Carousel (Combined Expenses/Income) */}
-                            <section className="pt-4">
-                                <h3 className="text-sm font-bold text-gray-700 uppercase tracking-wider ml-1 mb-3">Top Weekly Transactions (Expenses & Incomes)</h3>
-                                <div className="flex overflow-x-auto no-scrollbar space-x-4 pb-2">
-                                    {top5Transactions.length > 0 ? top5Transactions.map((t, i) => (
-                                        <CarouselCard key={'txn'+i} {...t} />
-                                    )) : <p className="p-4 text-gray-400">No significant transactions recorded this week.</p>}
-                                </div>
-
-                            </section>
-
-                            <div className="h-10"></div> {/* Footer space */}
-                            
-                            {/* Error Display */}
-                            {error && (
-                                <div className="fixed bottom-4 left-4 right-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg shadow-xl z-50">
-                                    <p className="font-bold">Error:</p>
-                                    <p className="text-sm">{error}</p>
-                                </div>
-                            )}
-                            
-                            {/* Loading Overlay */}
-                            {isLoading && (
-                                <div className="absolute inset-0 bg-gray-100/70 backdrop-blur-sm flex items-center justify-center z-50">
-                                    <div className="p-4 bg-white rounded-lg shadow-xl flex items-center">
-                                        <i className="fas fa-spinner fa-spin text-avanti-blue mr-3"></i>
-                                        <p className="text-avanti-blue font-semibold">Loading Dashboard Data...</p>
-                                    </div>
-                                </div>
-                            )}
-
-                        </main>
-                    </div>
-                </div>
-            );
-        }
-
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<AvantiLedgerDashboard />);
-
-
-    </script>
-
-<script>
-(function () {
-    const requiredKeys = [
-        'AV_ledger_account_key',
-        'AV_ledger_username',
-        'AV_ledger_auth_status'
-    ];
-
-    const isMissing = requiredKeys.some(key => {
-        const value = localStorage.getItem(key);
-        return value === null || value === '';
-    });
-
-    if (isMissing) {
-        // Clear anything partially stored (safety)
-        localStorage.clear();
-
-        // Redirect to login
-        window.location.replace('index.html');
-    }
-})();
-</script>
-<div id="network-overlay" style="display: none;">
-    <div class="loader-content">
-        <div class="spinner"></div>
-        <p><i class="fa fa-exclamation-triangle"></i>
- This page is not available. Check your internet connection.</p>
-    </div>
-</div>
-
-<style>
-    /* Full frosted background */
-    #network-overlay {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(255, 255, 255, 0.4);
-        backdrop-filter: blur(8px); /* The "frosted" effect */
-        -webkit-backdrop-filter: blur(8px);
-        z-index: 50;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        font-family: sans-serif;
-    }
-
-    .loader-content {
-        text-align: center;
-        color: #333;
-    }
-
-    /* Simple CSS Spinner */
-    .spinner {
-        width: 50px;
-        height: 50px;
-        border: 5px solid #f3f3f3;
-        border-top: 5px solid #3498db;
-        border-radius: 50%;
-        animation: spin 1s linear infinite;
-        margin: 0 auto 20px;
-    }
-
-    @keyframes spin {
-        0% { transform: rotate(0deg); }
-        100% { transform: rotate(360deg); }
-    }
-</style>
-
-<script>
-    const overlay = document.getElementById('network-overlay');
-
-    function checkNetwork() {
-        const isOnline = navigator.onLine;
-        let isSlow = false;
-
-        // Check for slow connection types using the Network Information API
-        if (navigator.connection) {
-            const type = navigator.connection.effectiveType; // 'slow-2g', '2g', '3g', or '4g'
-            if (type === 'slow-2g' || type === '2g') {
-                isSlow = true;
-            }
-        }
-
-        // Show overlay if offline OR if the connection is very slow
-        if (!isOnline || isSlow) {
-            overlay.style.display = 'flex';
-        } else {
-            overlay.style.display = 'none';
-        }
-    }
-
-    // 1. Listen for immediate online/offline changes
-    window.addEventListener('online', checkNetwork);
-    window.addEventListener('offline', checkNetwork);
-
-    // 2. Listen for connection quality changes (speed drops)
-    if (navigator.connection) {
-        navigator.connection.addEventListener('change', checkNetwork);
-    }
-
-    // 3. Run on initial page load
-    checkNetwork();
-</script>
-
-<script>
-(function() {
-    const ACCOUNT_KEY_STORAGE = 'AV_ledger_account_key';
-    const currentLocalKey = localStorage.getItem(ACCOUNT_KEY_STORAGE);
-
-    // Only run if we are actually logged into an account
-    if (!currentLocalKey) return;
-
-    // Listen to the top-level accounts node
-    const accountsRef = firebase.database().ref('accounts');
-
-    accountsRef.on('value', (snapshot) => {
-        const allAccounts = snapshot.val();
-        if (!allAccounts) return;
-
-        // 1. If our current account key still exists, we are fine.
-        if (allAccounts[currentLocalKey]) {
-            // Optional: You could sync the Account Name to local storage here if needed
-            return;
-        }
-
-        // 2. If our key is MISSING, look for it in the history of other accounts
-        console.warn("Current Account Key not found. Searching for migration...");
-        let migrationFound = false;
-
-        for (const [newSlug, data] of Object.entries(allAccounts)) {
-            // Check if this account has a list of 'oldAccountKeys' 
-            // and if our missing key is one of them.
-            if (data.oldAccountKeys && Array.isArray(data.oldAccountKeys) && data.oldAccountKeys.includes(currentLocalKey)) {
-                
-                console.log(`Account Migration Detected! ${currentLocalKey} -> ${newSlug}`);
-                
-                // 3. Update the local storage with the new Slug
-                localStorage.setItem(ACCOUNT_KEY_STORAGE, newSlug);
-                
-                migrationFound = true;
-                
-                // 4. Force a reload so the entire app points to the new Firebase path
-                window.location.reload();
-                break;
-            }
-        }
-
-        // 5. If it's truly gone (no migration found), the account was likely deleted.
-        if (!migrationFound) {
-            console.error("Account has been deleted or access revoked.");
-            localStorage.clear();
-            window.location.href = "index.html";
-        }
-    }, (error) => {
-        // If we get a permission error, it usually means our key was deleted 
-        // and we no longer have access to the accounts node.
-        if (error.code === 'PERMISSION_DENIED') {
-            console.warn("Access denied. Attempting global account search...");
-            // In a strict security setup, you might need a dedicated 'migrations' node 
-            // that is publicly readable to find where your account moved to.
-        }
-    });
-})();
-</script>
-
-<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-
-<style>
-    :root { 
-        --av-blue: #007aff; 
-        --av-red: #ff3b30;
-        --av-bg: rgba(255, 255, 255, 0.94);
-        --av-spring: cubic-bezier(0.32, 0.72, 0, 1);
-    }
-    
-    .av-overlay {
-        position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-        background: rgba(0,0,0,0.35); z-index: 9998;
-        opacity: 0; transition: opacity 0.5s ease;
-        backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
-        display: none;
-    }
-    .av-overlay.active { display: block; opacity: 1; }
-
-    .av-sheet {
-        position: fixed; bottom: 0; left: 0; right: 0; height: auto;
-        background: var(--av-bg); 
-        backdrop-filter: saturate(180%) blur(25px); -webkit-backdrop-filter: saturate(180%) blur(25px);
-        border-radius: 36px 36px 0 0; z-index: 9999;
-        transform: translateY(100%); 
-        transition: transform 0.65s var(--av-spring);
-        box-shadow: 0 -15px 45px rgba(0,0,0,0.15);
-        display: flex; flex-direction: column; 
-        padding: 16px 20px calc(env(safe-area-inset-bottom) + 24px);
-        font-family: -apple-system, system-ui, sans-serif;
-    }
-    .av-sheet.active { transform: translateY(0); }
-
-    .av-handle { width: 36px; height: 5px; background: #d1d1d6; border-radius: 10px; margin: 0 auto 24px; }
-
-    .av-visual-container {
-        display: flex; align-items: center; justify-content: center;
-        gap: 15px; padding: 10px 0 30px;
-    }
-
-    .av-device { text-align: center; width: 95px; transition: transform 0.4s var(--av-spring); }
-    .av-device.active { transform: scale(1.1); }
-    
-    .av-icon { 
-        font-size: 48px; color: #c7c7cc; margin-bottom: 12px; 
-        transition: color 0.4s, text-shadow 0.4s;
-    }
-    .av-device.active .av-icon { 
-        color: var(--av-blue); 
-        text-shadow: 0 0 20px rgba(0,122,255,0.25); 
-    }
-
-    .av-device-name { font-size: 11px; font-weight: 700; color: #3a3a3c; text-transform: uppercase; letter-spacing: 0.8px; }
-
-    .av-sync-path { 
-        flex: 1; height: 4px; background: #e5e5ea; border-radius: 4px; 
-        position: relative; overflow: hidden; max-width: 120px;
-    }
-    
-    .av-pulse {
-        position: absolute; width: 40px; height: 100%;
-        background: linear-gradient(90deg, transparent, var(--av-blue), transparent);
-        animation: avFlow 1.6s infinite ease-in-out;
-        filter: blur(1px);
-    }
-    .av-pulse.fast { animation-duration: 0.5s; }
-    
-    @keyframes avFlow { 0% { left: -50%; } 100% { left: 150%; } }
-
-    .av-content { text-align: center; }
-    .av-title { font-size: 26px; font-weight: 800; color: #000; margin-bottom: 10px; letter-spacing: -0.5px; }
-    .av-subtitle { font-size: 16px; color: #636366; line-height: 1.45; margin-bottom: 30px; }
-
-    .av-btn { 
-        width: 100%; height: 58px; border-radius: 16px; font-size: 17px; font-weight: 700; 
-        border: none; cursor: pointer; transition: all 0.2s;
-        display: flex; align-items: center; justify-content: center;
-    }
-    .av-btn:active { transform: scale(0.96); }
-    .av-btn-main { background: var(--av-blue); color: white; box-shadow: 0 4px 12px rgba(0,122,255,0.2); }
-    .av-btn-success { background: #34c759; color: white; }
-    .av-btn-sec { background: transparent; color: var(--av-red); margin-top: 10px; }
-</style>
-
-<div id="avanti-sync-root"></div>
-
-<script type="text/babel">
-    const { useState, useEffect } = React;
-
-    const AvantiApprovalApp = () => {
-        const [isVisible, setIsVisible] = useState(false);
-        const [isActive, setIsActive] = useState(false);
-        const [status, setStatus] = useState('pending'); // pending, approving, success
-        const [request, setRequest] = useState(null);
-        const [deviceInfo, setDeviceInfo] = useState({ src: 'Current', trg: 'Remote', srcIco: 'fa-mobile-alt', trgIco: 'fa-mobile-alt' });
-
-        useEffect(() => {
-            const acc = localStorage.getItem('AV_ledger_account_key');
-            const user = localStorage.getItem('AV_ledger_username');
-            const database = window.db || (window.firebase && firebase.database());
-
-            if (!database || !acc || !user) return;
-
-            const path = `accounts/${acc}/profiles/${user}/pendingRequests`;
-            const requestsRef = database.ref(path);
-
-            requestsRef.on('value', async (snapshot) => {
-                const data = snapshot.val();
-                if (!data) {
-                    toggleSheet(false);
-                    return;
-                }
-
-                const requesterId = Object.keys(data)[0];
-                const req = data[requesterId];
-
-                if (req && req.type === 'download' && req.status === 'pending') {
-                    // Fetch device display metadata
-                    const [trgSnap, srcSnap] = await Promise.all([
-                        database.ref(`accounts/${acc}/profiles/${requesterId}/deviceName`).once('value'),
-                        database.ref(`accounts/${acc}/profiles/${user}/deviceName`).once('value')
-                    ]);
-
-                    setRequest({ id: requesterId, acc, user, db: database });
-                    setDeviceInfo({
-                        src: user,
-                        trg: requesterId,
-                        srcIco: getIcon(srcSnap.val()),
-                        trgIco: getIcon(trgSnap.val())
-                    });
-                    toggleSheet(true);
-                } else {
-                    toggleSheet(false);
                 }
             });
 
-            return () => requestsRef.off();
-        }, []);
+            const salesData = fullData.sales;
+            const inventoryData = fullData.inventory;
 
-        const getIcon = (name) => {
-            const n = (name || "").toLowerCase();
-            return ['pc', 'mac', 'laptop', 'desktop', 'windows'].some(k => n.includes(k)) ? 'fa-laptop' : 'fa-mobile-alt';
-        };
+            const currentRevenue = salesData.currentWeekTotalRevenue || 0;
+            const lastRevenue = salesData.lastWeekTotalRevenue || 0;
+            const revenueTrend = lastRevenue > 0 ? ((currentRevenue - lastRevenue) / lastRevenue) * 100 : (currentRevenue > 0 ? 100 : 0);
+            const totalExpenses = salesData.currentWeekMetrics.reduce((sum, d) => sum + d.totalWorkingExpenses, 0) || 0;
+            const totalIncomes = salesData.currentWeekMetrics.reduce((sum, d) => sum + d.totalIncome, 0) || 0;
+            const totalPureSales = salesData.currentWeekMetrics.reduce((sum, d) => sum + d.totalSales, 0) || 0;
+            
+            const netSaleRevenue = currentRevenue - totalExpenses;
 
-        const toggleSheet = (show) => {
-            if (show) {
-                setIsVisible(true);
-                setTimeout(() => setIsActive(true), 50);
+            document.getElementById('card-expected-return').textContent = formatCurrency(inventoryData.totalExpectedRevenue || 0);
+            document.getElementById('card-stock-units').textContent = formatTotalUnits(inventoryData.totalStockUnits || 0);
+            document.getElementById('card-empty-bottles').textContent = formatTotalUnits(inventoryData.totalEmptiesUnits || 0);
+            document.getElementById('card-inventory-date').textContent = `Inventory as at ${inventoryData.inventoryDate || 'N/A'}`;
+
+            document.getElementById('card-total-revenue').textContent = formatCurrency(currentRevenue);
+            document.getElementById('card-net-revenue').textContent = formatCurrency(netSaleRevenue);
+            document.getElementById('card-revenue-trend').textContent = `${revenueTrend >= 0 ? '+' : ''}${revenueTrend.toFixed(1)}% vs Last Week`;
+            
+            const trendIconBox = document.getElementById('card-trend-icon-container');
+            if (revenueTrend >= 0) {
+                trendIconBox.innerHTML = `<i class="fas fa-arrow-trend-up text-ios-green text-xs"></i>`;
+                document.getElementById('card-revenue-trend').className = "text-xs font-bold text-ios-green";
             } else {
-                setIsActive(false);
-                setTimeout(() => {
-                    setIsVisible(false);
-                    setStatus('pending');
-                }, 600);
+                trendIconBox.innerHTML = `<i class="fas fa-arrow-trend-down text-ios-red text-xs"></i>`;
+                document.getElementById('card-revenue-trend').className = "text-xs font-bold text-ios-red";
+            }
+
+            const alertBox = document.getElementById('unbalanced-alert-container');
+            if (fullData.unbalancedDays && fullData.unbalancedDays.length > 0) {
+                alertBox.innerHTML = `
+                    <div class="bg-ios-orange/10 border border-ios-orange/20 p-3.5 rounded-ios shadow-sm animate-fade-in flex items-start space-x-3">
+                        <i class="fas fa-shield-halved text-ios-orange text-base mt-0.5"></i>
+                        <div>
+                            <p class="text-xs font-bold text-black tracking-tight">Forensic Accounting Guardrail Active</p>
+                            <p class="text-[11px] text-ios-text-secondary leading-normal mt-0.5">Data for <strong class="text-ios-orange font-bold">${fullData.unbalancedDays.join(', ')}</strong> is excluded because those days are not yet balanced.</p>
+                        </div>
+                    </div>`;
+            } else {
+                alertBox.innerHTML = '';
+            }
+
+            const netRevenueChartPoints = currentWeekData.map(day => {
+                const dayMetric = salesData.currentWeekMetrics.find(d => d.dateKey === day.dateKey);
+                return dayMetric ? dayMetric.netSaleRevenue : 0;
+            });
+            drawLineChart(currentWeekData.map(d => d.day), netRevenueChartPoints);
+
+            const proportionalSplitTotal = totalPureSales + totalIncomes - totalExpenses;
+            drawDoughnutChart(['Sales', 'Incomes', 'Expenses'], [totalPureSales, totalIncomes, totalExpenses], proportionalSplitTotal);
+
+            renderTop5ChartSection();
+
+            const transactionsContainer = document.getElementById('transactions-container');
+            const allTransactions = [
+                ...salesData.weeklyExpenses.map(e => ({ ...e, type: 'Expense', icon: 'fa-arrow-up-right-from-square', color: 'text-ios-red', bg: 'bg-ios-red/10', border: 'border-ios-red/20', title: e.description, value: formatCurrency(e.amount), sub: `Logged: ${formatDateForDisplay(e.dateKey)}` })),
+                ...salesData.weeklyIncomes.map(i => ({ ...i, type: 'Income', icon: 'fa-arrow-down-left-and-arrow-up-right-to-square', color: 'text-ios-green', bg: 'bg-ios-green/10', border: 'border-ios-green/20', title: i.description, value: formatCurrency(i.amount), sub: `Logged: ${formatDateForDisplay(i.dateKey)}` }))
+            ].sort((a, b) => b.amount - a.amount);
+
+            if (allTransactions.length > 0) {
+                transactionsContainer.innerHTML = allTransactions.map(t => `
+                    <div onclick="alert('${t.type} Scope Entry:\\nDescription: ${t.title}\\nVolume: ${t.value}')" class="snap-start flex-none w-52 p-3.5 rounded-ios bg-ios-card border border-black/5 shadow-sm flex flex-col justify-between active:scale-95 transition-transform">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="px-2 py-0.5 text-[9px] font-bold uppercase rounded ${t.bg} ${t.color} border ${t.border}">${t.type}</span>
+                            <i class="fas ${t.icon} text-[11px] text-ios-gray"></i>
+                        </div>
+                        <p class="text-xl font-black text-black tracking-tight mb-1">${t.value}</p>
+                        <p class="text-xs font-bold text-black truncate mb-0.5">${t.title || 'General Entry'}</p>
+                        <p class="text-[10px] text-ios-gray">${t.sub}</p>
+                    </div>
+                `).join('');
+
+                // Render functional transaction carousel synchronization indicator dots
+                const dotsContainer = document.getElementById('transactions-dots-container');
+                if (dotsContainer) {
+                    dotsContainer.innerHTML = allTransactions.map((_, idx) => `
+                        <span id="tx-dot-${idx}" class="${idx === 0 ? 'w-2 h-2 bg-[#3f72af]' : 'w-1.5 h-1.5 bg-black/15'} rounded-full transition-all duration-200"></span>
+                    `).join('');
+                }
+            } else {
+                transactionsContainer.innerHTML = '<p class="p-4 text-ios-gray text-xs italic w-full text-center">No structural logs parsed on current runtime period.</p>';
+                document.getElementById('transactions-dots-container').innerHTML = '';
             }
         };
 
-        const handleApproval = async (isApproved) => {
-            if (!request) return;
-            const path = `accounts/${request.acc}/profiles/${request.user}/pendingRequests/${request.id}`;
+        const renderTop5ChartSection = () => {
+            if(!fullData || !fullData.productMetrics) return;
+            const top5MetricMode = document.getElementById('top5-metric-select').value;
+            
+            const top5Products = [...fullData.productMetrics].sort((a, b) => {
+                if (top5MetricMode === 'revenue') {
+                    return b.revenue - a.revenue;
+                }
+                return b.units_sold - a.units_sold;
+            }).slice(0, 5);
 
-            if (isApproved) {
-                setStatus('approving');
-                await request.db.ref(`${path}/status`).set('approved');
-                setTimeout(() => {
-                    setStatus('success');
-                    setTimeout(() => toggleSheet(false), 1000);
-                }, 800);
-            } else {
-                await request.db.ref(path).remove();
-                toggleSheet(false);
-            }
+            const barLabels = top5Products.map(p => {
+                const nameStr = p.name || '';
+                if (nameStr.trim().includes(' ')) {
+                    return nameStr.split(' ');
+                }
+                return nameStr;
+            });
+
+            const barPoints = top5Products.map(p => top5MetricMode === 'revenue' ? p.revenue : p.units_sold);
+            const shouldSlantLabels = top5Products.some(p => !(p.name || '').trim().includes(' ') && (p.name || '').length > 7);
+
+            drawBarChart(barLabels, barPoints, shouldSlantLabels, top5MetricMode === 'revenue');
         };
 
-        if (!isVisible) return null;
+        // --- CALENDAR SELECTION EVENT LISTENERS ---
+        document.getElementById('prev-week-btn').addEventListener('click', () => {
+            currentWeekStartDate.setDate(currentWeekStartDate.getDate() - 7);
+            document.getElementById('loading-overlay').style.display = 'flex';
+            const accountKey = localStorage.getItem('AV_ledger_account_key');
+            const username = localStorage.getItem('AV_ledger_username');
+            getFirebasePaths(accountKey, username).then(({statsPath}) => {
+                database.ref(statsPath).once('value', (statsSnap) => {
+                    database.ref(`accounts/${accountKey}/global_ledger/empties_tracking`).once('value', (emptiesSnap) => {
+                        processAndRenderData(statsSnap.val() || {}, emptiesSnap.val() || {});
+                    });
+                });
+            });
+        });
+        
+        document.getElementById('next-week-btn').addEventListener('click', () => {
+            currentWeekStartDate.setDate(currentWeekStartDate.getDate() + 7);
+            document.getElementById('loading-overlay').style.display = 'flex';
+            const accountKey = localStorage.getItem('AV_ledger_account_key');
+            const username = localStorage.getItem('AV_ledger_username');
+            getFirebasePaths(accountKey, username).then(({statsPath}) => {
+                database.ref(statsPath).once('value', (statsSnap) => {
+                    database.ref(`accounts/${accountKey}/global_ledger/empties_tracking`).once('value', (emptiesSnap) => {
+                        processAndRenderData(statsSnap.val() || {}, emptiesSnap.val() || {});
+                    });
+                });
+            });
+        });
+        
+        document.getElementById('top5-metric-select').addEventListener('change', () => {
+            renderTop5ChartSection();
+        });
 
-        return (
-            <React.Fragment>
-                <div className={`av-overlay ${isActive ? 'active' : ''}`} onClick={() => handleApproval(false)}></div>
-                <div className={`av-sheet ${isActive ? 'active' : ''}`}>
-                    <div className="av-handle"></div>
+        document.getElementById('logout-btn').addEventListener('click', () => {
+            if (!window.confirm("⚠️ Are you sure you want to log out of your account? This action is irreversible.")) return;
+            localStorage.removeItem("AV_ledger_account_key");
+            localStorage.removeItem("AV_ledger_username");
+            localStorage.removeItem("AV_ledger_auth_status");
+            window.location.href = "index.html";
+        });
+
+        // --- CORE CAROUSEL INTERACTION SCROLL TRACKERS ---
+        const metricsCarouselElement = document.getElementById('metrics-carousel');
+        if (metricsCarouselElement) {
+            metricsCarouselElement.addEventListener('scroll', () => {
+                const index = Math.round(metricsCarouselElement.scrollLeft / metricsCarouselElement.clientWidth);
+                const d0 = document.getElementById('metric-dot-0');
+                const d1 = document.getElementById('metric-dot-1');
+                if (d0 && d1) {
+                    if (index === 0) {
+                        d0.className = "w-2 h-2 rounded-full bg-[#3f72af] transition-all duration-200";
+                        d1.className = "w-1.5 h-1.5 rounded-full bg-black/15 transition-all duration-200";
+                    } else {
+                        d0.className = "w-1.5 h-1.5 rounded-full bg-black/15 transition-all duration-200";
+                        d1.className = "w-2 h-2 rounded-full bg-[#3f72af] transition-all duration-200";
+                    }
+                }
+            });
+        }
+
+        const txCarouselElement = document.getElementById('transactions-container');
+        if (txCarouselElement) {
+            txCarouselElement.addEventListener('scroll', () => {
+                const cardWidthStep = 222; // 208px card width + 14px spacer margins
+                const index = Math.round(txCarouselElement.scrollLeft / cardWidthStep);
+                const dots = document.getElementById('transactions-dots-container').children;
+                for (let i = 0; i < dots.length; i++) {
+                    if (i === index) {
+                        dots[i].className = "w-2 h-2 rounded-full bg-[#3f72af] transition-all duration-200";
+                    } else {
+                        dots[i].className = "w-1.5 h-1.5 rounded-full bg-black/15 transition-all duration-200";
+                    }
+                }
+            });
+        }
+
+        // --- BOOTSTRAP PIPELINE RUNTIME ---
+        (() => {
+            const requiredKeys = ['AV_ledger_account_key', 'AV_ledger_username', 'AV_ledger_auth_status'];
+            if (requiredKeys.some(key => !localStorage.getItem(key))) {
+                localStorage.clear();
+                window.location.replace('index.html');
+                return;
+            }
+            currentWeekStartDate = getStartOfWeek(new Date());
+            initializeRealtimeEngine();
+        })();
+    </script>
+
+    <script>
+        (() => {
+            const overlay = document.getElementById('network-overlay');
+            function checkNetwork() {
+                const isOnline = navigator.onLine;
+                let isSlow = false;
+                if (navigator.connection) {
+                    const type = navigator.connection.effectiveType;
+                    if (type === 'slow-2g' || type === '2g') isSlow = true;
+                }
+                if(!isOnline || isSlow) {
+                    overlay.classList.remove('hidden');
+                } else {
+                    overlay.classList.add('hidden');
+                }
+            }
+            window.addEventListener('online', checkNetwork);
+            window.addEventListener('offline', checkNetwork);
+            if (navigator.connection) navigator.connection.addEventListener('change', checkNetwork);
+            checkNetwork();
+        })();
+    </script>
+
+    <script>
+        (() => {
+            let activeRequest = null;
+            const overlay = document.getElementById('av-overlay');
+            const sheet = document.getElementById('av-sheet');
+            
+            const toggleSheet = (show, reqData = null) => {
+                if (show && reqData) {
+                    activeRequest = reqData;
+                    document.getElementById('av-src-name').textContent = reqData.user;
+                    document.getElementById('av-trg-name').textContent = reqData.requesterId;
+                    document.getElementById('av-requester-label').textContent = reqData.requesterId;
                     
-                    <div className="av-visual-container">
-                        <div className="av-device active">
-                            <i className={`fas ${deviceInfo.srcIco} av-icon`}></i>
-                            <div className="av-device-name">{deviceInfo.src}</div>
-                        </div>
-                        
-                        <div className="av-sync-path">
-                            <div className={`av-pulse ${status !== 'pending' ? 'fast' : ''}`}></div>
-                        </div>
+                    document.getElementById('av-src-ico').className = `fas ${getIcon(reqData.srcDevice)} text-xl`;
+                    document.getElementById('av-trg-ico').className = `fas ${getIcon(reqData.trgDevice)} text-xl`;
+                    
+                    overlay.classList.add('active');
+                    sheet.classList.add('active');
+                } else {
+                    overlay.classList.remove('active');
+                    sheet.classList.remove('active');
+                    activeRequest = null;
+                }
+            };
 
-                        <div className={`av-device ${isActive ? 'active' : ''}`}>
-                            <i className={`fas ${deviceInfo.trgIco} av-icon`}></i>
-                            <div className="av-device-name">{deviceInfo.trg}</div>
-                        </div>
-                    </div>
+            const getIcon = (name) => {
+                const n = (name || "").toLowerCase();
+                return ['pc', 'mac', 'laptop', 'desktop', 'windows'].some(k => n.includes(k)) ? 'fa-laptop' : 'fa-mobile-alt';
+            };
 
-                    <div className="av-content">
-                        <div className="av-title">Download Request</div>
-                        <p className="av-subtitle">
-                            <strong>{deviceInfo.trg}</strong> wants to download your ledger information.
-                        </p>
-                        
-                        <div className="av-actions">
-                            <button 
-                                className={`av-btn ${status === 'success' ? 'av-btn-success' : 'av-btn-main'}`}
-                                onClick={() => handleApproval(true)}
-                                disabled={status !== 'pending'}
-                            >
-                                {status === 'pending' && "Approve Download"}
-                                {status === 'approving' && "Approving..."}
-                                {status === 'success' && "Authorized"}
-                            </button>
-                            <button className="av-btn av-btn-sec" onClick={() => handleApproval(false)}>
-                                Deny Access
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </React.Fragment>
-        );
-    };
+            const handleApproval = async (isApproved) => {
+                if (!activeRequest) return;
+                const path = `accounts/${activeRequest.acc}/profiles/${activeRequest.user}/pendingRequests/${activeRequest.requesterId}`;
+                const approveBtn = document.getElementById('av-approve-btn');
 
-    const root = ReactDOM.createRoot(document.getElementById('avanti-sync-root'));
-    root.render(<AvantiApprovalApp />);
-</script>
+                if (isApproved) {
+                    approveBtn.textContent = "Authorizing Sync...";
+                    approveBtn.disabled = true;
+                    await firebase.database().ref(`${path}/status`).set('approved');
+                    setTimeout(() => {
+                        approveBtn.textContent = "Handshake Ready";
+                        setTimeout(() => {
+                            toggleSheet(false);
+                            approveBtn.textContent = "Approve Handshake";
+                            approveBtn.disabled = false;
+                        }, 1000);
+                    }, 800);
+                } else {
+                    await firebase.database().ref(path).remove();
+                    toggleSheet(false);
+                }
+            };
 
+            document.getElementById('av-approve-btn').addEventListener('click', () => handleApproval(true));
+            document.getElementById('av-deny-btn').addEventListener('click', () => handleApproval(false));
+            overlay.addEventListener('click', () => handleApproval(false));
 
+            window.addEventListener('load', () => {
+                const acc = localStorage.getItem('AV_ledger_account_key');
+                const user = localStorage.getItem('AV_ledger_username');
+                if (!database || !acc || !user) return;
+
+                database.ref(`accounts/${acc}/profiles/${user}/pendingRequests`).on('value', async (snapshot) => {
+                    const data = snapshot.val();
+                    if (!data) {
+                        toggleSheet(false);
+                        return;
+                    }
+
+                    const requesterId = Object.keys(data)[0];
+                    const req = data[requesterId];
+
+                    if (req && req.type === 'download' && req.status === 'pending') {
+                        const [trgSnap, srcSnap] = await Promise.all([
+                            database.ref(`accounts/${acc}/profiles/${requesterId}/deviceName`).once('value'),
+                            database.ref(`accounts/${acc}/profiles/${user}/deviceName`).once('value')
+                        ]);
+
+                        toggleSheet(true, {
+                            requesterId, acc, user,
+                            srcDevice: srcSnap.val(),
+                            trgDevice: trgSnap.val()
+                        });
+                    } else {
+                        toggleSheet(false);
+                    }
+                });
+            });
+        })();
+    </script>
 </body>
 </html>
