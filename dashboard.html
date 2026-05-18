@@ -12,7 +12,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
     <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#3f72af">
+    <meta name="theme-color" content="#f2f2f7">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
 
@@ -97,19 +97,108 @@
             pointer-events: auto;
         }
     </style>
+<style>
+  /* --- CUSTOM GLOBAL RESETS & SCROLLBAR --- */
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  /* --- TARGETED DESKTOP RESPONSIVENESS (SM & MD & LG MEDIA QUERIES) --- */
+  @media (min-width: 640px) {
+    /* Broaden the dashboard content canvas nicely for larger viewports */
+    #root {
+      max-width: 768px !important; /* Expands context dynamically past mobile layouts */
+      padding-left: 2rem !important;
+      padding-right: 2rem !important;
+    }
+    
+    /* Transition horizontal layouts into structural grids */
+    #metrics-carousel {
+      overflow-x: visible !important;
+      display: grid !important;
+      grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+      gap: 1.5rem !important;
+    }
+    
+    #metrics-carousel > div {
+      width: 100% !important;
+      flex-shrink: initial !important;
+    }
+
+    /* Hide mobile indicators on desktop layouts */
+    .w-full.mb-6 > .flex.justify-center.items-center.mt-3 {
+      display: none !important;
+    }
+
+    /* Restructure side-by-side components inside metrics charts */
+    .flex.flex-col.space-y-5 {
+      display: grid !important;
+      grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+      gap: 1.5rem !important;
+      space-y: 0 !important;
+    }
+    .flex.flex-col.space-y-5 > div {
+      margin-top: 0 !important;
+    }
+    /* Stretch the top inventory product chart to span both columns for clarity */
+    .flex.flex-col.space-y-5 > div:last-child {
+      grid-column: span 2 / span 2 !important;
+    }
+  }
+
+  @media (min-width: 1024px) {
+    #root {
+      max-width: 1140px !important;
+    }
+
+    /* Transform charts container to a clean 3-column layout on desktops */
+    .flex.flex-col.space-y-5 {
+      grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    }
+    .flex.flex-col.space-y-5 > div:last-child {
+      grid-column: span 1 / span 1 !important;
+    }
+
+    /* Anchor fixed sheets, system dialog windows, overlays and toast notifications centrally */
+    #av-sheet, #error-overlay {
+      max-width: 480px !important;
+      left: 50% !important;
+      transform: translateX(-50%) !important;
+      border-radius: 1.5rem !important;
+      margin-bottom: 1.5rem !important;
+    }
+    
+    /* Precision styling updates for fixed bottom navigation bar constraints on wide desktop screens */
+    nav[style*="position: fixed"] {
+      max-width: 600px !important;
+      left: 50% !important;
+      transform: translateX(-50%) !important;
+      bottom: 1.5rem !important;
+      border: 1px solid rgba(0, 0, 0, 0.08) !important;
+      border-radius: 1.25rem !important;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.05) !important;
+      padding-bottom: 14px !important; /* Overriding bottom safe-area insets gracefully */
+    }
+  }
+</style>
+
 </head>
 <body class="font-sans antialiased select-none bg-ios-bg text-black">
   
   <!-- BRAND TOP FIXED HEADER -->
   <header class="fixed top-0 left-0 right-0 z-50 flex h-16 w-full items-center justify-between px-4 shadow-sm backdrop-blur-md transition-all duration-300 border-b border-black/5" style="background-color: #3f72af;">
     <!-- Left Section: Logo & Branding -->
-    <div class="flex items-center gap-3">
+    <div class="flex items-center ">
       <img 
         src="https://ik.imagekit.io/3mtmeexff/IMG_8590_E6Ai7mKZx.jpeg?" 
         alt="Avanti Ledger Logo" 
-        class="h-9 w-9 rounded-lg object-cover shadow-sm ring-2 ring-white/20"
+        class="h-9 w-9 rounded-lg object-cover"
       />
-      <h1 class="text-xl font-black tracking-tight text-white select-none"> 
+      <h1 class="text-[20px] font-black tracking-tight text-white select-none"> 
         Avanti<span class="text-blue-300">.ledger</span>
       </h1>
     </div>
@@ -129,47 +218,15 @@
     </div>
   </header>
 
-   <header class="w-full mb-5 flex flex-col space-y-3 bg-white rounded-ios-lg p-4 border border-black/5 shadow-xl pt-20" style="margin-right: -4em; margin-left: -4px; border-radius: 0; position: sticky; top: 0; z-index: 9">
-        <div class="flex items-center justify-between">
-            <div class="flex items-center space-x-3" onclick="window.location.href='profile.html'">
-                <div class="relative">
-                    <img id="sidebar-profile-img" alt="User Profile" class="w-11 h-11 rounded-full object-cover border-2 border-[#3f72af] shadow-sm" src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSrBDjPmUP48_kvQ04ekRPwqTM6z9y9ukp0EyjqAAwBZiwMpKJOhDoVqSY&s">
-                    <div class="absolute bottom-0 right-0 w-3 h-3 bg-ios-green border-2 border-white rounded-full"></div>
-                </div>
-                <div class="flex flex-col">
-                    <div class="flex items-center space-x-1">
-                        <span id="accName" class="font-bold text-base leading-tight tracking-tight text-black">Account</span>
-                        <i class="fas fa-chevron-right text-[10px] text-ios-gray"></i>
-                    </div>
-                    <p id="usrName" class="text-xs font-medium text-ios-text-secondary leading-tight">@username</p>
-                </div>
-            </div>
-            
-            <div class="flex items-center space-x-2">
-                <button onclick="window.location.href='manage-devices.html'" class="p-2.5 rounded-full bg-ios-bg border border-black/5 text-[#3f72af] text-xs active:scale-90 transition-transform">
-                    <i class="fas fa-laptop-code"></i>
-                </button>
-                <button id="logout-btn" class="p-2.5 rounded-full bg-ios-bg border border-black/5 text-ios-red text-xs active:scale-90 transition-transform">
-                    <i class="fas fa-sign-out"></i>
-                </button>
-            </div>
-        </div>
-
-        <div class="flex flex-wrap gap-2 pt-2.5 border-t border-black/5">
-            <div class="flex items-center space-x-1.5 px-2.5 py-1 rounded-full bg-[#3f72af]/10 border border-[#3f72af]/20">
-                <span class="w-1.5 h-1.5 rounded-full bg-[#3f72af] animate-pulse"></span>
-                <span id="auth-status-display" class="text-[10px] font-bold tracking-wide uppercase text-[#3f72af]">AuthStatus: Loading</span>
-            </div>
-            <div class="flex items-center space-x-1.5 px-2.5 py-1 rounded-full bg-black/5 border border-black/5">
-                <i class="fas fa-mobile-alt text-[10px] text-ios-text-secondary"></i>
-                <span id="meta-device-name" class="text-[10px] font-bold tracking-wide text-ios-text-secondary">Device: iPhone 15 Pro</span>
-            </div>
-        </div>
-    </header>
+ 
 
   <!-- ROOT INTERFACE CONTAINER -->
   <!-- FIXED: Added pt-20 (clear top header), pb-28 (clear bottom nav), and px-4 for uniform side margins -->
-  <div id="root" class="min-h-screen flex flex-col justify-between pb-28 px-4 max-w-md mx-auto">
+  <div id="root" class="min-h-screen flex flex-col justify-between pb-28 px-4 max-w-md mx-auto pt-20">
+  <h4 class="flex items-center gap-2 text-4xl font-semibold tracking-tight text-gray-900 mb-5 mt-4">
+                        <svg class="text-[#3f72af]" xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+                        Dashboard
+                    </h4>
 
     <!-- USER APP HEADER -->
  
@@ -362,11 +419,11 @@
     <!-- HIGH VALUE ACTIONS -->
     <section class="mt-6 w-full">
         <div class="flex items-center justify-between mb-3 px-1">
-            <h3 class="text-xs font-bold uppercase tracking-wider text-ios-text-secondary">Weekly High-Value Actions</h3>
+            <h3 class="text-xs font-bold uppercase tracking-wider text-ios-text-secondary">Top Weekly Transactions</h3>
             <span class="text-[11px] font-semibold text-[#3f72af]">Horizontal Stream</span>
         </div>
         <div class="relative w-full">
-            <div id="transactions-container" class="flex overflow-x-auto no-scrollbar space-x-3.5 pb-1 snap-x snap-mandatory">
+            <div id="transactions-container" class="flex overflow-x-auto no-scrollbar space-x-3.5 pb-1 snap-x snap-mandatory pr-20">
                 <p class="p-4 text-ios-gray text-xs italic">No structural logs parsed on current runtime period.</p>
             </div>
             <div id="transactions-dots-container" class="flex justify-center items-center space-x-1.5 mt-2.5 h-2"></div>
@@ -506,7 +563,7 @@ padding-bottom: env(safe-area-inset-bottom, 20px);
   </div>
 
 
-    <script>
+     <script>
         // --- SECURE FIREBASE STRUCTURAL CONFIGURATION ---
         const firebaseConfig = {
             apiKey: "AIzaSyDZeQXOHRjhqijerFLyNkOLcbQUIwRLRqY",
@@ -796,11 +853,6 @@ padding-bottom: env(safe-area-inset-bottom, 20px);
                 dataPath = `profiles/${targetUser}`;
             }
             
-            const deviceSnap = await accountRef.child(`profiles/${username}/deviceName`).once('value');
-            if (deviceSnap.exists()) {
-                document.getElementById('meta-device-name').textContent = `Device: ${deviceSnap.val()}`;
-            }
-            
             return { 
                 statsPath: `accounts/${accountKey}/${dataPath}/avanti_stats/dates`,
                 emptiesPath: `accounts/${accountKey}/${dataPath}/empties_tracking`
@@ -808,7 +860,6 @@ padding-bottom: env(safe-area-inset-bottom, 20px);
         };
 
         // --- PIPELINE DATA LISTENER SETUP (REALTIME ENGINE) ---
-                // --- PIPELINE DATA LISTENER SETUP (REALTIME ENGINE) ---
         const initializeRealtimeEngine = async () => {
             document.getElementById('loading-overlay').style.display = 'flex';
             document.getElementById('error-overlay').classList.add('hidden');
@@ -817,34 +868,23 @@ padding-bottom: env(safe-area-inset-bottom, 20px);
                 const { accountKey, username, logoUrl, profileUrl } = await getLocalStorage();
                 if (!accountKey || !username) throw new Error("Critical storage key missing.");
 
-                // Account Title Profile Info Live Hookup
+                // Keep memory objects populated but remove DOM text updates
                 database.ref(`accounts/${accountKey}/displayName`).on("value", (accNameSnap) => {
                     userDetails.accountName = accNameSnap.exists() && accNameSnap.val() ? accNameSnap.val() : "Account Container";
-                    document.getElementById('accName').textContent = userDetails.accountName;
                 });
                 
-                // NEW: Account Image Live Hookup
                 database.ref(`accounts/${accountKey}/url`).on("value", (imgSnap) => {
                     if (imgSnap.exists() && imgSnap.val()) {
                         const dbImageUrl = imgSnap.val();
-                        
-                        // Updates the sidebar profile image
-                        const sidebarImg = document.getElementById('sidebar-profile-img');
-                        if (sidebarImg) sidebarImg.src = dbImageUrl;
-                        
-                        // Updates the top header brand logo
-                        
                     }
                 });
                 
                 database.ref(`accounts/${accountKey}/profiles/${username}/authStatus`).on('value', (authStatusSnap) => {
                     userDetails.authStatus = authStatusSnap.exists() ? authStatusSnap.val() : 'Verified';
-                    document.getElementById('auth-status-display').textContent = `AuthStatus: ${userDetails.authStatus}`;
                 });
 
                 userDetails.username = username;
                 userDetails.profileUrl = profileUrl;
-                document.getElementById('usrName').textContent = `@${username}`;
 
                 const { statsPath, emptiesPath } = await getFirebasePaths(accountKey, username);
 
@@ -941,7 +981,6 @@ padding-bottom: env(safe-area-inset-bottom, 20px);
         };
 
         // --- GRAPHICS CHANNELS MATRIX (THEMED TO #3f72af AVANTI PRIMARY) ---
-                // --- GRAPHICS CHANNELS MATRIX (THEMED TO #3f72af AVANTI PRIMARY) ---
         const drawLineChart = (labels, points) => {
             if(lineChartInstance) lineChartInstance.destroy();
             const holder = document.getElementById('line-chart-holder');
@@ -1245,14 +1284,6 @@ padding-bottom: env(safe-area-inset-bottom, 20px);
             renderTop5ChartSection();
         });
 
-        document.getElementById('logout-btn').addEventListener('click', () => {
-            if (!window.confirm("⚠️ Are you sure you want to log out of your account? This action is irreversible.")) return;
-            localStorage.removeItem("AV_ledger_account_key");
-            localStorage.removeItem("AV_ledger_username");
-            localStorage.removeItem("AV_ledger_auth_status");
-            window.location.href = "index.html";
-        });
-
         // --- CORE CAROUSEL INTERACTION SCROLL TRACKERS ---
         const metricsCarouselElement = document.getElementById('metrics-carousel');
         if (metricsCarouselElement) {
@@ -1301,118 +1332,5 @@ padding-bottom: env(safe-area-inset-bottom, 20px);
         })();
     </script>
 
-    <script>
-        (() => {
-            const overlay = document.getElementById('network-overlay');
-            function checkNetwork() {
-                const isOnline = navigator.onLine;
-                let isSlow = false;
-                if (navigator.connection) {
-                    const type = navigator.connection.effectiveType;
-                    if (type === 'slow-2g' || type === '2g') isSlow = true;
-                }
-                if(!isOnline || isSlow) {
-                    overlay.classList.remove('hidden');
-                } else {
-                    overlay.classList.add('hidden');
-                }
-            }
-            window.addEventListener('online', checkNetwork);
-            window.addEventListener('offline', checkNetwork);
-            if (navigator.connection) navigator.connection.addEventListener('change', checkNetwork);
-            checkNetwork();
-        })();
-    </script>
-
-    <script>
-        (() => {
-            let activeRequest = null;
-            const overlay = document.getElementById('av-overlay');
-            const sheet = document.getElementById('av-sheet');
-            
-            const toggleSheet = (show, reqData = null) => {
-                if (show && reqData) {
-                    activeRequest = reqData;
-                    document.getElementById('av-src-name').textContent = reqData.user;
-                    document.getElementById('av-trg-name').textContent = reqData.requesterId;
-                    document.getElementById('av-requester-label').textContent = reqData.requesterId;
-                    
-                    document.getElementById('av-src-ico').className = `fas ${getIcon(reqData.srcDevice)} text-xl`;
-                    document.getElementById('av-trg-ico').className = `fas ${getIcon(reqData.trgDevice)} text-xl`;
-                    
-                    overlay.classList.add('active');
-                    sheet.classList.add('active');
-                } else {
-                    overlay.classList.remove('active');
-                    sheet.classList.remove('active');
-                    activeRequest = null;
-                }
-            };
-
-            const getIcon = (name) => {
-                const n = (name || "").toLowerCase();
-                return ['pc', 'mac', 'laptop', 'desktop', 'windows'].some(k => n.includes(k)) ? 'fa-laptop' : 'fa-mobile-alt';
-            };
-
-            const handleApproval = async (isApproved) => {
-                if (!activeRequest) return;
-                const path = `accounts/${activeRequest.acc}/profiles/${activeRequest.user}/pendingRequests/${activeRequest.requesterId}`;
-                const approveBtn = document.getElementById('av-approve-btn');
-
-                if (isApproved) {
-                    approveBtn.textContent = "Authorizing Sync...";
-                    approveBtn.disabled = true;
-                    await firebase.database().ref(`${path}/status`).set('approved');
-                    setTimeout(() => {
-                        approveBtn.textContent = "Handshake Ready";
-                        setTimeout(() => {
-                            toggleSheet(false);
-                            approveBtn.textContent = "Approve Handshake";
-                            approveBtn.disabled = false;
-                        }, 1000);
-                    }, 800);
-                } else {
-                    await firebase.database().ref(path).remove();
-                    toggleSheet(false);
-                }
-            };
-
-            document.getElementById('av-approve-btn').addEventListener('click', () => handleApproval(true));
-            document.getElementById('av-deny-btn').addEventListener('click', () => handleApproval(false));
-            overlay.addEventListener('click', () => handleApproval(false));
-
-            window.addEventListener('load', () => {
-                const acc = localStorage.getItem('AV_ledger_account_key');
-                const user = localStorage.getItem('AV_ledger_username');
-                if (!database || !acc || !user) return;
-
-                database.ref(`accounts/${acc}/profiles/${user}/pendingRequests`).on('value', async (snapshot) => {
-                    const data = snapshot.val();
-                    if (!data) {
-                        toggleSheet(false);
-                        return;
-                    }
-
-                    const requesterId = Object.keys(data)[0];
-                    const req = data[requesterId];
-
-                    if (req && req.type === 'download' && req.status === 'pending') {
-                        const [trgSnap, srcSnap] = await Promise.all([
-                            database.ref(`accounts/${acc}/profiles/${requesterId}/deviceName`).once('value'),
-                            database.ref(`accounts/${acc}/profiles/${user}/deviceName`).once('value')
-                        ]);
-
-                        toggleSheet(true, {
-                            requesterId, acc, user,
-                            srcDevice: srcSnap.val(),
-                            trgDevice: trgSnap.val()
-                        });
-                    } else {
-                        toggleSheet(false);
-                    }
-                });
-            });
-        })();
-    </script>
 </body>
 </html>
