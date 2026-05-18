@@ -648,7 +648,7 @@ padding-bottom: env(safe-area-inset-bottom, 50px);
     </div>
     <button id="whatsappShareBtn" class="btn-whatsapp" onclick="handleWhatsAppClick(event)">
         <!-- WhatsApp Icon -->
-      <i style="font-size: 24px;"  class="whatsicon fab fa-whatsapp"></i> 
+      <i style=""  class="whatsicon fab fa-whatsapp"></i> 
         <!-- Text Element -->
         <span class="btn-text">Share Report</span>
     </button>
@@ -670,13 +670,13 @@ padding-bottom: env(safe-area-inset-bottom, 50px);
     bottom: 115px;
     left: 1em;
     background: rgba(30, 41, 59, 0.95);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    box-shadow: 0 20px 25px -5px rgba(0,0,0,0.4);
+    backdrop-filter: blur(50px);
+    -webkit-backdrop-filter: blur(50px);
+    box-shadow: 0 0px 25px 5px rgba(30, 41, 59, 0.95);
     z-index: 1000;
     border: 1px solid rgba(255,255,255,0.15);
     display: flex;
-    align-items: center;
+    align-items: center; 
     justify-content: center;
     box-sizing: border-box;
     overflow: hidden;
@@ -686,12 +686,13 @@ padding-bottom: env(safe-area-inset-bottom, 50px);
                 padding 0.35s ease, 
                 gap 0.35s ease,
                 border-radius 0.35s ease;
+
 }
 
 /* NATURAL STATE (Circular) */
 .floating-actions.collapsed {
-    width: 60px;
-    height: 60px;
+    width: 70px;
+    height: 70px;
     padding: 0;
     gap: 0;
     border-radius: 50%;
@@ -763,10 +764,13 @@ padding-bottom: env(safe-area-inset-bottom, 50px);
 
 .floating-actions.expanded .whatsicon {
     color: white;
+font-size: 24px;
+    
 }
 
 .floating-actions.collapsed .whatsicon {
 color: #25D366;
+font-size: 30px;
 }
 
 .floating-actions.expanded .btn-whatsapp {
@@ -891,140 +895,249 @@ Expenses</span>
     </div>
 <!-- Avanti AI Insight Engine UI -->
 <style>
-    /* iOS OLED & Glassmorphism Standards */
-    :root {
-        --av-bg-black: #000000;
-        --av-surface: rgba(28, 28, 30, 0.65);
-        --av-surface-solid: #1C1C1E;
-        --av-border: rgba(255, 255, 255, 0.1);
-        --av-text-primary: #F2F2F7;
-        --av-text-secondary: #EBEBF599;
-        --av-red: #FF453A;
-        --av-red-glow: rgba(255, 69, 58, 0.2);
-        --av-green: #32D74B;
-        --av-orange: #FF9F0A;
-        --av-blue: #0A84FF;
-        --av-blur: blur(20px);
-    }
+    /* iOS System Light Mode & Glassmorphic Materials */
+:root {
+    --av-bg-main: #F2F2F7; 
+    --av-surface: rgba(255, 255, 255, 0.7); 
+    --av-surface-solid: #FFFFFF;
+    --av-border: rgba(0, 0, 0, 0.08); 
+    --av-text-primary: #000000;
+    --av-text-secondary: rgba(60, 60, 67, 0.6); 
+    --av-red: #FF3B30; 
+    --av-red-glow: rgba(255, 59, 48, 0.12);
+    --av-green: #34C759; 
+    --av-orange: #FF9500; 
+    --av-blue: #007AFF; 
+    --av-blur: blur(30px) saturate(210%); 
+}
 
-    .ai-insight-card {
-        background: black;
-        backdrop-filter: var(--av-blur);
-        -webkit-backdrop-filter: var(--av-blur);
-        border: 1px solid var(--av-border);
-        border-radius: 16px;
-        padding: 16px;
-        margin-bottom: 100px;
-        color: var(--av-text-primary);
-        font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif;
-        box-shadow: 0 8px 32px rgba(0,0,0,0.5);
-    }
+.ai-insight-card {
+    background: var(--av-surface);
+    backdrop-filter: var(--av-blur);
+    -webkit-backdrop-filter: var(--av-blur);
+    border: 1px solid var(--av-border);
+    border-radius: 16px;
+    padding: 16px;
+    margin-bottom: 100px;
+    color: var(--av-text-primary);
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", sans-serif;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
+}
 
-    .ai-insight-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 12px;
-        font-weight: 600;
-        font-size: 15px;
-        color: var(--av-blue);
-    }
+.ai-insight-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+    font-weight: 600;
+    font-size: 15px;
+    color: var(--av-blue);
+}
 
-    .ai-insight-body { font-size: 14px; line-height: 1.4; }
+.ai-insight-body { 
+    font-size: 14px; 
+    line-height: 1.4; 
+    color: var(--av-text-secondary);
+}
+
+.audit-btn {
+    background: var(--av-surface-solid);
+    border: 1px solid var(--av-border);
+    color: var(--av-text-primary);
+    padding: 10px 20px;
+    border-radius: 20px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.audit-btn:active { 
+    transform: scale(0.96); 
+    background-color: #E5E5EA;
+}
+
+/* Threat Highlights in Table */
+.row-threat {
+    background: var(--av-red-glow) !important;
+    position: relative;
+}
+.row-threat::after {
+    content: '\f071';
+    font-family: 'Font Awesome 5 Free';
+    font-weight: 900;
+    color: var(--av-red);
+    position: absolute;
+    left: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 12px;
+    animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+    0 { opacity: 0.6; transform: translateY(-50%) scale(1); }
+    50% { opacity: 1; transform: translateY(-50%) scale(1.15); }
+    100% { opacity: 0.6; transform: translateY(-50%) scale(1); }
+}
+
+/* iOS Authentic Bottom Presentation Sheet */
+.ios-modal-overlay {
+    position: fixed; 
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0, 0, 0, 0.3); 
+    z-index: 9999;
+    display: flex;
+    align-items: flex-end; 
+    justify-content: center;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.35s cubic-bezier(0.25, 1, 0.5, 1), visibility 0.35s;
+}
+
+.ios-modal-overlay.active { 
+    opacity: 1; 
+    visibility: visible;
+}
+
+.ios-modal-content {
+    position: relative; 
+    background: var(--av-surface-solid);
+    border-top-left-radius: 24px;
+    border-top-right-radius: 24px;
+    border-bottom-left-radius: 0px;
+    border-bottom-right-radius: 0px;
     
-    .audit-btn {
-        background: linear-gradient(135deg, var(--av-surface-solid), #2C2C2E);
-        border: 1px solid var(--av-border);
-        color: var(--av-text-primary);
-        padding: 10px 20px;
-        border-radius: 20px;
-        font-weight: 600;
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        transition: all 0.2s ease;
-    }
-    .audit-btn:active { transform: scale(0.96); }
-
-    /* Threat Highlights in Table */
-    .row-threat {
-        background: var(--av-red-glow) !important;
-        position: relative;
-    }
-    .row-threat::after {
-        content: '\f071'; /* FontAwesome alert */
-        font-family: 'Font Awesome 5 Free';
-        font-weight: 900;
-        color: var(--av-red);
-        position: absolute;
-        left: 4px;
-        top: 50%;
-        transform: translateY(-50%);
-        font-size: 12px;
-        animation: pulse 1.5s infinite;
-    }
-
-    @keyframes pulse {
-        0% { opacity: 0.6; transform: translateY(-50%) scale(1); }
-        50% { opacity: 1; transform: translateY(-50%) scale(1.2); }
-        100% { opacity: 0.6; transform: translateY(-50%) scale(1); }
-    }
-
-    /* iOS Modal Native Styles */
-    .ios-modal-overlay {
-        position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-        background: rgba(0,0,0,0.6);
-        backdrop-filter: blur(5px);
-        -webkit-backdrop-filter: blur(5px);
-        z-index: 9999;
-        display: none;
-        align-items: center;
-        justify-content: center;
-        opacity: 0; transition: opacity 0.3s ease;
-    }
-    .ios-modal-overlay.active { display: flex; opacity: 1; }
+    width: 100%;
+    max-width: 600px; 
+    height: 85vh; 
+    max-height: 85vh;
+    box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.08);
+    display: flex;
+    flex-direction: column;
     
-    .ios-modal-content {
-        background: black;
-        border: 1px solid var(--av-border);
-        border-radius: 24px;
-        width: 90%; max-width: 500px;
-        max-height: 85vh; overflow-y: auto;
-        padding: 24px;
-        color: var(--av-text-primary);
-        box-shadow: 0 20px 40px rgba(0,0,0,0.8);
-        transform: translateY(20px); transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-font-size: calc(1em + 2px) !important;
+    transform: translateY(100%); 
+    transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
 
-    }
-    .ios-modal-overlay.active .ios-modal-content { transform: translateY(0); }
+.ios-modal-overlay.active .ios-modal-content { 
+    transform: translateY(0); 
+}
 
-    .audit-fullscreen {
-        max-width: 900px; height: 90vh; border-radius: 16px;
-    }
+/* Absolute Top-Right Close Target */
+.ios-close-btn-container {
+    position: absolute;
+    top: 16px;
+    right: 20px;
+    z-index: 10;
+}
 
-    /* Visual Bars */
-    .visual-bar-bg { background: #333; border-radius: 8px; height: 12px; width: 100%; overflow: hidden; margin-top: 6px; }
-    .visual-bar-fill { height: 100%; border-radius: 8px; transition: width 0.5s ease; }
-    .fill-red { background: var(--av-red); }
-    .fill-green { background: var(--av-green); }
-    .fill-blue { background: var(--av-blue); }
+.ios-close-btn {
+    background: #E5E5EA; 
+    border-radius: 50%; 
+    width: 30px; 
+    height: 30px; 
+    display: flex; 
+    align-items: center; 
+    justify-content: center; 
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+}
+.ios-close-btn:active {
+    background-color: #D1D1D6; 
+}
+
+/* Sheet Content Frame & Explicit Inner Padding Safeguards */
+.ios-modal-scrollable-area {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0 24px 40px 24px; /* Default side/bottom viewport safe paddings */
+    -webkit-overflow-scrolling: touch; 
+}
+
+/* Target both internal dynamic engines (#auditModalBody and #analysisModalBody) to ensure layout padding */
+#auditModalBody, 
+#analysisModalBody {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding: 20px 20px; /* Creates an isolated padding wall top and bottom inside the container */
+    width: 100%;
+    box-sizing: border-box;
+}
+
+/* Native Sheet Drag/Grab Indicator */
+.ios-sheet-grabber {
+    width: 36px;
+    height: 5px;
+    background-color: rgba(60, 60, 67, 0.3); 
+    border-radius: 2.5px;
+    margin: 10px auto 14px auto;
+    flex-shrink: 0;
+}
+
+/* Visual Graph Bars */
+.visual-bar-bg { 
+    background: #E5E5EA; 
+    border-radius: 8px; 
+    height: 12px; 
+    width: 100%; 
+    overflow: hidden; 
+    margin-top: 6px; 
+}
+.visual-bar-fill { 
+    height: 100%; 
+    border-radius: 8px; 
+    transition: width 0.6s cubic-bezier(0.16, 1, 0.3, 1); 
+}
+.fill-red { background: var(--av-red); }
+.fill-green { background: var(--av-green); }
+.fill-blue { background: var(--av-blue); }
+
 </style>
-<div >
-<div id="dailyInsightCard" class="ai-insight-card" style="display:none;">
-    <div class="ai-insight-header">
-        <span><i class="fas fa-brain"></i> AI Daily Insights</span>
-        <button  class="audit-btn"><i class="fas fa-shield-alt"></i> Comprehensive Audit</button>
+
+<div id="auditModal" class="ios-modal-overlay" onclick="if(event.target === this) closeAuditModal();">
+    <div class="ios-modal-content">
+        <!-- Native drag indicator visual anchor -->
+        <div class="ios-sheet-grabber"></div>
+        
+        <!-- Absolute Placed Top Right Close Action -->
+        <div class="ios-close-btn-container">
+            <div class="ios-close-btn" onclick="closeAuditModal()">
+                <i class="fas fa-times" style="font-size:14px; color: rgba(60, 60, 67, 0.6);"></i>
+            </div>
+        </div>
+        
+        <!-- Document Header Component -->
+        <div style="border-bottom:1px solid var(--av-border); padding: 0 60px 16px 24px; background: transparent;">
+            <div style="display:flex; align-items:center; gap: 10px;">
+                <i class="fas fa-file-contract" style="color:var(--av-blue); font-size: 20px;"></i>
+                <h2 style="margin:0; font-family:-apple-system, BlinkMacSystemFont, sans-serif; font-size: 19px; font-weight: 700; color: var(--av-text-primary);">Comprehensive Audit Report</h2>
+            </div>
+        </div>
+        
+        <!-- Isolated Layout Body Engine Section -->
+        <div class="ios-modal-scrollable-area">
+            <div id="auditModalBody" style="display:flex; flex-direction:column; gap:20px; padding-top: 20px;">
+                <!-- Dynamically populated content inserts cleanly here -->
+            </div>
+        </div>
     </div>
-    <div id="insightBody" class="ai-insight-body">Analyzing ledger integrity...</div>
 </div>
+
+
+<div class="section-container mb-100"></div>
+</div>
+
+
 
 <!-- Item Analysis Modal -->
 <div id="itemAnalysisModal" class="ios-modal-overlay">
-    <div class="ios-modal-content">
+    <div class="ios-modal-content" style="padding:30px;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 20px;">
-            <h3 id="analysisModalTitle" style="margin:0; font-size:20px; font-weight:700;">Analysis</h3>
+            <h2 id="analysisModalTitle" style="margin:0; font-size:20px; font-weight:700;">Analysis</h2>
             <i class="fas fa-times" style="font-size:20px; cursor:pointer; color:var(--av-text-secondary);" onclick="closeAnalysisModal()"></i>
         </div>
         <div id="analysisModalBody"></div>
@@ -1032,18 +1145,7 @@ font-size: calc(1em + 2px) !important;
 </div></div>
 
 <!-- Comprehensive Audit Modal -->
-<div id="auditModal" class="ios-modal-overlay">
-    <div class="ios-modal-content audit-fullscreen">
-        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--av-border); padding-bottom:16px; margin-bottom:20px;">
-            <h2 style="margin:0;"><i class="fas fa-file-contract" style="color:var(--av-blue);"></i> Comprehensive Audit Report</h2>
-            <i class="fas fa-times" style="font-size:24px; cursor:pointer;" onclick="closeAuditModal()"></i>
-        </div>
-        <div id="auditModalBody" style="display:flex; flex-direction:column; gap:20px;"></div>
-    </div>
-</div>
 
-<div class="section-container mb-100"></div>
-</div>
 
 
     <div class="modal" id="ordersModal" role="dialog" aria-modal="true">
@@ -1539,7 +1641,7 @@ async function checkProfileAndSyncSettings() {
                 const val = snapshot.val();
                 if (typeof val === 'boolean') {
                     USER_SETTINGS.GFA = val;
-                    console.log('Generate Accounting Reports Status:', USER_SETTINGS.GFA);
+                    
 
                     // Optional: update UI
                     const gfaToggle = document.getElementById('gfaToggle');
@@ -1555,7 +1657,7 @@ async function checkProfileAndSyncSettings() {
 
         if (USER_SETTINGS.synchronization === 'all') {
             syncSourceUsername = 'GLOBAL_LEDGER';
-            console.log(`Global Sync is ON: This ledger is now being shared across your entire account. Any updates, changes, or entries made here can be viewed and edited in real-time by all profiles under "${AV_LEDGER_ACCOUNT_KEY}".`);
+            
 
 
         } else if (profileData.syncingWith && typeof profileData.syncingWith === 'object') {
@@ -3385,7 +3487,7 @@ const AvantiInsights = {
                 </div>
                 <div style="background:var(--av-surface); padding:16px; border-radius:12px; text-align:center;">
                     <div style="font-size:32px; font-weight:800; color:#FF453A;">${criticalErrors}</div>
-                    <div style="font-size:14px; color:var(--av-text-secondary); text-transform:uppercase;">Critical Violations</div>
+                    <div style="font-size:14px; color:var(--av-text-secondary); text-transform:uppercase;">Errors</div>
                 </div>
                 <div style="background:var(--av-surface); padding:16px; border-radius:12px; text-align:center;">
                     <div style="font-size:32px; font-weight:800; color:#0A84FF;">${Object.keys(dateData.items||{}).length}</div>
@@ -4278,7 +4380,7 @@ body.select-mode-active #statsTableBody tr {
         container.id = 'avanti-push-notification-stack';
         container.style.cssText = `
             position: fixed;
-            bottom: 7.5em;
+            bottom: 5.5em;
             left: 0;
             right: 0;
             z-index: 99999;
@@ -4288,6 +4390,8 @@ body.select-mode-active #statsTableBody tr {
             pointer-events: none;
             width: 100%;
             padding: 0 16px; /* Strategic outer display edge margins */
+padding-bottom: constant(safe-area-inset-bottom, 50px);
+padding-bottom: env(safe-area-inset-bottom, 50px);
         `;
         document.body.appendChild(container);
     }
