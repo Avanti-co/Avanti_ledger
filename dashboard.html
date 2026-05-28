@@ -301,68 +301,75 @@
     <div class="w-full mb-6">
         <!-- FIXED: Removed negative margins (-mx-4) to contain cards strictly within screen padding limits -->
         <div id="metrics-carousel" class="px-0 overflow-x-auto flex space-x-4 no-scrollbar snap-x snap-mandatory">
+
+<div class="snap-start shrink-0 w-full p-5 rounded-xl bg-gradient-to-br from-blue-900 via-indigo-950 to-slate-950 border border-blue-800/40 flex flex-col justify-between h-56 relative overflow-hidden shadow-xl cursor-pointer transition-all duration-300 hover:border-blue-600/50" onclick="window.location.href = 'sales-report.html'">
+    <div class="absolute -right-4 -top-4 w-28 h-28 bg-emerald-500/10 rounded-full blur-3xl"></div>
+    
+    <div class="flex justify-between items-start relative z-10">
+        <div>
+            <div class="flex items-center space-x-2">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.6)]"></span>
+                <p class="text-[11px] font-semibold uppercase tracking-widest text-blue-200/80">Weekly Performance</p>
+            </div>
+            <p id="card-total-revenue" class="text-3xl font-bold text-white mt-2.5 mb-1 tracking-tight">K0</p>
+            <p class="text-xs font-normal text-blue-200/70">Total Operational Flow Gross</p>
+        </div>
+        <div class="w-10 h-10 rounded-lg bg-blue-950/50 border border-blue-800/40 flex items-center justify-center text-emerald-400 shadow-inner">
+            <i class="fas fa-wallet text-base"></i>
+        </div>
+    </div>
+    
+    <div class="pt-4 border-t border-blue-900/50 space-y-2.5 relative z-10">
+        <div class="flex justify-between items-center">
+            <p class="text-xs font-medium text-blue-100">Net Sale Revenue</p>
+            <p id="card-net-revenue" class="text-lg font-bold text-emerald-400">K0</p>
+        </div>
+        <div class="flex items-center justify-between pt-0.5">
+            <p class="text-xs font-normal text-blue-200/60">Variance Analysis</p>
+            <div class="flex items-center space-x-1.5 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-md">
+                <span id="card-trend-icon-container" class="text-emerald-400 text-[10px]"></span>
+                <p id="card-revenue-trend" class="text-xs font-semibold text-emerald-400">0.0% vs Last Week</p>
+            </div>
+        </div>
+    </div>
+</div>
+
             
             <!-- FIXED: Changed card widths to w-[280px] to keep snapping layout uniform and eliminate browser overflow layouts -->
-            <div class="snap-start shrink-0 w-[100%] p-4 rounded-ios-lg bg-gradient-to-br from-ios-card to-ios-card-elevated border border-black/5  flex flex-col justify-between h-52 relative overflow-hidden" onclick="window.location.href = 'inventory-report.html'">
-                <div class="absolute -right-4 -top-4 w-24 h-24 bg-[#3f72af]/5 rounded-full blur-2xl"></div>
-                <div class="flex justify-between items-start">
-                    <div>
-                        <div class="flex items-center space-x-1.5">
-                            <span class="w-2 h-2 rounded-full bg-[#3f72af]"></span>
-                            <p class="text-[10px] font-bold uppercase tracking-wider text-[#3f72af]">Inventory Metrics</p>
-                        </div>
-                        <h3 id="card-expected-return" class="text-2xl font-black mt-2 mb-0.5 tracking-tight text-black">K0</h3>
-                        <p class="text-[11px] font-medium text-ios-text-secondary">Expected Return on Current Stock</p>
-                    </div>
-                    <div class="w-9 h-9 rounded-full bg-black/5 border border-black/10 flex items-center justify-center text-[#3f72af]">
-                        <i class="fas fa-box-open text-sm"></i>
-                    </div>
-                </div>
-                <div class="pt-3 border-t border-black/5 space-y-2">
-                    <div class="flex justify-between items-center">
-                        <span class="text-[13px] font-medium text-ios-text-secondary">Total Units in Stock</span>
-                        <span id="card-stock-units" class="text-sm font-bold text-black bg-black/5 px-2 py-0.5 rounded-md">0</span>
-                    </div>
-                    <div class="flex justify-between items-center">
-                        <span class="text-[13px] font-medium text-ios-text-secondary">Total Empty Bottles</span>
-                        <span id="card-empty-bottles" class="text-sm font-bold text-ios-orange bg-ios-orange/10 px-2 py-0.5 rounded-md">0</span>
-                    </div>
-                    <div class="flex items-center space-x-1 text-[10px] text-ios-gray mt-1">
-                        <i class="far fa-clock"></i>
-                        <span id="card-inventory-date">Inventory as at N/A</span>
-                    </div>
-                </div>
+        <div class="snap-start shrink-0 w-full p-5 rounded-xl bg-gradient-to-br from-emerald-900 via-teal-950 to-slate-950 border border-emerald-800/40 flex flex-col justify-between h-56 relative overflow-hidden shadow-xl cursor-pointer transition-all duration-300 hover:border-emerald-600/50" onclick="window.location.href = 'inventory-report.html'">
+    <div class="absolute -right-4 -top-4 w-28 h-28 bg-emerald-400/10 rounded-full blur-3xl"></div>
+    
+    <div class="flex justify-between items-start relative z-10">
+        <div>
+            <div class="flex items-center space-x-2">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.6)]"></span>
+                <p class="text-[11px] font-semibold uppercase tracking-widest text-emerald-200/80">Inventory Metrics</p>
             </div>
+            <h3 id="card-expected-return" class="text-3xl font-bold mt-2.5 mb-1 tracking-tight text-white">K0</h3>
+            <p class="text-xs font-normal text-emerald-200/70">Expected Return on Current Stock</p>
+        </div>
+        <div class="w-10 h-10 rounded-lg bg-emerald-950/50 border border-emerald-800/40 flex items-center justify-center text-emerald-400 shadow-inner">
+            <i class="fas fa-box-open text-base"></i>
+        </div>
+    </div>
+    
+    <div class="pt-4 border-t border-emerald-900/50 space-y-2.5 relative z-10">
+        <div class="flex justify-between items-center">
+            <span class="text-xs font-medium text-emerald-100">Total Units in Stock</span>
+            <span id="card-stock-units" class="text-xs font-semibold text-emerald-200 bg-emerald-950/60 border border-emerald-800/30 px-2.5 py-1 rounded-md">0</span>
+        </div>
+        <div class="flex justify-between items-center">
+            <span class="text-xs font-medium text-emerald-100">Total Empty Bottles</span>
+            <span id="card-empty-bottles" class="text-xs font-semibold text-orange-400 bg-orange-500/10 border border-orange-500/20 px-2.5 py-1 rounded-md">0</span>
+        </div>
+        <div class="flex items-center space-x-1.5 text-[11px] text-emerald-300/50 pt-1">
+            <i class="far fa-clock text-[10px]"></i>
+            <span id="card-inventory-date">Inventory as at N/A</span>
+        </div>
+    </div>
+</div>
 
-            <div class="snap-start shrink-0 w-[100%] p-4 rounded-ios-lg bg-gradient-to-br from-ios-card to-ios-card-elevated border border-black/5  flex flex-col justify-between h-52 relative overflow-hidden" onclick="window.location.href = 'sales-report.html'">
-                <div class="absolute -right-4 -top-4 w-24 h-24 bg-ios-green/5 rounded-full blur-2xl"></div>
-                <div class="flex justify-between items-start">
-                    <div>
-                        <div class="flex items-center space-x-1.5">
-                            <span class="w-2 h-2 rounded-full bg-ios-green"></span>
-                            <p class="text-[10px] font-bold uppercase tracking-wider text-ios-green">Weekly Performance</p>
-                        </div>
-                        <p id="card-total-revenue" class="text-2xl font-black text-black mt-2 mb-0.5 tracking-tight">K0</p>
-                        <p class="text-[11px] font-medium text-ios-text-secondary">Total Operational Flow Gross</p>
-                    </div>
-                    <div class="w-9 h-9 rounded-full bg-black/5 border border-black/10 flex items-center justify-center text-ios-green">
-                        <i class="fas fa-wallet text-sm"></i>
-                    </div>
-                </div>
-                <div class="pt-3 border-t border-black/5 space-y-2">
-                    <div class="flex justify-between items-center">
-                        <p class="text-[13px] font-medium text-black">Net Sale Revenue</p>
-                        <p id="card-net-revenue" class="text-base font-black text-ios-green">K0</p>
-                    </div>
-                    <div class="flex items-center justify-between pt-1">
-                        <p class="text-[11px] text-ios-text-secondary">Variance Analysis</p>
-                        <div class="flex items-center space-x-1">
-                            <span id="card-trend-icon-container"></span>
-                            <p id="card-revenue-trend" class="text-xs font-bold text-ios-green">0.0% vs Last Week</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
+            
         </div>
         <div class="flex justify-center items-center space-x-1.5 mt-3">
             <span id="metric-dot-0" class="w-2 h-2 rounded-full bg-[#3f72af] transition-all duration-200"></span>
@@ -406,8 +413,8 @@
                     <h3 class="text-xs font-bold uppercase tracking-wider text-ios-text-secondary">Top 5 Inventory Products</h3>
                 </div>
                 <select id="top5-metric-select" class="bg-transparent border border-black/10 text-black font-medium rounded-md text-[11px] px-2 py-1 outline-none text-right">
-                    <option value="units" selected>By Units Sold</option>
-                    <option value="revenue">By Revenue Generated</option>
+                    <option value="units" >By Units Sold</option>
+                    <option value="revenue" selected>By Revenue Generated</option>
                 </select>
             </div>
             <div class="h-48 relative w-full" id="bar-chart-holder">
@@ -466,7 +473,7 @@ padding-bottom: env(safe-area-inset-bottom, 20px);
     <a href="inventory.html" style="display: flex; flex-direction: column; align-items: center; text-decoration: none; color: #64748b; flex: 1; position: relative;">
        
         
-        <svg style="width: 22px; height: 22px; fill: white; stroke: currentColor; stroke-width: 2;" viewBox="0 0 24 24">
+        <svg style="width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2;" viewBox="0 0 24 24">
             <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
             <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
             <line x1="12" y1="22.08" x2="12" y2="12"></line>
@@ -525,42 +532,7 @@ padding-bottom: env(safe-area-inset-bottom, 20px);
       </div>
   </div>
 
-  <div id="av-overlay" class="av-overlay fixed inset-0 bg-black/20 backdrop-blur-sm z-40"></div>
-  <div id="av-sheet" class="av-sheet fixed bottom-0 inset-x-0 z-50 bg-ios-card rounded-t-ios-lg border-t border-black/10 px-5 pt-3 pb-8 flex flex-col shadow-2xl">
-      <div class="w-10 h-1 bg-black/20 rounded-full mx-auto mb-5"></div>
-      
-      <div class="flex items-center justify-center space-x-6 mb-5">
-          <div class="flex flex-col items-center">
-              <div class="w-12 h-12 rounded-full bg-[#3f72af]/10 border border-[#3f72af]/20 flex items-center justify-center text-[#3f72af] mb-2 shadow-inner">
-                  <i id="av-src-ico" class="fas fa-mobile-alt text-xl"></i>
-              </div>
-              <div id="av-src-name" class="text-[11px] font-bold tracking-tight text-ios-text-secondary truncate w-16 text-center">Local</div>
-          </div>
-          
-          <div class="flex-1 h-1 bg-black/5 relative rounded-full overflow-hidden">
-              <div id="av-pulse-bar" class="absolute inset-y-0 left-0 w-1/3 bg-gradient-to-r from-transparent via-[#3f72af] to-transparent rounded-full animate-pulse"></div>
-          </div>
-          
-          <div class="flex flex-col items-center">
-              <div class="w-12 h-12 rounded-full bg-ios-green/10 border border-ios-green/20 flex items-center justify-center text-ios-green mb-2 shadow-inner">
-                  <i id="av-trg-ico" class="fas fa-laptop text-xl"></i>
-              </div>
-              <div id="av-trg-name" class="text-[11px] font-bold tracking-tight text-ios-text-secondary truncate w-16 text-center">Target</div>
-          </div>
-      </div>
 
-      <div class="text-center mb-6">
-          <h3 class="text-base font-black tracking-tight text-black mb-1">Download Request Pending</h3>
-          <p class="text-xs text-ios-text-secondary px-2 leading-relaxed">
-              <span id="av-requester-label" class="text-black font-bold">Remote Node</span> requests forensic structural data sync down over authorized secure sync line.
-          </p>
-      </div>
-
-      <div class="flex flex-col space-y-2.5">
-          <button id="av-approve-btn" class="w-full py-3.5 rounded-ios bg-[#3f72af] text-white font-bold text-xs uppercase tracking-wider shadow-md active:scale-95 transition-all">Approve Handshake</button>
-          <button id="av-deny-btn" class="w-full py-3.5 rounded-ios bg-black/5 border border-black/10 text-ios-red font-bold text-xs uppercase tracking-wider active:scale-95 transition-all">Deny Access</button>
-      </div>
-  </div>
 
 
      <script>
@@ -1062,7 +1034,7 @@ padding-bottom: env(safe-area-inset-bottom, 20px);
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    cutout: '76%',
+                    cutout: '50%',
                     plugins: {
                         legend: { position: 'right', labels: { color: '#000000', usePointStyle: true, pointStyle: 'circle', font: { size: 11, weight: '600' }, padding: 12 } },
                         tooltip: { callbacks: { label: (context) => ` ${context.label}: ${formatCurrency(context.parsed)}` } }
@@ -1073,45 +1045,53 @@ padding-bottom: env(safe-area-inset-bottom, 20px);
         };
 
         const drawBarChart = (labels, data, shouldSlant, isRevenue) => {
-            if(barChartInstance) barChartInstance.destroy();
-            const holder = document.getElementById('bar-chart-holder');
-            
-            const hasData = data.reduce((sum, v) => sum + v, 0) > 0;
-            if(!hasData) {
-                holder.innerHTML = '<div class="h-full flex items-center justify-center text-ios-gray text-xs italic">No stock transaction volumes.</div>';
-                return;
-            }
+    if(barChartInstance) barChartInstance.destroy();
+    const holder = document.getElementById('bar-chart-holder');
+    
+    const hasData = data.reduce((sum, v) => sum + v, 0) > 0;
+    if(!hasData) {
+        holder.innerHTML = '<div class="h-full flex items-center justify-center text-ios-gray text-xs italic">No stock transaction volumes.</div>';
+        return;
+    }
 
-            // Re-inject canvas 
-            holder.innerHTML = '<canvas id="barChart"></canvas>';
-            const canvas = document.getElementById('barChart');
-            const ctx = canvas.getContext('2d');
-            
-            barChartInstance = new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        data: data,
-                        backgroundColor: '#3f72af',
-                        borderRadius: 5,
-                        barThickness: 30
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { 
-                        legend: { display: false },
-                        tooltip: { callbacks: { label: (context) => ` ${isRevenue ? formatCurrency(context.parsed || context.raw) : (context.parsed || context.raw) + ' Units'}` } }
-                    },
-                    scales: {
-                        y: { beginAtZero: true, ticks: { color: '#636366', font: { size: 10 }, callback: (val) => isRevenue ? 'K' + val : val }, grid: { color: 'rgba(0,0,0,0.04)' } },
-                        x: { ticks: { color: '#000000', font: { size: 10, weight: 'bold' }, maxRotation: shouldSlant ? 45 : 0, minRotation: shouldSlant ? 45 : 0 }, grid: { display: false } }
-                    }
+    // Re-inject canvas 
+    holder.innerHTML = '<canvas id="barChart"></canvas>';
+    const canvas = document.getElementById('barChart');
+    const ctx = canvas.getContext('2d');
+    
+    barChartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                data: data,
+                backgroundColor: '#3f72af',
+                borderRadius: 5,
+                barThickness: 35
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { 
+                legend: { display: false },
+                tooltip: { 
+                    callbacks: { 
+                        // FIX: Target context.parsed.y to extract the actual numerical value
+                        label: (context) => {
+                            const value = context.parsed.y !== undefined ? context.parsed.y : context.raw;
+                            return ` ${isRevenue ? formatCurrency(value) : value + ' Units'}`;
+                        } 
+                    } 
                 }
-            });
-        };
+            },
+            scales: {
+                y: { beginAtZero: true, ticks: { color: '#636366', font: { size: 10 }, callback: (val) => isRevenue ? 'K' + val : val }, grid: { color: 'rgba(0,0,0,0.04)' } },
+                x: { ticks: { color: '#000000', font: { size: 10, weight: 'bold' }, maxRotation: shouldSlant ? 45 : 0, minRotation: shouldSlant ? 45 : 0 }, grid: { display: false } }
+            }
+        }
+    });
+};
 
 
         // --- DASHBOARD OBJECT DOCUMENT TEMPLATE INJECTION RENDERER ---
