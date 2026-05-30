@@ -80,7 +80,7 @@
             animation: pulse 2s infinite;
         }
 
-        /* Hero Section */
+        /* Header Section */
         header {
             min-height: 90vh;
             display: flex;
@@ -397,12 +397,12 @@
             background: linear-gradient(180deg, var(--surface) 0%, var(--bg) 100%);
             max-width: 100%;
             width: 100%;
+            overflow: hidden;
         }
 
         .gallery-container {
             max-width: 1400px;
             margin: 0 auto;
-            
         }
 
         .app-collage {
@@ -469,135 +469,234 @@
         .collage-overlay h4 { font-size: 1.05rem; margin-bottom: 4px; font-weight: 600;}
         .collage-overlay p { font-size: 0.8rem; opacity: 0.85; line-height: 1.3;}
 
-        /* --- STABILIZED MOCK DEVICE CAROUSEL --- */
+        /* --- STABILIZED CENTER-FOCUS HOVERABLE CAROUSEL --- */
         .carousel-wrapper {
             position: relative;
-            min-width: 100%;
-            margin: 0;
-            padding: 0 0;
-            
+            width: 100%;
+            margin: 0 auto;
+            padding:  0;
         }
 
         .carousel-track-container {
             overflow: hidden;
             position: relative;
-            border-radius: 24px;
-            box-shadow: 0 30px 70px rgba(17, 45, 78, 0.08);
-            background: white;
-            border: 1px solid rgba(0,0,0,0.03);
-            cursor: grab;
-            /* Prevents default browser multi-touch and tracking conflicts while swiping */
+            width: 100%;
+            padding: 2rem 0;
             touch-action: pan-y; 
-        }
-
-        .carousel-track-container:active {
-            cursor: grabbing;
         }
 
         .carousel-track {
             display: flex;
+            align-items: center;
             will-change: transform;
-            /* Use modern timing optimizations to stop spring-back stuttering */
-            transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+            transition: transform 0.6s cubic-bezier(0.2, 1, 0.2, 1);
         }
 
         .carousel-slide {
-            min-width: 100%;
+            flex: 0 0 260px; /* Displays more screens side-by-side gracefully */
+            margin: 0 20px;
             box-sizing: border-box;
             background: white;
-            display: grid;
-            grid-template-columns: 0.9fr 1.1fr;
+            display: flex;
+            flex-direction: column;
             align-items: center;
-            gap: 50px;
-            padding: 4rem;
+            text-align: center;
+            padding: 2rem 1.5rem;
+            border-radius: 20px;
+            box-shadow: 0 10px 40px rgba(17, 45, 78, 0.04);
             user-select: none;
+            position: relative;
+            transition: transform 0.6s cubic-bezier(0.2, 1, 0.2, 1), opacity 0.6s ease;
+            cursor: pointer;
         }
 
+        @media (min-width: 768px) {
+            .carousel-slide {
+                flex: 0 0 310px; /* Balanced structural density for large setups */
+                margin: 0 35px;
+            }
+        }
+
+        /* Perfectly Sized Smartphone Window Area with Notch & Spacing */
         .carousel-image-area {
             background: #11141a;
-            border-radius: 36px;
-            
-            min-height: 600px;
-            width: 90%;
-            margin: 0 auto;
+            border-radius: 28px;
+            height: 420px;
+            width: 200px;
+            margin: 0 auto 1.5rem auto;
             display: flex;
             align-items: center;
             justify-content: center;
             overflow: hidden;
             position: relative;
-            box-shadow: 0 15px 40px rgba(0,0,0,0.3), inset 0 0 0 12px #11141a;
-            border: 4px solid #333a47;
+            box-shadow: 0 12px 30px rgba(0,0,0,0.12);
+            border: 5px solid #2d3748;
+             /* Added elegant spacing buffer on left and right sides */
+        }
+
+        /* Phone Screen Dynamic Top Notch Component */
+        .carousel-image-area::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 80px;
+            height: 14px;
+            background-color: #2d3748;
+            border-bottom-left-radius: 10px;
+            border-bottom-right-radius: 10px;
+            z-index: 10;
         }
 
         .carousel-image-area img {
             width: 100%;
             height: 100%;
-          
+            object-fit: contain; /* Images safely maintain formatting constraints */
+            object-position: center;
+            display: block;
             pointer-events: none;
-width: 100%;
-  height: 100%;
-  object-fit: contain;  /* key line */
-  object-position: center;
-  display: block;
-            
+            position: relative;
+            z-index: 2;
         }
 
         .carousel-image-area .img-placeholder {
             color: #a0aec0;
             font-weight: 500;
             text-align: center;
-            font-size: 0.95rem;
-            padding: 2rem;
+            font-size: 0.85rem;
+            padding: 1.5rem;
             line-height: 1.4;
+            position: absolute;
+            z-index: 1;
         }
 
-        .carousel-image-area::before {
+        /* Premium Pseudo-Element Frosted Layer Blanket */
+        .carousel-slide::after {
             content: '';
             position: absolute;
-            top: 0px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 110px;
-            height: 25px;
-            background: #11141a;
-            border-radius: 0 0 16px 16px;
-            z-index: 20;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(249, 247, 247, 0.35);
+            backdrop-filter: blur(6px);
+            -webkit-backdrop-filter: blur(6px);
+            border-radius: 20px;
+            opacity: 0;
+            transition: opacity 0.6s ease;
+            pointer-events: none;
+            z-index: 5;
+        }
+
+        /* Carousel Visual Status States */
+        .carousel-slide.active {
+            transform: scale(1.05);
+            opacity: 1;
+            z-index: 10;
+        }
+
+        .carousel-slide:not(.active) {
+            transform: scale(0.86);
+            opacity: 0.55;
+        }
+
+        .carousel-slide:not(.active)::after {
+            opacity: 1; /* Apply the frosted lens to neighbors */
         }
 
         .carousel-caption {
-            padding-right: 2rem;
+            width: 100%;
+            padding: 0 0.5rem;
+            z-index: 6;
         }
 
         .carousel-caption h3 {
             color: var(--primary-dark);
-            font-size: 1.2rem;
-            margin-bottom: 1.2rem;
+            font-size: 1.1rem;
+            margin-bottom: 0.6rem;
             font-weight: 700;
-            letter-spacing: -0.5px;
+            letter-spacing: -0.3px;
         }
 
         .carousel-caption p {
             color: var(--text-muted);
-            font-size: 1.1rem;
-            line-height: 1.6;
+            font-size: 0.9rem;
+            line-height: 1.5;
         }
 
-        /* Carousel Navigation */
+        /* --- INTERACTIVE FULL SLIDE POPUP MODAL SYSTEM --- */
+        .slide-modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(17, 45, 78, 0.6);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            z-index: 10000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+        }
+
+        .slide-modal-overlay.open {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .modal-content-wrapper {
+            background: white;
+            padding: 2.5rem 2rem;
+            border-radius: 24px;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.15);
+            max-width: 480px;
+            width: 90%;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            transform: scale(0.8);
+            transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .slide-modal-overlay.open .modal-content-wrapper {
+            transform: scale(1);
+        }
+
+        /* Clean styling target rules for modal children clones */
+        .modal-content-wrapper .carousel-image-area {
+            box-shadow: 0 15px 35px rgba(0,0,0,0.2);
+            transform: scale(1.04);
+            margin-bottom: 2rem;
+        }
+        
+        .modal-content-wrapper .carousel-caption h3 {
+            font-size: 1.4rem;
+            margin-bottom: 0.8rem;
+        }
+
+        .modal-content-wrapper .carousel-caption p {
+            font-size: 1rem;
+        }
+
+        /* Centered Adaptive Control Buttons */
         .carousel-btn {
             position: absolute;
-            top: 25%;
+            top: 50%;
             transform: translateY(-50%);
             background: white;
             border: none;
             width: 52px;
             height: 52px;
             border-radius: 50%;
-            box-shadow: 0 6px 20px rgba(0,0,0,0.08);
+            box-shadow: 0 6px 25px rgba(0,0,0,0.1);
             cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
-            z-index: 10;
+            z-index: 20;
             transition: var(--transition-smooth);
             color: var(--primary-dark);
             font-size: 1.8rem;
@@ -606,17 +705,17 @@ width: 100%;
         .carousel-btn:hover {
             background: var(--primary);
             color: white;
-            transform: translateY(-50%) scale(1.05);
+            transform: translateY(-50%) scale(1.08);
         }
 
-        .carousel-btn.prev { left: 4px; }
-        .carousel-btn.next { right: 4px; }
+        .carousel-btn.prev { left: 15px; }
+        .carousel-btn.next { right: 15px; }
 
         .carousel-nav {
             display: flex;
             justify-content: center;
             gap: 10px;
-            margin-top: 2.5rem;
+            margin-top: 3rem;
             flex-wrap: wrap;
         }
 
@@ -698,18 +797,6 @@ width: 100%;
             .app-collage {
                 grid-template-columns: repeat(3, 1fr);
             }
-            .carousel-slide {
-                grid-template-columns: 1fr;
-                padding: 3rem 2rem;
-                gap: 30px;
-            }
-            .carousel-caption {
-                padding-right: 0;
-                text-align: center;
-            }
-            .carousel-image-area {
-                max-height: 440px;
-            }
         }
 
         @media (max-width: 768px) {
@@ -724,15 +811,14 @@ width: 100%;
                 padding: 0 4px;
             }
             .carousel-wrapper {
-                padding: 0 10px;
+                padding: 0 5px;
             }
-            .carousel-btn {  }
+            .carousel-btn { width: 44px; height: 44px; font-size: 1.4rem; }
         }
     </style>
 </head>
 <body>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600&display=swap" rel="stylesheet">
-
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600&display=swap" rel="stylesheet">
 
     <nav>
         <div class="logo">
@@ -741,8 +827,6 @@ width: 100%;
     </nav>
 
     <header>
-        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600&display=swap" rel="stylesheet">
-
         <div style="position: fixed; bottom: 0; left: 0; width: 100%; background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border-top: 1px solid rgba(0, 0, 0, 0.05); display: flex; justify-content: space-around; align-items: center; z-index: 9999; padding-top: 14px; padding-bottom: constant(safe-area-inset-bottom, 25px); padding-bottom: env(safe-area-inset-bottom, 25px); font-family: 'Inter', sans-serif;">
             <a href="dashboard.html" style="display: flex; flex-direction: column; align-items: center; text-decoration: none; color: #64748b; flex: 1; transition: 0.2s;">
                 <svg style="width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2;" viewBox="0 0 24 24">
@@ -777,10 +861,10 @@ width: 100%;
 
             <a href="settings.html" style="display: flex; flex-direction: column; align-items: center; text-decoration: none; color: #3f72af; flex: 1; position: relative;">
                 <div style="position: absolute; top: -14px; width: 20px; height: 3px; background: #3f72af; border-radius: 0 0 4px 4px;"></div>
-                  <svg style="width: 22px; height: 22px; fill: rgba(37, 99, 235, 0.1); stroke: currentColor; stroke-width: 2;" viewBox="0 0 24 24">
-            <circle cx="12" cy="12" r="3"></circle>
-            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0-.33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0 .33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
-        </svg>
+                <svg style="width: 22px; height: 22px; fill: rgba(37, 99, 235, 0.1); stroke: currentColor; stroke-width: 2;" viewBox="0 0 24 24">
+                    <circle cx="12" cy="12" r="3"></circle>
+                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0-.33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0 .33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                </svg>
                 <span style="font-size: 11px; margin-top: 4px; font-weight: 600;">Settings</span>
             </a>
         </div>
@@ -908,111 +992,108 @@ width: 100%;
             <h2 class="section-title">Experience the Interface</h2>
             <p class="section-subtitle">Take an architectural look through Avanti Ledger's high-fidelity layouts, engineered smoothly for fast mobile administrative interactions.</p>
             
-          
-
             <div class="carousel-wrapper">
                 <button class="carousel-btn prev" aria-label="Previous Slide">‹</button>
                 <div class="carousel-track-container" id="carouselTrackContainer">
                     <div class="carousel-track">
                         <div class="carousel-slide">
                             <div class="carousel-image-area">
-                                <img src="https://ik.imagekit.io/3mtmeexff/avanti_store_profile_1780128054428_tSUwVpsq_.jpg" alt="">
-                                <div class="img-placeholder">Authentic Smartphone Module<br><br>[Slide 1 Screen Mockup]</div>
+                                <img src="https://ik.imagekit.io/3mtmeexff/avanti_store_profile_1780128054428_tSUwVpsq_.jpg" alt="Main Dashboard">
+                                <div class="img-placeholder">[Dashboard Mockup]</div>
                             </div>
                             <div class="carousel-caption">
                                 <h3>1. Main Dashboard</h3>
-<p>Review weekly performance metrics, verify continuous ledger data entry streaks, and monitor forensic guardrail balancing alerts.</p>
+                                <p>Review weekly performance metrics, verify entry streaks, and monitor forensic guardrail balancing alerts.</p>
                             </div>
                         </div>
                         <div class="carousel-slide">
                             <div class="carousel-image-area">
-                                <img src="https://ik.imagekit.io/3mtmeexff/avanti_store_profile_1780129101230_VkQbpqeK2.jpg" alt="">
-                                <div class="img-placeholder">Authentic Smartphone Module<br><br>[Slide 2 Screen Mockup]</div>
+                                <img src="https://ik.imagekit.io/3mtmeexff/avanti_store_profile_1780129101230_VkQbpqeK2.jpg" alt="Inventory Status">
+                                <div class="img-placeholder">[Inventory Mockup]</div>
                             </div>
                             <div class="carousel-caption">
                                 <h3>2. Inventory Status</h3>
-<p>Monitor real-time unit volumes, check total bottle counts, and review individual unit retail pricing configurations across stock items.</p>
+                                <p>Monitor real-time unit volumes, check total bottle counts, and review pricing configurations.</p>
                             </div>
                         </div>
                         <div class="carousel-slide">
                             <div class="carousel-image-area">
-                                <img src="https://ik.imagekit.io/3mtmeexff/avanti-store_profile_1780129184198_CosyDL_2Y.jpg" alt="">
-                                <div class="img-placeholder">Authentic Smartphone Module<br><br>[Slide 3 Screen Mockup]</div>
+                                <img src="https://ik.imagekit.io/3mtmeexff/avanti-store_profile_1780129184198_CosyDL_2Y.jpg" alt="Trading Profit & Loss Account">
+                                <div class="img-placeholder">[P&L Mockup]</div>
                             </div>
                             <div class="carousel-caption">
                                 <h3>3. Trading Profit & Loss Account</h3>
-<p>Calculate gross profit margins by balancing sales revenues, inventory valuations, operational incomes, and itemized expenses.</p>
+                                <p>Calculate margins by balancing revenues, valuations, operational incomes, and expenses.</p>
                             </div>
                         </div>
                         <div class="carousel-slide">
                             <div class="carousel-image-area">
-                                <img src="https://ik.imagekit.io/3mtmeexff/avanti-store_profile_1780129285716_EOfxC1QlA.jpg" alt="">
-                                <div class="img-placeholder">Authentic Smartphone Module<br><br>[Slide 4 Screen Mockup]</div>
+                                <img src="https://ik.imagekit.io/3mtmeexff/avanti-store_profile_1780129285716_EOfxC1QlA.jpg" alt="Trial Balance">
+                                <div class="img-placeholder">[Trial Balance Mockup]</div>
                             </div>
                             <div class="carousel-caption">
                                 <h3>4. Trial Balance</h3>
-<p>Audit closing owners' equity calculations and verify matching debit and credit accounting totals across ledger categories.</p>
+                                <p>Audit closing owners' equity calculations and verify matching debit and credit accounting totals.</p>
                             </div>
                         </div>
                         <div class="carousel-slide">
                             <div class="carousel-image-area">
-                                <img src="https://ik.imagekit.io/3mtmeexff/avanti-store_profile_1780129374252_zWYe1nLIa.jpg" alt="">
-                                <div class="img-placeholder">Authentic Smartphone Module<br><br>[Slide 5 Screen Mockup]</div>
+                                <img src="https://ik.imagekit.io/3mtmeexff/avanti-store_profile_1780129374252_zWYe1nLIa.jpg" alt="Weekly Sales Report">
+                                <div class="img-placeholder">[Sales Report Mockup]</div>
                             </div>
                             <div class="carousel-caption">
                                 <h3>5. Weekly Sales Report</h3>
-<p>Track cyclical operational revenue trends and evaluate high-performing or low-performing sales days via comprehensive visual charts.</p>
+                                <p>Track cyclical operational revenue trends and evaluate performance via comprehensive charts.</p>
                             </div>
                         </div>
                         <div class="carousel-slide">
                             <div class="carousel-image-area">
-                                <img src="https://ik.imagekit.io/3mtmeexff/avanti-store_profile_1780129427250_HqF7swg-Z.jpg" alt="">
-                                <div class="img-placeholder">Authentic Smartphone Module<br><br>[Slide 6 Screen Mockup]</div>
+                                <img src="https://ik.imagekit.io/3mtmeexff/avanti-store_profile_1780129427250_HqF7swg-Z.jpg" alt="Product Performance">
+                                <div class="img-placeholder">[Product Performance Mockup]</div>
                             </div>
                             <div class="carousel-caption">
                                 <h3>6. Product Performance</h3>
-<p>Identify top-selling stock items by revenue generation and evaluate item sales volumes utilizing visual quantity distribution charts.</p>
+                                <p>Identify top-selling stock items by revenue generation and evaluate item sales volumes.</p>
                             </div>
                         </div>
                         <div class="carousel-slide">
                             <div class="carousel-image-area">
-                                <img src="https://ik.imagekit.io/3mtmeexff/avanti-store_profile_1780129482232_pG9i0nBeD.jpg" alt="">
-                                <div class="img-placeholder">Authentic Smartphone Module<br><br>[Slide 7 Screen Mockup]</div>
+                                <img src="https://ik.imagekit.io/3mtmeexff/avanti-store_profile_1780129482232_pG9i0nBeD.jpg" alt="Inventory Reports">
+                                <div class="img-placeholder">[Inventory Reports Mockup]</div>
                             </div>
                             <div class="carousel-caption">
                                 <h3>7. Inventory Reports</h3>
-<p>Analyze expected return valuations, identify highest quantity stock items, and access detailed data tracking summaries for empty bottle returns.</p>
+                                <p>Analyze expected return valuations and access summaries for empty bottle returns.</p>
                             </div>
                         </div>
                         <div class="carousel-slide">
                             <div class="carousel-image-area">
-                                <img src="https://ik.imagekit.io/3mtmeexff/avanti-store_profile_1780129535554_f7GeCrtxz.jpg" alt="">
-                                <div class="img-placeholder">Authentic Smartphone Module<br><br>[Slide 8 Screen Mockup]</div>
+                                <img src="https://ik.imagekit.io/3mtmeexff/avanti-store_profile_1780129535554_f7GeCrtxz.jpg" alt="Stock Change Report">
+                                <div class="img-placeholder">[Stock Change Mockup]</div>
                             </div>
                             <div class="carousel-caption">
                                 <h3>8. Stock Change Report</h3>
-<p>Track historical purchasing frequency, evaluate total incoming supply volumes, and review chronological breakdown logs for item restocks.</p>
+                                <p>Track historical purchasing frequency, evaluate incoming supply volumes, and review logs.</p>
                             </div>
                         </div>
                         <div class="carousel-slide">
                             <div class="carousel-image-area">
-                                <img src="https://ik.imagekit.io/3mtmeexff/avanti-store_profile_1780129623724_dvhzl1HQd.jpg" alt="">
-                                <div class="img-placeholder">Authentic Smartphone Module<br><br>[Slide 9 Screen Mockup]</div>
+                                <img src="https://ik.imagekit.io/3mtmeexff/avanti-store_profile_1780129623724_dvhzl1HQd.jpg" alt="Empty Bottle Tracking">
+                                <div class="img-placeholder">[Bottle Tracking Mockup]</div>
                             </div>
                             <div class="carousel-caption">
                                 <h3>9. Empty Bottle Tracking</h3>
-<p>Monitor aggregate returned crate components and audit individual beverage container breakdown quantities using systemic ledger balance formulas.</p>
-
+                                <p>Monitor returned crate components and audit container breakdown quantities.</p>
                             </div>
                         </div>
                         <div class="carousel-slide">
                             <div class="carousel-image-area">
-                                <img src="https://ik.imagekit.io/3mtmeexff/avanti-store_profile_1780129728245_NGFcI8G7G.jpg" alt="">
-                                <div class="img-placeholder">Authentic Smartphone Module<br><br>[Slide 10 Screen Mockup]</div>
+                                <img src="https://ik.imagekit.io/3mtmeexff/avanti-store_profile_1780129728245_NGFcI8G7G.jpg" alt="Ledger Item Detail">
+                                <div class="img-placeholder">[Ledger Detail Mockup]</div>
                             </div>
                             <div class="carousel-caption">
                                 <h3>10. Ledger Item Detail</h3>
-<p>Track opening and closing stock records, cross-reference incoming orders, and review systemic forensic audit variance alerts.</p>
+                                <p>Track opening and closing stock records and review systemic forensic audit variance alerts.</p>
                             </div>
                         </div>
                     </div>
@@ -1072,6 +1153,11 @@ width: 100%;
         <a href="dashboard.html" class="cta-btn" style="background: white; color: var(--primary-dark); box-shadow: 0 4px 15px rgba(0,0,0,0.2);">Get Started with Avanti</a>
     </footer>
 
+    <div class="slide-modal-overlay" id="slideModalOverlay">
+        <div class="modal-content-wrapper" id="modalContentWrapper">
+            </div>
+    </div>
+
     <script>
         // Scroll Intersection Observer Framework
         const elementsToReveal = document.querySelectorAll('.reveal');
@@ -1106,18 +1192,21 @@ width: 100%;
         });
 
         // Clear placeholder modules dynamically once image src paths are populated
-        document.querySelectorAll('.collage-item img, .carousel-image-area img').forEach(img => {
-            const handlePlaceholderRemoval = () => {
-                const placeholder = img.nextElementSibling;
-                if(placeholder && placeholder.classList.contains('img-placeholder')) {
-                    placeholder.style.display = 'none';
-                }
-            };
-            img.addEventListener('load', handlePlaceholderRemoval);
-            if (img.complete && img.src !== "") handlePlaceholderRemoval();
-        });
+        const runPlaceholderClearanceCheck = (containerElement = document) => {
+            containerElement.querySelectorAll('.carousel-image-area img').forEach(img => {
+                const handlePlaceholderRemoval = () => {
+                    const placeholder = img.nextElementSibling;
+                    if(placeholder && placeholder.classList.contains('img-placeholder')) {
+                        placeholder.style.display = 'none';
+                    }
+                };
+                img.addEventListener('load', handlePlaceholderRemoval);
+                if (img.complete && img.src !== "") handlePlaceholderRemoval();
+            });
+        };
+        runPlaceholderClearanceCheck();
 
-        // --- STABILIZED TOUCH, GESTURE, & AUTO-SLIDE CAROUSEL CONTROLLER ---
+        // --- PRODUCTION-READY CENTER FOCUS CAROUSEL ENGINE ---
         const track = document.querySelector('.carousel-track');
         const container = document.getElementById('carouselTrackContainer');
         const slides = Array.from(track.children);
@@ -1127,42 +1216,43 @@ width: 100%;
         const dots = Array.from(dotsNav.children);
 
         let currentSlideIndex = 0;
-        let isDragging = false;
-        let startX = 0;
-        let currentTranslate = 0;
-        let prevTranslate = 0;
-        let animationID = 0;
         let autoSlideTimer = null;
-        const slideIntervalDuration = 4000; // Auto-slides every 4 seconds
+        const slideIntervalDuration = 4500;
 
-        // Re-align slides inline safely without overlapping width problems
-        slides.forEach((slide, index) => {
-            slide.style.width = `${container.offsetWidth}px`;
-        });
+        const updateCarousel = () => {
+            // Apply Active/Frosted structural visibility target classes
+            slides.forEach((slide, idx) => {
+                slide.classList.remove('active');
+                if (idx === currentSlideIndex) {
+                    slide.classList.add('active');
+                }
+            });
 
-        const updateSlidePosition = (targetIndex) => {
-            // High-stability hardware acceleration transition timing curve
-            track.style.transition = 'transform 0.5s cubic-bezier(0.16, 1, 0.3, 1)';
-            track.style.transform = `translateX(-${targetIndex * 100}%)`;
+            // Calculate precise offsets to center target element profile
+            const containerWidth = container.offsetWidth;
+            const activeSlide = slides[currentSlideIndex];
+            const slideWidth = activeSlide.offsetWidth;
+            const slideOffsetLeft = activeSlide.offsetLeft;
+
+            const targetTranslate = (containerWidth / 2) - (slideOffsetLeft + (slideWidth / 2));
+            track.style.transform = `translateX(${targetTranslate}px)`;
             
-            dots.forEach(dot => dot.classList.remove('current-slide'));
-            dots[targetIndex].classList.add('current-slide');
-            
-            currentSlideIndex = targetIndex;
-            prevTranslate = -currentSlideIndex * container.offsetWidth;
+            // Adjust pagination indicators
+            dots.forEach((dot, idx) => {
+                dot.classList.toggle('current-slide', idx === currentSlideIndex);
+            });
         };
 
         const moveToNextSlide = () => {
-            let nextIndex = (currentSlideIndex + 1) % slides.length;
-            updateSlidePosition(nextIndex);
+            currentSlideIndex = (currentSlideIndex + 1) % slides.length;
+            updateCarousel();
         };
 
         const moveToPrevSlide = () => {
-            let prevIndex = (currentSlideIndex - 1 + slides.length) % slides.length;
-            updateSlidePosition(prevIndex);
+            currentSlideIndex = (currentSlideIndex - 1 + slides.length) % slides.length;
+            updateCarousel();
         };
 
-        // Auto Slide Timer Hooks
         const startAutoSlide = () => {
             if (autoSlideTimer === null) {
                 autoSlideTimer = setInterval(moveToNextSlide, slideIntervalDuration);
@@ -1176,7 +1266,36 @@ width: 100%;
             }
         };
 
-        // Control click listeners
+        // --- MODERN MODAL INTERACTION CONTROLS ---
+        const slideModalOverlay = document.getElementById('slideModalOverlay');
+        const modalContentWrapper = document.getElementById('modalContentWrapper');
+        let modalDismissTimer = null;
+
+        const launchSlideModal = (slideElement) => {
+            stopAutoSlide(); // Pause structural slideshow loop execution
+            
+            // Populate and build full modal layout context dynamically
+            modalContentWrapper.innerHTML = slideElement.innerHTML;
+            runPlaceholderClearanceCheck(modalContentWrapper);
+            
+            slideModalOverlay.classList.add('open');
+
+            // Automatically clean overlay down after a few seconds (4 seconds baseline)
+            clearTimeout(modalDismissTimer);
+            modalDismissTimer = setTimeout(dismissSlideModal, 4000);
+        };
+
+        const dismissSlideModal = () => {
+            if (slideModalOverlay.classList.contains('open')) {
+                slideModalOverlay.classList.remove('open');
+                clearTimeout(modalDismissTimer);
+                
+                // Safely resume slide rotations instantly
+                startAutoSlide();
+            }
+        };
+
+        // Event Listeners for carousel navigation arrows
         nextButton.addEventListener('click', () => {
             stopAutoSlide();
             moveToNextSlide();
@@ -1189,25 +1308,38 @@ width: 100%;
             startAutoSlide();
         });
 
+        // Click a slide indicator dot directly
         dotsNav.addEventListener('click', e => {
             const targetDot = e.target.closest('button');
             if (!targetDot) return;
             const targetIndex = dots.findIndex(dot => dot === targetDot);
             stopAutoSlide();
-            updateSlidePosition(targetIndex);
+            currentSlideIndex = targetIndex;
+            updateCarousel();
             startAutoSlide();
         });
 
-        // Stabilizes layout sizes when switching viewports or rotating screens
-        window.addEventListener('resize', () => {
-            track.style.transition = 'none';
-            prevTranslate = -currentSlideIndex * container.offsetWidth;
-            track.style.transform = `translateX(${prevTranslate}px);`;
+        // Interactive Click Capture: Slide centers itself and launches full width popup overlay zoom
+        slides.forEach((slide, idx) => {
+            slide.addEventListener('click', () => {
+                currentSlideIndex = idx;
+                updateCarousel();
+                launchSlideModal(slide);
+            });
         });
 
+        // Universal close listener to dismiss modal whenever clicking outside the graphic contents
+        slideModalOverlay.addEventListener('click', (e) => {
+            if (!modalContentWrapper.contains(e.target)) {
+                dismissSlideModal();
+            }
+        });
 
+        // Track safety adjustments when layout changes occur
+        window.addEventListener('resize', updateCarousel);
 
-        // Run Engine Baseline Cycles
+        // Run Baseline Lifecycle
+        updateCarousel();
         startAutoSlide();
     </script>
 </body>
