@@ -1,0 +1,1214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=0.87 , maximum-scale=0.87, user-scalable=no, viewport-fit=cover"  />
+  
+    <title>About Avanti Ledger - Your Financial Clarity</title>
+    <style>
+        :root {
+            --primary: #3f72af;
+            --primary-dark: #112d4e;
+            --primary-light: #dbe2ef;
+            --bg: #f9f7f7;
+            --surface: #ffffff;
+            --text: #2b2b2b;
+            --text-muted: #555555;
+            --success: #2ecc71;
+            --error: #e74c3c;
+            --transition-smooth: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            scroll-behavior: smooth;
+        }
+
+        body {
+            background-color: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        /* Utility Classes for Animations */
+        .reveal {
+            opacity: 0;
+            transform: translateY(40px);
+            transition: var(--transition-smooth);
+        }
+
+        .reveal.active {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* Navigation */
+        nav {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 20px rgba(0,0,0,0.05);
+            z-index: 1000;
+            transition: var(--transition-smooth);
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--primary-dark);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .logo-dot {
+            width: 12px;
+            height: 12px;
+            background-color: var(--primary);
+            border-radius: 50%;
+            display: inline-block;
+            animation: pulse 2s infinite;
+        }
+
+        /* Hero Section */
+        header {
+            min-height: 90vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 8rem 2rem 4rem 2rem;
+            background: linear-gradient(135deg, #ffffff 0%, var(--primary-light) 100%);
+            position: relative;
+        }
+
+        .hero-container {
+            max-width: 1200px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 4rem;
+            align-items: center;
+        }
+
+        .hero-text h1 {
+            font-size: 3.5rem;
+            color: var(--primary-dark);
+            line-height: 1.2;
+            margin-bottom: 1.5rem;
+        }
+
+        .hero-text h1 span {
+            color: var(--primary);
+        }
+
+        .hero-text p {
+            font-size: 1.2rem;
+            color: var(--text-muted);
+            margin-bottom: 2rem;
+        }
+
+        .cta-btn {
+            display: inline-block;
+            padding: 0.8rem 2rem;
+            background-color: var(--primary);
+            color: white;
+            text-decoration: none;
+            border-radius: 30px;
+            font-weight: 600;
+            box-shadow: 0 4px 15px rgba(63, 114, 175, 0.3);
+            transition: var(--transition-smooth);
+            border: none;
+            cursor: pointer;
+        }
+
+        .cta-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 20px rgba(63, 114, 175, 0.5);
+            background-color: var(--primary-dark);
+        }
+
+        /* Hero Visual Illustration */
+        .hero-visual {
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .main-card-mockup {
+            background: var(--surface);
+            border-radius: 16px;
+            padding: 2rem;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.08);
+            width: 100%;
+            max-width: 450px;
+            position: relative;
+            z-index: 2;
+            transform: rotate(-2deg);
+            transition: var(--transition-smooth);
+        }
+
+        .main-card-mockup:hover {
+            transform: rotate(0deg) scale(1.02);
+        }
+
+        .floating-element {
+            position: absolute;
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 12px;
+            padding: 1rem;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.05);
+            z-index: 3;
+            transition: var(--transition-smooth);
+        }
+
+        .float-1 { top: -20px; left: -20px; border-left: 5px solid var(--success); animation: floatY 4s ease-in-out infinite; }
+        .float-2 { bottom: -20px; right: -10px; border-left: 5px solid var(--primary); animation: floatY 4s ease-in-out infinite 2s; }
+
+        /* Core Philosophy Sections */
+        section {
+            padding: 6rem 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .section-title {
+            text-align: center;
+            font-size: 2.5rem;
+            color: var(--primary-dark);
+            margin-bottom: 1rem;
+        }
+
+        .section-subtitle {
+            text-align: center;
+            color: var(--text-muted);
+            max-width: 600px;
+            margin: 0 auto 4rem auto;
+            font-size: 1.1rem;
+        }
+
+        /* Feature Grid Layouts */
+        .feature-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 4rem;
+            align-items: center;
+            margin-bottom: 6rem;
+        }
+
+        .feature-row.reverse {
+            direction: rtl;
+        }
+
+        .feature-row.reverse .feature-text {
+            direction: ltr;
+        }
+
+        .feature-text h3 {
+            font-size: 2rem;
+            color: var(--primary-dark);
+            margin-bottom: 1.5rem;
+        }
+
+        .feature-text p {
+            color: var(--text-muted);
+            margin-bottom: 1.5rem;
+            font-size: 1.05rem;
+        }
+
+        /* Interactive Table Mockup */
+        .mock-table-container {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.04);
+            overflow-x: auto;
+        }
+
+        .mock-table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+            font-size: 0.9rem;
+        }
+
+        .mock-table th {
+            padding: 0.75rem;
+            border-bottom: 2px solid var(--primary-light);
+            color: var(--primary-dark);
+        }
+
+        .mock-table td {
+            padding: 0.75rem;
+            border-bottom: 1px solid #eee;
+        }
+
+        .table-badge {
+            background: var(--primary-light);
+            color: var(--primary-dark);
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+        }
+
+        /* Error Engine Visualizer */
+        .error-visualizer {
+            background: #fff;
+            border-radius: 12px;
+            padding: 2rem;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.05);
+            border: 1px solid #ffdcd8;
+            position: relative;
+        }
+
+        .error-alert-box {
+            background: #fff5f5;
+            border-left: 4px solid var(--error);
+            padding: 1rem;
+            border-radius: 4px;
+            margin-top: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            animation: shake 0.5s ease-in-out;
+        }
+
+        /* Offline Toggle Visualizer */
+        .status-card {
+            background: white;
+            padding: 2rem;
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.04);
+            text-align: center;
+            position: relative;
+        }
+
+        .status-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 0.5rem 1.5rem;
+            border-radius: 20px;
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+            transition: var(--transition-smooth);
+        }
+
+        .status-indicator.online {
+            background: #e8f8f0;
+            color: var(--success);
+        }
+
+        .status-indicator.offline {
+            background: #fff3cd;
+            color: #d39e00;
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: currentColor;
+        }
+
+        /* Dashboard Highlights */
+        .dashboard-preview {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1.5rem;
+        }
+
+        .dash-card {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 12px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.03);
+            transition: var(--transition-smooth);
+        }
+
+        .dash-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .streak-fire {
+            font-size: 1.5rem;
+            color: #e67e22;
+        }
+
+        .bar-chart-mock {
+            display: flex;
+            align-items: flex-end;
+            gap: 10px;
+            height: 100px;
+            margin-top: 1rem;
+        }
+
+        .chart-bar {
+            flex: 1;
+            background: var(--primary-light);
+            border-radius: 4px 4px 0 0;
+            transition: var(--transition-smooth);
+        }
+
+        .chart-bar.active {
+            background: var(--primary);
+        }
+
+        /* Bottom Feature Grid */
+        .three-column-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 2rem;
+            margin-top: 4rem;
+        }
+
+        .grid-card {
+            background: white;
+            padding: 2.5rem;
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.02);
+            transition: var(--transition-smooth);
+            border-top: 4px solid transparent;
+        }
+
+        .grid-card:hover {
+            transform: translateY(-10px);
+            border-top-color: var(--primary);
+            box-shadow: 0 15px 35px rgba(0,0,0,0.06);
+        }
+
+        .grid-card h4 {
+            font-size: 1.3rem;
+            color: var(--primary-dark);
+            margin-bottom: 1rem;
+        }
+
+        /* --- PORTRAIT SCREENSHOT COLLAGE SYSTEM --- */
+        .gallery-section {
+            background: linear-gradient(180deg, var(--surface) 0%, var(--bg) 100%);
+            max-width: 100%;
+            width: 100%;
+        }
+
+        .gallery-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            
+        }
+
+        .app-collage {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 24px;
+            margin-bottom: 6rem;
+        }
+
+        .collage-item {
+            position: relative;
+            background: var(--primary-light);
+            border-radius: 18px;
+            overflow: hidden;
+            box-shadow: 0 12px 35px rgba(0,0,0,0.06);
+            transition: var(--transition-smooth);
+            aspect-ratio: 9 / 16;
+        }
+
+        .collage-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: var(--transition-smooth);
+            display: block;
+        }
+
+        .collage-item .img-placeholder {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, var(--primary-light), #fff);
+            color: var(--primary-dark);
+            font-weight: 600;
+            font-size: 0.9rem;
+            text-align: center;
+            padding: 1.5rem;
+        }
+
+        .collage-item:hover {
+            transform: translateY(-10px) scale(1.03);
+            box-shadow: 0 20px 40px rgba(17, 45, 78, 0.15);
+            z-index: 10;
+        }
+
+        .collage-overlay {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(0deg, rgba(17, 45, 78, 0.95) 0%, rgba(17, 45, 78, 0) 100%);
+            padding: 2rem 1.2rem 1.2rem 1.2rem;
+            color: white;
+            opacity: 0;
+            transition: var(--transition-smooth);
+        }
+
+        .collage-item:hover .collage-overlay {
+            opacity: 1;
+        }
+
+        .collage-overlay h4 { font-size: 1.05rem; margin-bottom: 4px; font-weight: 600;}
+        .collage-overlay p { font-size: 0.8rem; opacity: 0.85; line-height: 1.3;}
+
+        /* --- STABILIZED MOCK DEVICE CAROUSEL --- */
+        .carousel-wrapper {
+            position: relative;
+            min-width: 100%;
+            margin: 0;
+            padding: 0 0;
+            
+        }
+
+        .carousel-track-container {
+            overflow: hidden;
+            position: relative;
+            border-radius: 24px;
+            box-shadow: 0 30px 70px rgba(17, 45, 78, 0.08);
+            background: white;
+            border: 1px solid rgba(0,0,0,0.03);
+            cursor: grab;
+            /* Prevents default browser multi-touch and tracking conflicts while swiping */
+            touch-action: pan-y; 
+        }
+
+        .carousel-track-container:active {
+            cursor: grabbing;
+        }
+
+        .carousel-track {
+            display: flex;
+            will-change: transform;
+            /* Use modern timing optimizations to stop spring-back stuttering */
+            transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .carousel-slide {
+            min-width: 100%;
+            box-sizing: border-box;
+            background: white;
+            display: grid;
+            grid-template-columns: 0.9fr 1.1fr;
+            align-items: center;
+            gap: 50px;
+            padding: 4rem;
+            user-select: none;
+        }
+
+        .carousel-image-area {
+            background: #11141a;
+            border-radius: 36px;
+            
+            min-height: 600px;
+            width: 90%;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            position: relative;
+            box-shadow: 0 15px 40px rgba(0,0,0,0.3), inset 0 0 0 12px #11141a;
+            border: 4px solid #333a47;
+        }
+
+        .carousel-image-area img {
+            width: 100%;
+            height: 100%;
+          
+            pointer-events: none;
+width: 100%;
+  height: 100%;
+  object-fit: contain;  /* key line */
+  object-position: center;
+  display: block;
+            
+        }
+
+        .carousel-image-area .img-placeholder {
+            color: #a0aec0;
+            font-weight: 500;
+            text-align: center;
+            font-size: 0.95rem;
+            padding: 2rem;
+            line-height: 1.4;
+        }
+
+        .carousel-image-area::before {
+            content: '';
+            position: absolute;
+            top: 0px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 110px;
+            height: 25px;
+            background: #11141a;
+            border-radius: 0 0 16px 16px;
+            z-index: 20;
+        }
+
+        .carousel-caption {
+            padding-right: 2rem;
+        }
+
+        .carousel-caption h3 {
+            color: var(--primary-dark);
+            font-size: 1.2rem;
+            margin-bottom: 1.2rem;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+
+        .carousel-caption p {
+            color: var(--text-muted);
+            font-size: 1.1rem;
+            line-height: 1.6;
+        }
+
+        /* Carousel Navigation */
+        .carousel-btn {
+            position: absolute;
+            top: 25%;
+            transform: translateY(-50%);
+            background: white;
+            border: none;
+            width: 52px;
+            height: 52px;
+            border-radius: 50%;
+            box-shadow: 0 6px 20px rgba(0,0,0,0.08);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+            transition: var(--transition-smooth);
+            color: var(--primary-dark);
+            font-size: 1.8rem;
+        }
+
+        .carousel-btn:hover {
+            background: var(--primary);
+            color: white;
+            transform: translateY(-50%) scale(1.05);
+        }
+
+        .carousel-btn.prev { left: 4px; }
+        .carousel-btn.next { right: 4px; }
+
+        .carousel-nav {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 2.5rem;
+            flex-wrap: wrap;
+        }
+
+        .carousel-indicator {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: var(--primary-light);
+            border: none;
+            cursor: pointer;
+            transition: var(--transition-smooth);
+        }
+
+        .carousel-indicator.current-slide {
+            background: var(--primary);
+            width: 28px;
+            border-radius: 50px;
+        }
+
+        /* Footer Banner Setup */
+        footer {
+            background: var(--primary-dark);
+            color: white;
+            padding: 5rem 2rem;
+            text-align: center;
+            padding-bottom: calc(5rem + env(safe-area-inset-bottom, 25px));
+        }
+
+        footer h2 {
+            font-size: 2.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        footer p {
+            color: var(--primary-light);
+            max-width: 600px;
+            margin: 0 auto 2.5rem auto;
+            font-size: 1.1rem;
+        }
+
+        /* Keyframes */
+        @keyframes floatY {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-12px); }
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(63, 114, 175, 0.5); }
+            70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(63, 114, 175, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(63, 114, 175, 0); }
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            20%, 60% { transform: translateX(-6px); }
+            40%, 80% { transform: translateX(6px); }
+        }
+
+        /* Responsive Breakpoints */
+        @media (max-width: 1200px) {
+            .app-collage {
+                grid-template-columns: repeat(4, 1fr);
+                gap: 16px;
+            }
+        }
+
+        @media (max-width: 992px) {
+            .hero-container, .feature-row, .feature-row.reverse {
+                grid-template-columns: 1fr;
+                gap: 3rem;
+                direction: ltr;
+            }
+            .feature-row.reverse .feature-text {
+                direction: ltr;
+            }
+            .three-column-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+            .app-collage {
+                grid-template-columns: repeat(3, 1fr);
+            }
+            .carousel-slide {
+                grid-template-columns: 1fr;
+                padding: 3rem 2rem;
+                gap: 30px;
+            }
+            .carousel-caption {
+                padding-right: 0;
+                text-align: center;
+            }
+            .carousel-image-area {
+                max-height: 440px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .hero-text h1 { font-size: 2.5rem; }
+            .three-column-grid { grid-template-columns: 1fr; }
+            section { padding: 4rem 1.5rem; }
+            .floating-element { display: none; }
+            
+            .app-collage {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 12px;
+                padding: 0 4px;
+            }
+            .carousel-wrapper {
+                padding: 0 10px;
+            }
+            .carousel-btn {  }
+        }
+    </style>
+</head>
+<body>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600&display=swap" rel="stylesheet">
+
+
+    <nav>
+        <div class="logo">
+            <span class="logo-dot"></span> Avanti Ledger
+        </div>
+    </nav>
+
+    <header>
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600&display=swap" rel="stylesheet">
+
+        <div style="position: fixed; bottom: 0; left: 0; width: 100%; background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border-top: 1px solid rgba(0, 0, 0, 0.05); display: flex; justify-content: space-around; align-items: center; z-index: 9999; padding-top: 14px; padding-bottom: constant(safe-area-inset-bottom, 25px); padding-bottom: env(safe-area-inset-bottom, 25px); font-family: 'Inter', sans-serif;">
+            <a href="dashboard.html" style="display: flex; flex-direction: column; align-items: center; text-decoration: none; color: #64748b; flex: 1; transition: 0.2s;">
+                <svg style="width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2;" viewBox="0 0 24 24">
+                    <rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect>
+                </svg>
+                <span style="font-size: 11px; margin-top: 4px; font-weight: 500;">Home</span>
+            </a>
+
+            <a href="inventory.html" style="display: flex; flex-direction: column; align-items: center; text-decoration: none; color: #64748b; flex: 1; position: relative;">
+                <svg style="width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2;" viewBox="0 0 24 24">
+                    <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+                    <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+                    <line x1="12" y1="22.08" x2="12" y2="12"></line>
+                </svg>
+                <span style="font-size: 11px; margin-top: 4px; font-weight: 500;">Inventory</span>
+            </a>
+
+            <a href="accounting-report.html" style="display: flex; flex-direction: column; align-items: center; text-decoration: none; color: #64748b; flex: 1;">
+                <svg style="width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2;" viewBox="0 0 24 24">
+                    <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline><polyline points="17 6 23 6 23 12"></polyline>
+                </svg>
+                <span style="font-size: 11px; margin-top: 4px; font-weight: 500;">Reports</span>
+            </a>
+
+            <a href="statistics.html" style="display: flex; flex-direction: column; align-items: center; text-decoration: none; color: #64748b; flex: 1;">
+                <svg style="width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2;" viewBox="0 0 24 24">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                    <polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line>
+                </svg>
+                <span style="font-size: 11px; margin-top: 4px; font-weight: 500;">Ledger</span>
+            </a>
+
+            <a href="settings.html" style="display: flex; flex-direction: column; align-items: center; text-decoration: none; color: #3f72af; flex: 1; position: relative;">
+                <div style="position: absolute; top: -14px; width: 20px; height: 3px; background: #3f72af; border-radius: 0 0 4px 4px;"></div>
+                  <svg style="width: 22px; height: 22px; fill: rgba(37, 99, 235, 0.1); stroke: currentColor; stroke-width: 2;" viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="3"></circle>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0-.33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0 .33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+        </svg>
+                <span style="font-size: 11px; margin-top: 4px; font-weight: 600;">Settings</span>
+            </a>
+        </div>
+        <div class="hero-container">
+            <div class="hero-text">
+                <h1>Step Into Absolute <span>Financial Control</span></h1>
+                <p>Running a small business is hard work, but tracking your money shouldn't be. Transition smoothly from fragile paper notebooks to a brilliant, secure digital ledger tailored around your everyday routines.</p>
+                <a href="dashboard.html" class="cta-btn">Explore Your New Dashboard</a>
+            </div>
+            <div class="hero-visual">
+                <div class="main-card-mockup">
+                    <h4 style="color: var(--primary-dark); margin-bottom: 1rem;">Daily Overview</h4>
+                    <div style="height: 12px; background: var(--primary-light); width: 70%; border-radius: 6px; margin-bottom: 10px;"></div>
+                    <div style="height: 12px; background: var(--bg); width: 45%; border-radius: 6px; margin-bottom: 20px;"></div>
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-weight: bold; color: var(--success);">+ Balanced</span>
+                        <span style="color: var(--primary); font-weight: 600;">100% Protected</span>
+                    </div>
+                </div>
+                <div class="floating-element float-1">
+                    <span style="color: var(--success); font-weight: bold;">✓ Accuracy Verified</span>
+                </div>
+                <div class="floating-element float-2">
+                    <span style="color: var(--primary-dark); font-weight: bold;">⚙ Seamless Syncing</span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <section id="discover">
+        <h2 class="section-title">Designed for Your Growth</h2>
+        <p class="section-subtitle">Discover how every interactive design choice inside Avanti acts as a silent business partner, maintaining absolute transparency and precision.</p>
+
+        <div class="feature-row reveal">
+            <div class="feature-text">
+                <h3>Your Bookkeeping, Effortlessly Organized</h3>
+                <p>Say goodbye to crossed-out numbers, smudged ink, and missing logs. Avanti presents an elegant digital Statistics Table where you enter daily sales, orders, and stocks naturally.</p>
+                <p>Designed with columns like <strong>Item Name, Orders, Total Stock, Price, Closing Stock, Sales, and Total</strong>, it calculates calculations instantly. Effortlessly handle both incoming expenses and your daily income lines right contextually.</p>
+                <p style="font-style: italic; color: var(--primary);">Interactive: Use fluid gesture controls to navigate across dates, enter edit modes to remove elements, or intuitively drag and drop lines to reorder columns.</p>
+            </div>
+            <div class="mock-table-container">
+                <table class="mock-table">
+                    <thead>
+                        <tr>
+                            <th>Item Name</th>
+                            <th>Orders</th>
+                            <th>Total Stock</th>
+                            <th>Closing</th>
+                            <th>Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Premium Juice</td>
+                            <td>10</td>
+                            <td>50</td>
+                            <td>42</td>
+                            <td><span class="table-badge">k240.00</span></td>
+                        </tr>
+                        <tr>
+                            <td>Mineral Water</td>
+                            <td>20</td>
+                            <td>100</td>
+                            <td>65</td>
+                            <td><span class="table-badge">k105.00</span></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="feature-row reverse reveal">
+            <div class="feature-text">
+                <h3>The Guardian Angel for Your Numbers</h3>
+                <p>Human oversights shouldn't compromise your livelihood. Avanti contains a native <strong>Error Detection Engine</strong> built directly into the tracking pipeline to secure historical integrity.</p>
+                <p>If today's starting inventory conflicts with yesterday's closing parameters, or if a closing item magically exceeds your total stock, the platform alerts you right away. It even prevents accidental profit losses by alerting you if a form-entered selling price dips under cost constraints.</p>
+                <p>To secure absolute accuracy across time, our <strong>Automatic Item Propagation</strong> engine carries structural name/price changes exclusively to future days, protecting the sanctity of verified past data.</p>
+            </div>
+            <div class="error-visualizer">
+                <span style="font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted);">Real-Time Audit Check</span>
+                <div class="error-alert-box">
+                    <strong style="color: var(--error);">Notice:</strong> 
+                    <span style="font-size: 0.9rem; color: #721c24;">Closing stock value cannot exceed total available warehouse stock. Please verify.</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="feature-row reveal">
+            <div class="feature-text">
+                <h3>Business Stays Alive, Everywhere</h3>
+                <p>Unstable networks or localized power drops shouldn't halt your operational pacing. Avanti is intentionally engineered as an offline-capable hub.</p>
+                <p>When cellular reception or Wi-Fi drops, your system instantly enters <strong>Offline Mode</strong> without throwing a single slow-down block or interruption error. Log entries, process balances, and use tools smoothly; your modifications are securely held locally and upload straight to global structural cloud storage databases the moment you link back up.</p>
+            </div>
+            <div class="status-card">
+                <div class="status-indicator online" id="statusIndicator">
+                    <span class="status-dot"></span> <span id="statusText">System Online & Synced</span>
+                </div>
+                <p style="font-size: 0.95rem; color: var(--text-muted);">Click to simulate a network interruption and watch Avanti adapt flawlessly.</p>
+                <button class="cta-btn" id="simulateBtn" style="margin-top: 1.5rem; font-size: 0.85rem;">Simulate Signal Drop</button>
+            </div>
+        </div>
+
+        <div class="three-column-grid reveal">
+            <div class="grid-card">
+                <h4>Forward-Thinking Reporting</h4>
+                <p>Deep-dive into dynamic tracking tools that present weekly revenue trajectories and product rank analytics. Know exactly what generates profit lines so you invest capital sensibly.</p>
+            </div>
+
+            <div class="grid-card">
+                <h4>Compliant Financial Accounting</h4>
+                <p>When you enable settings to inputs your unit cost fields, Avanti evaluates using exact <strong>FIFO (First In, First Out)</strong> mechanisms. Missing an item's specific historical cost? The ledger implements a 70% cost-to-price safety baseline model automatically.</p>
+            </div>
+
+            <div class="grid-card">
+                <h4>Intelligent Container Tracking</h4>
+                <p>Handle custom counts like empty structural container tracking over balanced dates without manual counting overheads. The framework runs on a solid mathematical model:</p>
+                <div class="formula-box">Initial Count + Σ(Sales - Orders)</div>
+                <p style="font-size: 0.85rem; color: var(--text-muted);">Always keeps empty bottle pools accurately accounted for automatically.</p>
+            </div>
+        </div>
+    </section>
+
+    <section class="gallery-section">
+        <div class="gallery-container reveal">
+            <h2 class="section-title">Experience the Interface</h2>
+            <p class="section-subtitle">Take an architectural look through Avanti Ledger's high-fidelity layouts, engineered smoothly for fast mobile administrative interactions.</p>
+            
+          
+
+            <div class="carousel-wrapper">
+                <button class="carousel-btn prev" aria-label="Previous Slide">‹</button>
+                <div class="carousel-track-container" id="carouselTrackContainer">
+                    <div class="carousel-track">
+                        <div class="carousel-slide">
+                            <div class="carousel-image-area">
+                                <img src="https://ik.imagekit.io/3mtmeexff/avanti_store_profile_1780128054428_tSUwVpsq_.jpg" alt="">
+                                <div class="img-placeholder">Authentic Smartphone Module<br><br>[Slide 1 Screen Mockup]</div>
+                            </div>
+                            <div class="carousel-caption">
+                                <h3>1. Main Dashboard</h3>
+<p>Review weekly performance metrics, verify continuous ledger data entry streaks, and monitor forensic guardrail balancing alerts.</p>
+                            </div>
+                        </div>
+                        <div class="carousel-slide">
+                            <div class="carousel-image-area">
+                                <img src="https://ik.imagekit.io/3mtmeexff/avanti_store_profile_1780129101230_VkQbpqeK2.jpg" alt="">
+                                <div class="img-placeholder">Authentic Smartphone Module<br><br>[Slide 2 Screen Mockup]</div>
+                            </div>
+                            <div class="carousel-caption">
+                                <h3>2. Inventory Status</h3>
+<p>Monitor real-time unit volumes, check total bottle counts, and review individual unit retail pricing configurations across stock items.</p>
+                            </div>
+                        </div>
+                        <div class="carousel-slide">
+                            <div class="carousel-image-area">
+                                <img src="https://ik.imagekit.io/3mtmeexff/avanti-store_profile_1780129184198_CosyDL_2Y.jpg" alt="">
+                                <div class="img-placeholder">Authentic Smartphone Module<br><br>[Slide 3 Screen Mockup]</div>
+                            </div>
+                            <div class="carousel-caption">
+                                <h3>3. Trading Profit & Loss Account</h3>
+<p>Calculate gross profit margins by balancing sales revenues, inventory valuations, operational incomes, and itemized expenses.</p>
+                            </div>
+                        </div>
+                        <div class="carousel-slide">
+                            <div class="carousel-image-area">
+                                <img src="https://ik.imagekit.io/3mtmeexff/avanti-store_profile_1780129285716_EOfxC1QlA.jpg" alt="">
+                                <div class="img-placeholder">Authentic Smartphone Module<br><br>[Slide 4 Screen Mockup]</div>
+                            </div>
+                            <div class="carousel-caption">
+                                <h3>4. Trial Balance</h3>
+<p>Audit closing owners' equity calculations and verify matching debit and credit accounting totals across ledger categories.</p>
+                            </div>
+                        </div>
+                        <div class="carousel-slide">
+                            <div class="carousel-image-area">
+                                <img src="https://ik.imagekit.io/3mtmeexff/avanti-store_profile_1780129374252_zWYe1nLIa.jpg" alt="">
+                                <div class="img-placeholder">Authentic Smartphone Module<br><br>[Slide 5 Screen Mockup]</div>
+                            </div>
+                            <div class="carousel-caption">
+                                <h3>5. Weekly Sales Report</h3>
+<p>Track cyclical operational revenue trends and evaluate high-performing or low-performing sales days via comprehensive visual charts.</p>
+                            </div>
+                        </div>
+                        <div class="carousel-slide">
+                            <div class="carousel-image-area">
+                                <img src="https://ik.imagekit.io/3mtmeexff/avanti-store_profile_1780129427250_HqF7swg-Z.jpg" alt="">
+                                <div class="img-placeholder">Authentic Smartphone Module<br><br>[Slide 6 Screen Mockup]</div>
+                            </div>
+                            <div class="carousel-caption">
+                                <h3>6. Product Performance</h3>
+<p>Identify top-selling stock items by revenue generation and evaluate item sales volumes utilizing visual quantity distribution charts.</p>
+                            </div>
+                        </div>
+                        <div class="carousel-slide">
+                            <div class="carousel-image-area">
+                                <img src="https://ik.imagekit.io/3mtmeexff/avanti-store_profile_1780129482232_pG9i0nBeD.jpg" alt="">
+                                <div class="img-placeholder">Authentic Smartphone Module<br><br>[Slide 7 Screen Mockup]</div>
+                            </div>
+                            <div class="carousel-caption">
+                                <h3>7. Inventory Reports</h3>
+<p>Analyze expected return valuations, identify highest quantity stock items, and access detailed data tracking summaries for empty bottle returns.</p>
+                            </div>
+                        </div>
+                        <div class="carousel-slide">
+                            <div class="carousel-image-area">
+                                <img src="https://ik.imagekit.io/3mtmeexff/avanti-store_profile_1780129535554_f7GeCrtxz.jpg" alt="">
+                                <div class="img-placeholder">Authentic Smartphone Module<br><br>[Slide 8 Screen Mockup]</div>
+                            </div>
+                            <div class="carousel-caption">
+                                <h3>8. Stock Change Report</h3>
+<p>Track historical purchasing frequency, evaluate total incoming supply volumes, and review chronological breakdown logs for item restocks.</p>
+                            </div>
+                        </div>
+                        <div class="carousel-slide">
+                            <div class="carousel-image-area">
+                                <img src="https://ik.imagekit.io/3mtmeexff/avanti-store_profile_1780129623724_dvhzl1HQd.jpg" alt="">
+                                <div class="img-placeholder">Authentic Smartphone Module<br><br>[Slide 9 Screen Mockup]</div>
+                            </div>
+                            <div class="carousel-caption">
+                                <h3>9. Empty Bottle Tracking</h3>
+<p>Monitor aggregate returned crate components and audit individual beverage container breakdown quantities using systemic ledger balance formulas.</p>
+
+                            </div>
+                        </div>
+                        <div class="carousel-slide">
+                            <div class="carousel-image-area">
+                                <img src="https://ik.imagekit.io/3mtmeexff/avanti-store_profile_1780129728245_NGFcI8G7G.jpg" alt="">
+                                <div class="img-placeholder">Authentic Smartphone Module<br><br>[Slide 10 Screen Mockup]</div>
+                            </div>
+                            <div class="carousel-caption">
+                                <h3>10. Ledger Item Detail</h3>
+<p>Track opening and closing stock records, cross-reference incoming orders, and review systemic forensic audit variance alerts.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <button class="carousel-btn next" aria-label="Next Slide">›</button>
+
+                <div class="carousel-nav">
+                    <button class="carousel-indicator current-slide"></button>
+                    <button class="carousel-indicator"></button>
+                    <button class="carousel-indicator"></button>
+                    <button class="carousel-indicator"></button>
+                    <button class="carousel-indicator"></button>
+                    <button class="carousel-indicator"></button>
+                    <button class="carousel-indicator"></button>
+                    <button class="carousel-indicator"></button>
+                    <button class="carousel-indicator"></button>
+                    <button class="carousel-indicator"></button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section style="background: white; max-width: 100%; width: 100%;">
+        <div style="max-width: 1200px; margin: 0 auto; padding: 2rem 0;" class="reveal">
+            <h2 class="section-title">The Strategic Executive Command Center</h2>
+            <p class="section-subtitle">Whether monitoring values alone or consolidating operations among multiple entities, you hold full administrative visibility.</p>
+            
+            <div class="feature-row">
+                <div class="dashboard-preview">
+                    <div class="dash-card">
+                        <span class="streak-fire">🔥 14 Day Streak</span>
+                        <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 5px;">Consistent Accounting Entries</p>
+                    </div>
+                    <div class="dash-card">
+                        <h5 style="color: var(--primary-dark)">Top 5 Products</h5>
+                        <div class="bar-chart-mock">
+                            <div class="chart-bar" style="height: 90%;"></div>
+                            <div class="chart-bar active" style="height: 100%;"></div>
+                            <div class="chart-bar" style="height: 60%;"></div>
+                            <div class="chart-bar" style="height: 40%;"></div>
+                            <div class="chart-bar" style="height: 75%;"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="feature-text">
+                    <h3>Your Dashboard, Your Morning Compass</h3>
+                    <p>Open the app up to a centralized interactive summary space. Quickly assess accounting consistency streaks, overall inventory metrics, and visual transactional charts mapping your expenses versus incoming assets.</p>
+                    <p><strong>Device Administration & Safety:</strong> Avanti distinguishes between standard and executive access profiles. Admin roles easily handle profile elevations, manage multi-device global synchronization frameworks, and isolate tracking paths to protect ledger integrity against unauthorized overrides.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <footer>
+        <h2>Are You Ready for Total Transparency?</h2>
+        <p>Join small businesses ditching messy journals for pristine financial control. Build error-free systems with Avanti Ledger today.</p>
+        <a href="dashboard.html" class="cta-btn" style="background: white; color: var(--primary-dark); box-shadow: 0 4px 15px rgba(0,0,0,0.2);">Get Started with Avanti</a>
+    </footer>
+
+    <script>
+        // Scroll Intersection Observer Framework
+        const elementsToReveal = document.querySelectorAll('.reveal');
+        const revealOnScroll = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if(entry.isIntersecting) {
+                    entry.target.classList.add('active');
+                }
+            });
+        }, { threshold: 0.1 });
+        elementsToReveal.forEach(el => revealOnScroll.observe(el));
+
+        // Network Interruption Simulation Engine
+        const simulateBtn = document.getElementById('simulateBtn');
+        const statusIndicator = document.getElementById('statusIndicator');
+        const statusText = document.getElementById('statusText');
+        let isOnline = true;
+
+        simulateBtn.addEventListener('click', () => {
+            isOnline = !isOnline;
+            if(!isOnline) {
+                statusIndicator.className = 'status-indicator offline';
+                statusText.innerText = 'Offline Mode Active (Data Saved Locally)';
+                simulateBtn.innerText = 'Restore Signal Link';
+                simulateBtn.style.background = 'var(--success)';
+            } else {
+                statusIndicator.className = 'status-indicator online';
+                statusText.innerText = 'System Online & Synced';
+                simulateBtn.innerText = 'Simulate Signal Drop';
+                simulateBtn.style.background = 'var(--primary)';
+            }
+        });
+
+        // Clear placeholder modules dynamically once image src paths are populated
+        document.querySelectorAll('.collage-item img, .carousel-image-area img').forEach(img => {
+            const handlePlaceholderRemoval = () => {
+                const placeholder = img.nextElementSibling;
+                if(placeholder && placeholder.classList.contains('img-placeholder')) {
+                    placeholder.style.display = 'none';
+                }
+            };
+            img.addEventListener('load', handlePlaceholderRemoval);
+            if (img.complete && img.src !== "") handlePlaceholderRemoval();
+        });
+
+        // --- STABILIZED TOUCH, GESTURE, & AUTO-SLIDE CAROUSEL CONTROLLER ---
+        const track = document.querySelector('.carousel-track');
+        const container = document.getElementById('carouselTrackContainer');
+        const slides = Array.from(track.children);
+        const nextButton = document.querySelector('.carousel-btn.next');
+        const prevButton = document.querySelector('.carousel-btn.prev');
+        const dotsNav = document.querySelector('.carousel-nav');
+        const dots = Array.from(dotsNav.children);
+
+        let currentSlideIndex = 0;
+        let isDragging = false;
+        let startX = 0;
+        let currentTranslate = 0;
+        let prevTranslate = 0;
+        let animationID = 0;
+        let autoSlideTimer = null;
+        const slideIntervalDuration = 4000; // Auto-slides every 4 seconds
+
+        // Re-align slides inline safely without overlapping width problems
+        slides.forEach((slide, index) => {
+            slide.style.width = `${container.offsetWidth}px`;
+        });
+
+        const updateSlidePosition = (targetIndex) => {
+            // High-stability hardware acceleration transition timing curve
+            track.style.transition = 'transform 0.5s cubic-bezier(0.16, 1, 0.3, 1)';
+            track.style.transform = `translateX(-${targetIndex * 100}%)`;
+            
+            dots.forEach(dot => dot.classList.remove('current-slide'));
+            dots[targetIndex].classList.add('current-slide');
+            
+            currentSlideIndex = targetIndex;
+            prevTranslate = -currentSlideIndex * container.offsetWidth;
+        };
+
+        const moveToNextSlide = () => {
+            let nextIndex = (currentSlideIndex + 1) % slides.length;
+            updateSlidePosition(nextIndex);
+        };
+
+        const moveToPrevSlide = () => {
+            let prevIndex = (currentSlideIndex - 1 + slides.length) % slides.length;
+            updateSlidePosition(prevIndex);
+        };
+
+        // Auto Slide Timer Hooks
+        const startAutoSlide = () => {
+            if (autoSlideTimer === null) {
+                autoSlideTimer = setInterval(moveToNextSlide, slideIntervalDuration);
+            }
+        };
+
+        const stopAutoSlide = () => {
+            if (autoSlideTimer !== null) {
+                clearInterval(autoSlideTimer);
+                autoSlideTimer = null;
+            }
+        };
+
+        // Control click listeners
+        nextButton.addEventListener('click', () => {
+            stopAutoSlide();
+            moveToNextSlide();
+            startAutoSlide();
+        });
+
+        prevButton.addEventListener('click', () => {
+            stopAutoSlide();
+            moveToPrevSlide();
+            startAutoSlide();
+        });
+
+        dotsNav.addEventListener('click', e => {
+            const targetDot = e.target.closest('button');
+            if (!targetDot) return;
+            const targetIndex = dots.findIndex(dot => dot === targetDot);
+            stopAutoSlide();
+            updateSlidePosition(targetIndex);
+            startAutoSlide();
+        });
+
+        // Stabilizes layout sizes when switching viewports or rotating screens
+        window.addEventListener('resize', () => {
+            track.style.transition = 'none';
+            prevTranslate = -currentSlideIndex * container.offsetWidth;
+            track.style.transform = `translateX(${prevTranslate}px);`;
+        });
+
+
+
+        // Run Engine Baseline Cycles
+        startAutoSlide();
+    </script>
+</body>
+</html>
