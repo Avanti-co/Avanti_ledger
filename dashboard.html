@@ -1150,18 +1150,27 @@ padding-bottom: env(safe-area-inset-bottom, 20px);
             }
 
             const alertBox = document.getElementById('unbalanced-alert-container');
-            if (fullData.unbalancedDays && fullData.unbalancedDays.length > 0) {
-                alertBox.innerHTML = `
-                    <div class="bg-ios-orange/10 border border-ios-orange/20 p-3.5 rounded-ios shadow-sm animate-fade-in flex items-start space-x-3">
-                        <i class="fas fa-shield-halved text-ios-orange text-base mt-0.5"></i>
-                        <div>
-                            <p class="text-xs font-bold text-black tracking-tight">Forensic Accounting Guardrail Active</p>
-                            <p class="text-[11px] text-ios-text-secondary leading-normal mt-0.5">Data for <strong class="text-ios-orange font-bold">${fullData.unbalancedDays.join(', ')}</strong> is excluded because those days are not yet balanced.</p>
-                        </div>
-                    </div>`;
-            } else {
-                alertBox.innerHTML = '';
-            }
+if (fullData.unbalancedDays && fullData.unbalancedDays.length > 0) {
+    alertBox.innerHTML = `
+        <div class="bg-ios-orange/10 border border-ios-orange/20 p-3.5 rounded-ios shadow-sm animate-fade-in flex items-start space-x-3">
+            <i class="fas fa-shield-halved text-ios-orange text-base mt-0.5"></i>
+            <div>
+                <p class="text-xs font-bold text-black tracking-tight">Forensic Accounting Guardrail Active</p>
+                <p class="text-[11px] text-ios-text-secondary leading-normal mt-0.5">Data for <strong class="text-ios-orange font-bold">${fullData.unbalancedDays.join(', ')}</strong> is excluded because those days are not yet balanced.</p>
+            </div>
+        </div>`;
+} else {
+    // Elegant green success alert when all days are perfectly balanced
+    alertBox.innerHTML = `
+        <div class="bg-ios-green/10 border border-ios-green/20 p-3.5 rounded-ios shadow-sm animate-fade-in flex items-start space-x-3">
+            <i class="fas fa-circle-check text-ios-green text-base mt-0.5"></i>
+            <div>
+                <p class="text-xs font-bold text-black tracking-tight">Forensic Accounting Guardrail Secure</p>
+                <p class="text-[11px] text-ios-text-secondary leading-normal mt-0.5">No days were skipped because all recorded days this week are perfectly balanced!</p>
+            </div>
+        </div>`;
+}
+
 
             const netRevenueChartPoints = currentWeekData.map(day => {
                 const dayMetric = salesData.currentWeekMetrics.find(d => d.dateKey === day.dateKey);
