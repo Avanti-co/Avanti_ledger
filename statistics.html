@@ -48,8 +48,8 @@
     background: linear-gradient(180deg,#f2f6fb 0%, #eef2f7 100%);
     color:var(--text-color);
     margin-top: 50px;
-    padding-bottom: 280px;
-    padding-top: 125px;
+    padding-bottom: 10px;
+    padding-top: 108px;
     margin-bottom: 180px;
   -webkit-user-select: none; /* Safari */
   -ms-user-select: none;     /* IE 10+ */
@@ -498,7 +498,9 @@ overflow-wrap: break-word;
 </head>
 <body>
 
+
     <div id="header" class="header" style="z-index: 1000;position: fixed;  width: 100vw; top:0; right: 0; background-color: #3f72af !important; padding: 10px 0 0 0 !important; font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', Helvetica, sans-serif !important; color: #ffffff !important; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1) !important; backdrop-filter: blur(10px);">
+
     
     <div style="display: flex !important; align-items: center !important; justify-content: space-between !important; padding: 10px 16px !important; margin-bottom: 10px !important;">
           <h1 class="text-3xl font-black tracking-tight text-white"> 
@@ -507,15 +509,6 @@ overflow-wrap: break-word;
                 
             </h1>
 
- <div class="more-btn border border-blue-100" id="moreBtn" title="More">
-        <i class="fas fa-ellipsis-h" id="moreIcon"></i>
-        <div class="dropdown" id="moreDropdown">
-          <div onclick="enterSelectMode()">Edit</div>
-        <div id="runAuditBtn">Check errors</div>
-<div onclick="window.location.href='notes.html'">Notes</div>
-</div>
-      </div>
-  
 
 
     </div>
@@ -536,18 +529,120 @@ overflow-wrap: break-word;
     </div>
 
     <div style="padding: 16px !important;">
-        <div class="relative" style="position: relative !important; margin-bottom: 12px !important;">
-            <input type="text" id="searchItemInput" placeholder="Search Items" onkeyup="filterSettings()" 
-                style="width: 100% !important; padding: 12px 12px 12px 44px !important; font-size: 16px !important; border-radius: 12px !important; border: none !important; background: rgba(255, 255, 255, 0.12) !important; color: #ffffff !important; outline: none !important; box-sizing: border-box !important; backdrop-filter: blur(5px) !important;" />
-            <style>
-                #searchItemInput::placeholder { color: rgba(255, 255, 255, 0.6) !important; font-weight: 400 !important; }
-            </style>
-            <svg class="absolute" style="position: absolute !important; left: 14px !important; top: 50% !important; transform: translateY(-50%) !important; width: 20px !important; height: 20px !important; color: rgba(255, 255, 255, 0.6) !important;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-            </svg>
-        </div>
+    <div style="display: flex; align-items: center; gap: 12px; width: 100%; margin-bottom: 12px;">
+    
+    <div class="relative" style="position: relative !important; flex-grow: 1;">
+        <input type="text" id="searchItemInput" placeholder="Search Items" onkeyup="filterSettings()" 
+            style="width: 100% !important; padding: 12px 12px 12px 44px !important; font-size: 16px !important; border-radius: 12px !important; border: none !important; background: rgba(255, 255, 255, 0.12) !important; color: #ffffff !important; outline: none !important; box-sizing: border-box !important; backdrop-filter: blur(5px) !important;" />
 
-        <div style="display: flex !important; justify-content: center !important;">
+        <style>
+            #searchItemInput::placeholder { color: rgba(255, 255, 255, 0.6) !important; font-weight: 400 !important; }
+            
+            /* Custom Dropdown Styling */
+            .custom-dropdown-menu {
+                position: absolute;
+                right: 0;
+                top: calc(100% + 8px);
+                background: rgba(255, 255, 255, 0.95);
+                backdrop-filter: blur(10px);
+                border-radius: 14px;
+                padding: 6px;
+                min-width: 220px;
+                box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15), 0 1px 3px rgba(0, 0, 0, 0.05);
+                z-index: 1000;
+                display: none; /* Toggle this via your JS */
+                flex-direction: column;
+                border: 1px solid rgba(255, 255, 255, 0.4);
+            }
+
+            .dropdown-group-title {
+                font-size: 11px;
+                text-transform: uppercase;
+                letter-spacing: 0.8px;
+                color: #8e8e93;
+                padding: 8px 12px 4px 12px;
+                font-weight: 700;
+            }
+
+            .dropdown-divider {
+                height: 1px;
+                background-color: #f2f2f7;
+                margin: 6px 8px;
+            }
+
+            .dropdown-item {
+                display: flex;
+                align-items: center;
+                gap: 12px;
+                width: 100%;
+                padding: 10px 12px;
+                border: none;
+                background: transparent;
+                color: #1c1c1e;
+                font-size: 14px;
+                font-weight: 500;
+                text-align: left;
+                cursor: pointer;
+                border-radius: 8px;
+                transition: background-color 0.15s ease, color 0.15s ease;
+            }
+
+            .dropdown-item:hover {
+                background-color: #f2f2f7;
+            }
+
+            /* Destructive action styling */
+            .dropdown-item.destructive:hover {
+                background-color: #ffe5e5;
+                color: #ff3b30;
+            }
+        </style>
+        
+        <svg class="absolute" style="position: absolute !important; left: 14px !important; top: 50% !important; transform: translateY(-50%) !important; width: 20px !important; height: 20px !important; color: rgba(255, 255, 255, 0.6) !important;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+        </svg>
+    </div>
+
+    <div class="ledger-actions-container" style="position: relative; display: inline-block; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; flex-shrink: 0;">
+        <button id="ledgerDropdownBtn" onclick="toggleLedgerDropdown(event)" style="padding: 12px; width: 48px; height: 48px; justify-content: center; border-radius: 12px; border: none; background-color: rgba(255, 255, 255, 0.15); color: #ffffff; font-size: 18px; cursor: pointer; display: flex; align-items: center; position: relative; backdrop-filter: blur(5px); transition: background-color 0.2s;" onmouseover="this.style.backgroundColor='rgba(255, 255, 255, 0.25)'" onmouseout="this.style.backgroundColor='rgba(255, 255, 255, 0.15)'">
+            <i id="moreIcon" class="fas fa-sliders-h"></i> 
+        </button>
+        
+        <div id="ledgerDropdownMenu" class="custom-dropdown-menu">
+            <div class="dropdown-group-title">Page Actions</div>
+            
+            <button type="button" id="optTransfer" onclick="selectLedgerAction('transfer')" class="dropdown-item">
+                <i class="fas fa-exchange-alt" style="color: #007aff; width: 20px;"></i> Transfer Page
+            </button>
+            <button type="button" id="optDuplicate" onclick="selectLedgerAction('duplicate')" class="dropdown-item">
+                <i class="fas fa-copy" style="color: #5ac8fa; width: 20px;"></i> Duplicate Page
+            </button>
+            <button type="button" id="optClear" onclick="selectLedgerAction('clear')" class="dropdown-item destructive">
+                <i class="fas fa-trash-alt" style="color: #ff3b30; width: 20px;"></i> Clear Page
+            </button>
+
+            <div class="dropdown-divider"></div>
+
+            <div class="dropdown-group-title">Tools & Editing</div>
+            
+            <button type="button" id="optEdit" onclick="enterSelectMode()" class="dropdown-item">
+                <i class="fas fa-edit" style="color: #34c759; width: 20px;"></i> Edit Mode
+            </button>
+            <button type="button" id="runAuditBtn" class="dropdown-item">
+                <i class="fas fa-exclamation-triangle" style="color: #ff9500; width: 20px;"></i> Check Errors
+            </button>
+            <button type="button" id="optNotes" onclick="handleWhatsAppClick(event)" class="dropdown-item">
+               <i class="fab fa-whatsapp" style="color: #25D366; width: 20px; font-size: 1.2em;"></i>
+Share page
+            </button>
+        </div>
+    </div>
+
+</div>
+
+
+
+        <div style="display: none !important; justify-content: center !important;">
             <span id="sync" style="
                 background: rgba(255, 255, 255, 0.08) !important;
                 color: #ffffff !important;
@@ -716,173 +811,541 @@ padding-bottom: env(safe-area-inset-bottom, 50px);
 
 
 
-<div class="floating-actions collapsed" id="floatingActionsContainer" onclick="handleContainerClick(event)">
-    <div class="total-badge">
-        Total Sales 
-        <span id="totalSalesAmount2">K0.00</span>
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+
+
+<div id="bottomSheetModal" class="bottom-sheet">
+    <div class="bottom-sheet-overlay" onclick="closeBottomSheet()"></div>
+    <div class="bottom-sheet-content">
+        <div class="bottom-sheet-handle"></div>
+        
+        <header class="bottom-sheet-header">
+            <i id="bottomSheetIcon" class="fas"></i>
+            <h3 id="bottomSheetTitle">Action</h3>
+        </header>
+        
+        <p id="bottomSheetDescription"></p>
+        
+        <div id="bottomSheetDateInputWrapper" class="bottom-sheet-form-group">
+            <label for="bottomSheetTargetDate">Select Destination Date</label>
+            <input type="date" id="bottomSheetTargetDate">
+        </div>
+        
+        <div class="bottom-sheet-buttons">
+            <button id="bottomSheetConfirmBtn" class="btn btn-primary">
+                <i class="fas fa-check"></i> Confirm
+            </button>
+            <button type="button" onclick="closeBottomSheet()" class="btn btn-secondary">
+                <i class="fas fa-times"></i> Cancel
+            </button>
+        </div>
     </div>
-    <button id="whatsappShareBtn" class="btn-whatsapp" onclick="handleWhatsAppClick(event)">
-        <!-- WhatsApp Icon -->
-      <i style=""  class="whatsicon fab fa-whatsapp"></i> 
-        <!-- Text Element -->
-        <span class="btn-text">Share Report</span>
-    </button>
 </div>
 
+
 <style>
-:root {
-    --bg-gradient: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-    --accent: #6366f1;
-    --accent-glow: rgba(99, 102, 241, 0.4);
-    --wa-green: #25D366;
-    --wa-glow: rgba(37, 211, 102, 0.4);
-    --glass: rgba(255, 255, 255, 0.8);
-    --text: #1e293b;
-}
-
-.floating-actions {
-    
-    background: rgba(30, 41, 59, 0.95);
-    backdrop-filter: blur(50px);
-    -webkit-backdrop-filter: blur(50px);
-    box-shadow: 0 0px 25px 5px rgba(30, 41, 59, 0.95);
+/* Custom Dropdown Styling */
+.custom-dropdown-menu {
+    display: none;
+    position: absolute;
+    top: 100%;
+    right: 0;
+    margin-top: 6px;
+    background-color: #ffffff;
+    border: 1px solid #d1d1d6;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
     z-index: 1000;
-    border: 1px solid rgba(255,255,255,0.15);
-    display: flex;
-    align-items: center; 
-    justify-content: center;
-    box-sizing: border-box;
+    min-width: 260px;
     overflow: hidden;
-    
-    /* Spring-loaded transition performance */
-    transition: width 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.15), 
-                padding 0.35s ease, 
-                gap 0.35s ease,
-                border-radius 0.35s ease;
-
+    padding: 6px 0;
 }
-
-/* NATURAL STATE (Circular) */
-.floating-actions.collapsed {
-    width: 70px;
-    height: 70px;
-    padding: 0;
-    gap: 0;
-    border-radius: 50%;
-    cursor: pointer;
+.custom-dropdown-menu.show {
+    display: block;
 }
-
-/* EXTENDED STATE */
-.floating-actions.expanded {
-    width: 23em;
-    height: 60px;
-    padding: 12px 24px;
-    gap: 20px;
-    border-radius: 50px;
-    cursor: default;
-}
-
-/* Total Badge Area */
-.total-badge {
-    color: white;
-    font-size: 0.9rem;
-    padding-right: 20px;
-    border-right: 1px solid rgba(255,255,255,0.2);
-    white-space: nowrap;
-    transition: opacity 0.2s ease, transform 0.25s ease;
-}
-
-.floating-actions.collapsed .total-badge {
-    opacity: 0;
-    transform: scale(0.8) translateX(-15px);
-    width: 0;
-    padding: 0;
+.dropdown-item {
+    width: 100%;
+    background: none;
     border: none;
+    padding: 12px 16px;
+    text-align: left;
+    font-size: 16px;
+    font-weight: 600;
+    color: #1c1c1e;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    transition: background-color 0.2s;
+}
+.dropdown-item:hover {
+    background-color: #f2f2f7;
+}
+.dropdown-item:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    background-color: transparent;
+}
+
+/* Bottom Sheet Modal Styling */
+.bottom-sheet {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
     pointer-events: none;
 }
-
-.floating-actions.expanded .total-badge {
+.bottom-sheet .bottom-sheet-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
+}
+.bottom-sheet .bottom-sheet-content {
+    position: relative;
+    width: 100%;
+    max-width: 100%;
+    margin: 0;
+    background-color: #ffffff;
+    border-top-left-radius: 24px;
+    border-top-right-radius: 24px;
+    padding: 20px 30px 40px 30px;
+    box-sizing: border-box;
+    box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.2);
+    transform: translateY(100%);
+    transition: transform 0.35s cubic-bezier(0.15, 1, 0.3, 1);
+    pointer-events: auto;
+}
+.bottom-sheet.show {
+    pointer-events: auto;
+}
+.bottom-sheet.show .bottom-sheet-overlay {
     opacity: 1;
-    transform: scale(1) translateX(0);
+    pointer-events: auto;
+}
+.bottom-sheet.show .bottom-sheet-content {
+    transform: translateY(0);
+}
+.bottom-sheet-handle {
+    width: 50px;
+    height: 6px;
+    background-color: #e5e5ea;
+    border-radius: 3px;
+    margin: 0 auto 20px auto;
 }
 
-.total-badge span { 
-    display: block; 
-    font-size: 1.1rem; 
-    font-weight: 800; 
-    color: #fbbf24; 
+:root {
+    /* Color Palette */
+    --bs-bg-sheet: #ffffff;
+    --bs-bg-input: #f2f2f7;
+    --bs-text-main: #1c1c1e;
+    --bs-text-muted: #636366;
+    --bs-accent: #007aff; /* Premium iOS Blue */
+    --bs-accent-hover: #0062cc;
+    --bs-border: #e5e5ea;
+    --bs-overlay: rgba(0, 0, 0, 0.4);
+    
+    /* Layout & Micro-interactions */
+    --bs-radius-lg: 16px;
+    --bs-radius-md: 12px;
+    --bs-transition: cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* WhatsApp Button Adjustments */
-.btn-whatsapp {
-    background: var(--wa-green);
-    color: white;
-    border: none;
+/* System-level Shell Layout */
+.bottom-sheet {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    z-index: 1000;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+/* Darkened blur backdrop */
+.bottom-sheet-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: var(--bs-overlay);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    z-index: 1;
+}
+
+/* The Sheet Container */
+.bottom-sheet-content {
+    position: relative;
+    z-index: 2;
+    background-color: var(--bs-bg-sheet);
+    border-radius: var(--bs-radius-lg) var(--bs-radius-lg) 0 0;
+    padding: 24px 24px 34px 24px; /* Added extra bottom padding for mobile safe zones */
+    box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.08);
+    max-height: 85vh;
+    overflow-y: auto;
+}
+
+/* Top Center Indicator Pill */
+.bottom-sheet-handle {
+    width: 36px;
+    height: 5px;
+    background-color: var(--bs-border);
+    border-radius: 3px;
+    margin: -12px auto 24px auto;
+}
+
+/* Flexbox Header Alignments */
+.bottom-sheet-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 14px;
+}
+
+#bottomSheetIcon {
+    font-size: 24px;
+    color: var(--bs-accent);
+}
+
+#bottomSheetTitle {
+    margin: 0;
+    font-size: 22px;
     font-weight: 700;
+    color: var(--bs-text-main);
+    letter-spacing: -0.5px;
+}
+
+#bottomSheetDescription {
+    font-size: 15px;
+    color: var(--bs-text-muted);
+    margin: 0 0 24px 0;
+    line-height: 1.5;
+}
+
+/* Forms Framework */
+.bottom-sheet-form-group {
+    margin-bottom: 24px;
+}
+
+.bottom-sheet-form-group label {
+    display: block;
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: var(--bs-text-main);
+}
+
+.bottom-sheet-form-group input[type="date"] {
+    width: 100%;
+    padding: 14px 16px;
+    border-radius: var(--bs-radius-md);
+    border: 1px solid var(--bs-border);
+    font-size: 16px;
+    font-family: inherit;
+    box-sizing: border-box;
+    background-color: var(--bs-bg-input);
+    color: var(--bs-text-main);
+    font-weight: 500;
+    transition: border-color 0.2s var(--bs-transition), box-shadow 0.2s var(--bs-transition);
+}
+
+/* Interactive Input States */
+.bottom-sheet-form-group input[type="date"]:focus {
+    outline: none;
+    border-color: var(--bs-accent);
+    background-color: var(--bs-bg-sheet);
+    box-shadow: 0 0 0 4px rgba(0, 122, 255, 0.12);
+}
+
+/* Buttons Engine */
+.bottom-sheet-buttons {
+    display: flex;
+    gap: 12px;
+}
+
+.btn {
+    flex: 1;
+    padding: 14px 20px;
+    border: 1px solid transparent;
+    border-radius: var(--bs-radius-md);
+    font-weight: 600;
+    font-size: 16px;
+    font-family: inherit;
+    cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 4px 15px var(--wa-glow);
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    gap: 8px;
+    transition: background-color 0.15s var(--bs-transition), transform 0.1s var(--bs-transition);
 }
 
-.floating-actions.collapsed .btn-whatsapp {
-    width: 100%;
-    height: 100%;
-    border-radius: 50%;
-    padding: 0;
-    background: transparent;
-    box-shadow: none;
+/* Native-feeling scale down on tap */
+.btn:active {
+    transform: scale(0.98);
 }
 
-.floating-actions.expanded .whatsicon {
-    color: white;
-font-size: 24px;
-    
+.btn-primary {
+    background-color: var(--bs-accent);
+    color: #ffffff;
 }
 
-.floating-actions.collapsed .whatsicon {
-color: #25D366;
-font-size: 30px;
+.btn-primary:hover {
+    background-color: var(--bs-accent-hover);
 }
 
-.floating-actions.expanded .btn-whatsapp {
-    padding: 12px 28px;
-    border-radius: 30px;
-    gap: 10px;
+.btn-secondary {
+    background-color: var(--bs-bg-input);
+    color: var(--bs-text-main);
+    border-color: var(--bs-border);
 }
 
-.btn-whatsapp:hover {
-    
-    box-shadow: 0 8px 25px var(--wa-glow);
+.btn-secondary:hover {
+    background-color: #e5e5ea;
 }
-
-/* Typography Visibility Architecture */
-.btn-text {
-    white-space: nowrap;
-    transition: max-width 0.3s ease, opacity 0.2s ease;
-    overflow: hidden;
-}
-
-.floating-actions.collapsed .btn-text {
-    max-width: 0;
-    opacity: 0;
-    display: none;
-}
-
-.floating-actions.expanded .btn-text {
-    max-width: 150px;
-    opacity: 1;
-    display: inline-block;
-}
-
-body.is-dragging-now {
-    touch-action: none;
-    overflow: hidden;
-}
-
 
 </style>
+
+<script>
+let activeActionType = null;
+
+document.addEventListener('DOMContentLoaded', function() {
+    const menu = document.getElementById('ledgerDropdownMenu');
+
+    document.addEventListener('click', function(event) {
+        // Find if the clicked element (or its icon) is the dropdown button
+        const dropdownBtn = event.target.closest('#ledgerDropdownBtn');
+        
+        // NEW: Check if the user clicked an item/option inside the dropdown menu
+        const clickedOption = event.target.closest('#ledgerDropdownMenu a, #ledgerDropdownMenu button, .dropdown-item');
+
+        if (dropdownBtn) {
+            event.stopPropagation(); // Prevents immediate close from global click
+            if (menu) {
+                menu.classList.toggle('show');
+            }
+        } else if (clickedOption) {
+            // NEW: If an option inside the menu was clicked, close the menu immediately
+            if (menu) {
+                menu.classList.remove('show');
+            }
+        } else {
+            // Global click outside to close the menu
+            if (menu && menu.classList.contains('show')) {
+                menu.classList.remove('show');
+            }
+        }
+    });
+});
+
+
+function updateActionDropdownAvailability() {
+    try {
+        const sourceDateKey = state.currentDate;
+        const sourceData = state.dates[sourceDateKey];
+
+        const hasItems = sourceData && sourceData.items && Object.keys(sourceData.items).length > 0;
+        const hasExpenses = sourceData && sourceData.expenses && sourceData.expenses.length > 0;
+        const hasIncomes = sourceData && sourceData.incomes && sourceData.incomes.length > 0;
+
+        const isPageEmpty = !hasItems && !hasExpenses && !hasIncomes;
+
+        const optTransfer = document.getElementById('optTransfer');
+        const optDuplicate = document.getElementById('optDuplicate');
+        const optClear = document.getElementById('optClear');
+
+        if (optTransfer) optTransfer.disabled = isPageEmpty;
+        if (optDuplicate) optDuplicate.disabled = isPageEmpty;
+        if (optClear) optClear.disabled = isPageEmpty;
+    } catch (e) {
+        console.warn("Dropdown context check skipped: structural data parameters not fully initiated yet.", e);
+    }
+}
+
+// Safely attach menu status checking loop to application rendering stack
+if (typeof renderAll === 'function') {
+    const originalRenderAll = renderAll;
+    renderAll = function() {
+        originalRenderAll();
+        updateActionDropdownAvailability();
+    };
+}
+
+function selectLedgerAction(action) {
+    document.getElementById('ledgerDropdownMenu').classList.remove('show');
+    if (!action) return;
+
+    try {
+        const currentDateData = state.dates[state.currentDate];
+        if (currentDateData && currentDateData.balanced === true) {
+            alert("This page is Balanced. Turn off balancing configurations to invoke operations on this ledger record.");
+            return;
+        }
+    } catch(e) {
+        console.warn("Skipped page balancing lock check due to missing state records data context.", e);
+    }
+
+    activeActionType = action;
+    openBottomSheet(action);
+}
+
+function openBottomSheet(action) {
+    const modal = document.getElementById('bottomSheetModal');
+    const title = document.getElementById('bottomSheetTitle');
+    const icon = document.getElementById('bottomSheetIcon');
+    const desc = document.getElementById('bottomSheetDescription');
+    const dateWrapper = document.getElementById('bottomSheetDateInputWrapper');
+    const targetDateInput = document.getElementById('bottomSheetTargetDate');
+    const confirmBtn = document.getElementById('bottomSheetConfirmBtn');
+
+    try {
+        targetDateInput.value = state.currentDate || "";
+    } catch(e) {
+        targetDateInput.value = "";
+    }
+
+    if (action === 'transfer') {
+        title.textContent = "Transfer Current Ledger Data";
+        icon.className = "fas fa-exchange-alt";
+        icon.style.color = "#ff9500";
+        desc.textContent = "This moves items, expenses, and incomes over to your target date. Existing data at that target date will be overridden. Quantities on this current page will reset to 0.";
+        dateWrapper.style.display = "block";
+        confirmBtn.style.backgroundColor = "#ff9500"; 
+    } else if (action === 'duplicate') {
+        title.textContent = "Duplicate Page Dataset";
+        icon.className = "fas fa-copy";
+        icon.style.color = "#007aff";
+        desc.textContent = "This copies all items, quantities, expenses, and incomes to a target date. It will overwrite any data already stored on that target date.";
+        dateWrapper.style.display = "block";
+        confirmBtn.style.backgroundColor = "#007aff"; 
+    } else if (action === 'clear') {
+        title.textContent = "Clear All Page Contents";
+        icon.className = "fas fa-trash-alt";
+        icon.style.color = "#ff3b30";
+        desc.textContent = "Warning! This will clear out all items, quantities, expenses, and income logs from this page date.";
+        dateWrapper.style.display = "none";
+        confirmBtn.style.backgroundColor = "#ff3b30"; 
+    }
+
+    confirmBtn.onclick = executeConfirmedAction;
+    modal.classList.add('show');
+}
+
+function closeBottomSheet() {
+    document.getElementById('bottomSheetModal').classList.remove('show');
+    activeActionType = null;
+}
+
+function executeConfirmedAction() {
+    const targetDate = document.getElementById('bottomSheetTargetDate').value;
+    
+    if ((activeActionType === 'transfer' || activeActionType === 'duplicate') && !targetDate) {
+        alert("Please select a target date.");
+        return;
+    }
+
+    if (!window.confirm("Are you sure? This will update your records and overwrite existing target data.")) {
+        return;
+    }
+
+    const loggedAction = activeActionType;
+    let sourceDateKey = "unknown date";
+
+    // Wrapped processing core in a try/catch block to guarantee modal shutdown and log execution
+    try {
+        sourceDateKey = state.currentDate;
+        if (typeof ensureDateExists === 'function') ensureDateExists(sourceDateKey);
+        const sourceData = state.dates[sourceDateKey] || {};
+
+        const dataClone = function(obj) {
+            if (typeof clone === 'function') return clone(obj);
+            return JSON.parse(JSON.stringify(obj));
+        };
+
+        if (activeActionType === 'transfer') {
+            if (typeof ensureDateExists === 'function') ensureDateExists(targetDate);
+            
+            if (state.dates[targetDate] && state.dates[targetDate].balanced === true) {
+                alert("Error: The target date is balanced and locked. Action canceled.");
+                closeBottomSheet();
+                return;
+            }
+
+            if (!state.dates[targetDate]) state.dates[targetDate] = {};
+            state.dates[targetDate].items = dataClone(sourceData.items || {});
+            state.dates[targetDate].expenses = dataClone(sourceData.expenses || []);
+            state.dates[targetDate].incomes = dataClone(sourceData.incomes || []);
+
+            Object.values(sourceData.items || {}).forEach(item => {
+                item.opening = 0;
+                item.orders = 0;
+                item.closing = 0;
+                item.batches = [];
+            });
+            
+            sourceData.expenses = [];
+            sourceData.incomes = [];
+
+        } else if (activeActionType === 'duplicate') {
+            if (typeof ensureDateExists === 'function') ensureDateExists(targetDate);
+
+            if (state.dates[targetDate] && state.dates[targetDate].balanced === true) {
+                alert("Error: The target date is balanced and locked. Action canceled.");
+                closeBottomSheet();
+                return;
+            }
+
+            if (!state.dates[targetDate]) state.dates[targetDate] = {};
+            state.dates[targetDate].items = dataClone(sourceData.items || {});
+            state.dates[targetDate].expenses = dataClone(sourceData.expenses || []);
+            state.dates[targetDate].incomes = dataClone(sourceData.incomes || []);
+
+        } else if (activeActionType === 'clear') {
+            if (typeof makeEmptyDate === 'function') {
+                state.dates[sourceDateKey] = makeEmptyDate();
+            } else {
+                state.dates[sourceDateKey] = { items: {}, expenses: [], incomes: [] };
+            }
+        }
+
+        if (typeof saveState === 'function') saveState();
+        if (typeof renderAll === 'function') renderAll();
+        
+    } catch(error) {
+        
+    }
+
+    // Modal is safely closed regardless of script dependencies errors
+    closeBottomSheet();
+    
+    // Clear notifications printed to console window
+    if (loggedAction === 'transfer') {
+        console.log(`Success: Data moved from ${sourceDateKey} to ${targetDate}.`);
+    } else if (loggedAction === 'duplicate') {
+        console.log(`Success: Data copied from ${sourceDateKey} to ${targetDate}.`);
+    } else if (loggedAction === 'clear') {
+        console.log(`Success: Cleared all data on ${sourceDateKey}.`);
+    }
+}
+</script>
+
+
+
 
    
     <div class="section-container" >
@@ -920,9 +1383,7 @@ Expenses</span>
         </div>
 
     </div>
-<style>
 
-</style>
 
    <div class="section-container mb-20" style="padding-bottom: 120px;">
     
@@ -2277,12 +2738,11 @@ function renderExpensesIncomes(){
 
 /* ---------- Selection / Select Mode ---------- */
 function enterSelectMode() {
-    // Correctly check the balanced status for the date currently in view
     const currentDateData = state.dates[state.currentDate];
     const isActuallyBalanced = currentDateData && (currentDateData.balanced === true || String(currentDateData.balanced).toLowerCase() === 'true');
 
     if (isActuallyBalanced) {
-        alert("You cannot select  an item while 'balanced' is on; turn off balanced to edit this ledger.");
+        alert("You cannot select an item while 'balanced' is on; turn off balanced to edit this ledger.");
         return;
     }
 
@@ -2316,23 +2776,89 @@ function enterSelectMode() {
         `;
     }
 
-    const moreBtn = document.getElementById('moreBtn');
-    const icon = document.getElementById('moreIcon');
-    if (icon) icon.className = 'fas fa-times';
-    if (moreBtn) moreBtn.onclick = exitSelectMode;
+    // --- REPLACING THE BUTTON FOR SELECT MODE ---
+    const oldBtn = document.getElementById('ledgerDropdownBtn');
+    if (oldBtn) {
+        // Create an exact string copy, but with the disabled ID and the 'fa-times' (X) icon
+        const editModeButtonHTML = `
+            <button id="ledgerDropdownBtn_disabled" onclick="exitSelectMode()" style="padding: 12px; width: 48px; height: 48px; justify-content: center; border-radius: 12px; border: none; background-color: rgba(255, 255, 255, 0.15); color: #ffffff; font-size: 18px; cursor: pointer; display: flex; align-items: center; position: relative; backdrop-filter: blur(5px); transition: background-color 0.2s;" onmouseover="this.style.backgroundColor='rgba(255, 255, 255, 0.25)'" onmouseout="this.style.backgroundColor='rgba(255, 255, 255, 0.15)'">
+                <i id="moreIcon" class="fas fa-times"></i> 
+            </button>
+        `;
+        oldBtn.insertAdjacentHTML('afterend', editModeButtonHTML);
+        oldBtn.remove(); // Completely deletes the old element and its listeners from memory
+    }
 
     const tableControls = document.querySelector('.table-controls');
-const tableControls2 = document.querySelector('.table-controls2');
-const tableControls3 = document.querySelector('.table-controls3');
-   if (tableControls) {
-    tableControls.hidden = true;
-if (tableControls) tableControls2.setAttribute('colspan', '6');
-if (tableControls) tableControls3.setAttribute('colspan', '2');
-}
-
+    const tableControls2 = document.querySelector('.table-controls2');
+    const tableControls3 = document.querySelector('.table-controls3');
+    if (tableControls) {
+        tableControls.hidden = true;
+        if (tableControls2) tableControls2.setAttribute('colspan', '6');
+        if (tableControls3) tableControls3.setAttribute('colspan', '2');
+    }
 
     renderTable();
 }
+
+function exitSelectMode() {
+    state.selectMode = false;
+    state.selectedForDelete.clear();
+
+    // 1. Restore the Left Arrow (<)
+    const prevBtn = document.getElementById('prevDateBtn');
+    if (prevBtn) {
+        prevBtn.innerHTML = '<i class="fas fa-chevron-left"></i>';
+        prevBtn.onclick = prevDate;
+        prevBtn.title = "Previous date";
+    }
+
+    // 2. Restore the Right Arrow (>)
+    const nextBtn = document.getElementById('nextDateBtn');
+    if (nextBtn) {
+        nextBtn.innerHTML = '<i class="fas fa-chevron-right"></i>';
+        nextBtn.onclick = nextDate;
+        nextBtn.title = "Next date";
+    }
+
+    // 3. Restore the Center Display (Reporting Period)
+    const pill = document.getElementById('dateNavPill');
+    if (pill) {
+        pill.innerHTML = `
+            <div class="date-display" id="dateDisplay" style="font-size: 16px !important; font-weight: 600 !important; color: #ffffff !important; letter-spacing: 0.2px !important;"></div>
+            <div style="font-size: 11px !important; color: rgba(255,255,255,0.5) !important; text-transform: uppercase !important; font-weight: 700 !important; letter-spacing: 0.8px !important; margin-top: 3px !important;">Reporting Period</div>
+        `;
+    }
+
+    // --- REPLACING THE BUTTON BACK TO ORIGINAL ---
+    const disabledBtn = document.getElementById('ledgerDropdownBtn_disabled');
+    if (disabledBtn) {
+        // Create an exact string copy of your original button layout
+        const originalButtonHTML = `
+            <button id="ledgerDropdownBtn" onclick="toggleLedgerDropdown(event)" style="padding: 12px; width: 48px; height: 48px; justify-content: center; border-radius: 12px; border: none; background-color: rgba(255, 255, 255, 0.15); color: #ffffff; font-size: 18px; cursor: pointer; display: flex; align-items: center; position: relative; backdrop-filter: blur(5px); transition: background-color 0.2s;" onmouseover="this.style.backgroundColor='rgba(255, 255, 255, 0.25)'" onmouseout="this.style.backgroundColor='rgba(255, 255, 255, 0.15)'">
+                <i id="moreIcon" class="fas fa-sliders-h"></i> 
+            </button>
+        `;
+        disabledBtn.insertAdjacentHTML('afterend', originalButtonHTML);
+        disabledBtn.remove(); // Completely deletes the temporary edit button
+    }
+
+    // 5. Hide the selection column and reset footer
+    document.querySelectorAll('.select-col').forEach(td => td.classList.add('hidden'));
+    
+    const tableControls = document.querySelector('.table-controls');
+    const tableControls2 = document.querySelector('.table-controls2');
+    const tableControls3 = document.querySelector('.table-controls3');
+   
+    if (tableControls) {
+        if (tableControls2) tableControls2.setAttribute('colspan', '3');
+        if (tableControls3) tableControls3.setAttribute('colspan', '2');
+        tableControls.hidden = false;
+    }
+
+    renderAll();
+}
+
 
 function deleteSelectedItems() {
     // Check if the current day is balanced before allowing deletion
@@ -2413,58 +2939,9 @@ function addRow() {
 }
 
 
-function exitSelectMode(){
-    state.selectMode = false;
-    state.selectedForDelete.clear();
-
-    // 1. Restore the Left Arrow (<)
-    const prevBtn = document.getElementById('prevDateBtn');
-    prevBtn.innerHTML = '<i class="fas fa-chevron-left"></i>';
-    prevBtn.onclick = prevDate;
-    prevBtn.title = "Previous date";
-
-    // 2. Restore the Right Arrow (>)
-    const nextBtn = document.getElementById('nextDateBtn');
-    nextBtn.innerHTML = '<i class="fas fa-chevron-right"></i>';
-    nextBtn.onclick = nextDate;
-    nextBtn.title = "Next date";
-
-    // 3. Restore the Center Display (Reporting Period)
-    const pill = document.getElementById('dateNavPill');
-    if(pill){
-        pill.innerHTML = `
-            <div class="date-display" id="dateDisplay" style="font-size: 16px !important; font-weight: 600 !important; color: #ffffff !important; letter-spacing: 0.2px !important;"></div>
-            <div style="font-size: 11px !important; color: rgba(255,255,255,0.5) !important; text-transform: uppercase !important; font-weight: 700 !important; letter-spacing: 0.8px !important; margin-top: 3px !important;">Reporting Period</div>
-        `;
-    }
-
-    // 4. Restore the "More" button icon and function
-    const moreBtn = document.getElementById('moreBtn');
-    document.getElementById('moreIcon').className = 'fas fa-ellipsis-h';
-    moreBtn.onclick = toggleMoreDropdown;
-
-    // 5. Hide the selection column and reset footer
-    document.querySelectorAll('.select-col').forEach(td => td.classList.add('hidden'));
-    const tableControls = document.querySelector('.table-controls');
-const tableControls2 = document.querySelector('.table-controls2');
-const tableControls3 = document.querySelector('.table-controls3');
-   
-if (tableControls) tableControls2.setAttribute('colspan', '3');
-if (tableControls) tableControls3.setAttribute('colspan', '2');
-    if (tableControls) {
-    tableControls.hidden = false;
-}
 
 
-    renderAll();
-}
 
-function toggleMoreDropdown(e){
-    e && e.stopPropagation();
-    const dd = document.getElementById('moreDropdown');
-    if(dd) dd.classList.toggle('active');
-}
-document.addEventListener('click', ()=>{ const dd = document.getElementById('moreDropdown'); if(dd) dd.classList.remove('active'); });
 
 function selectAllItems(){
     const dateObj = state.dates[state.currentDate] || makeEmptyDate();
@@ -2913,7 +3390,7 @@ async function init(){
     // Setup UI event listeners
     const prevBtn = document.getElementById('prevDateBtn'); if(prevBtn) prevBtn.onclick = prevDate;
     const nextBtn = document.getElementById('nextDateBtn'); if(nextBtn) nextBtn.onclick = nextDate;
-    const moreBtn = document.getElementById('moreBtn'); if(moreBtn) moreBtn.onclick = toggleMoreDropdown;
+    const moreBtn = document.getElementById('ledgerDropdownBtn');
     const moreDropdown = document.getElementById('moreDropdown'); if(moreDropdown) moreDropdown.addEventListener('click', (e)=>e.stopPropagation());
     const addExpBtn = document.getElementById('addExpenseBtn'); if(addExpBtn) addExpBtn.onclick = addExpense;
     const addIncBtn = document.getElementById('addIncomeBtn'); if(addIncBtn) addIncBtn.onclick = addIncome;
