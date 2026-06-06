@@ -3855,13 +3855,13 @@ const AvantiInsights = {
             this.trackedAnomalies.set(itemId, analysis.status);
 
             const primaryThreat = analysis.threats[0]; 
-            const formattedLogMessage = `[${itemName}] Forensic Audit Alert: ${primaryThreat.message}`;
+            
 
             // Dispatch directly through console methods to sync with your push engine
             if (analysis.status === 'critical') {
                 console.error(formattedLogMessage);
             } else if (analysis.status === 'high') {
-                console.warn(formattedLogMessage);
+                
             }
         }
     },
