@@ -249,7 +249,7 @@ padding-bottom: env(safe-area-inset-bottom, 25px);
   <div style="position: absolute; top: -14px; width: 20px; height: 3px; background: #3f72af; border-radius: 0 0 4px 4px;"></div>
         <svg style="width: 22px; height: 22px; fill: rgba(37, 99, 235, 0.1); stroke: currentColor; stroke-width: 2;" viewBox="0 0 24 24">
             <circle cx="12" cy="12" r="3"></circle>
-            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0-.33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0 .33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0-.33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0 .33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 1 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
         </svg>
         <span style="font-size: 11px; margin-top: 4px; font-weight: 600;">Settings</span>
     </a>
@@ -325,7 +325,35 @@ padding-bottom: env(safe-area-inset-bottom, 25px);
                 </div>
             </div>
             <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
-        </div></div>
+        </div>
+
+        <div id="download-global-ledger-link" class="flex items-center justify-between p-4 border-b border-gray-200 active:bg-gray-100 clickable-setting search-item" data-search-terms="download global ledger avanti stats statistics overwrite">
+            <div class="flex items-center space-x-3">
+                <div class="w-7 h-7 bg-indigo-500 rounded flex items-center justify-center">
+                    <i class="fas fa-cloud-download-alt text-white text-xs"></i>
+                </div>
+                <div>
+                    <p class="text-base font-semibold text-gray-800">Download Global Ledger</p>
+                    <p class="text-sm text-gray-500">Overwrites your local ledger with cloud statistics</p>
+                </div>
+            </div>
+            <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+        </div>
+
+        <div id="upload-global-ledger-link" class="items-center justify-between p-4 active:bg-gray-100 clickable-setting search-item" style="display: none;" data-search-terms="upload global ledger statistics master admin choose profile replace">
+            <div class="flex items-center space-x-3">
+                <div class="w-7 h-7 bg-indigo-600 rounded flex items-center justify-center">
+                    <i class="fas fa-cloud-upload-alt text-white text-xs"></i>
+                </div>
+                <div>
+                    <p class="text-base font-semibold text-gray-800">Upload Global Ledger</p>
+                    <p class="text-sm text-gray-500">Replace master global metrics using a specific profile</p>
+                </div>
+            </div>
+            <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+        </div>
+
+    </div>
 
 
     <p class="section-header search-item" data-search-terms="account">ACCOUNT</p>
@@ -367,7 +395,6 @@ padding-bottom: env(safe-area-inset-bottom, 25px);
             </div>
             <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
         </div>
-<!-- Clear Global Stats (Conditional: Admin + Sync All On) -->
 <div id="clear-stats-item" class="flex items-center justify-between p-4 border-b border-gray-200 active:bg-red-50 clickable-setting search-item" style="display: none;" data-search-terms="clear global stats reset admin sync">
     <div class="flex items-center space-x-3">
         <div class="w-7 h-7 bg-red-600 rounded flex items-center justify-center">
@@ -431,8 +458,8 @@ padding-bottom: env(safe-area-inset-bottom, 25px);
 
 
 <style>
-    /* Background overlay */
-    #sync-modal {
+    /* Background overlay extended to support both sync and upload layout */
+    #sync-modal, #upload-ledger-modal {
         position: fixed;
         top: 0;
         left: 0;
@@ -446,8 +473,8 @@ padding-bottom: env(safe-area-inset-bottom, 25px);
         transition: opacity 0.3s ease;
     }
 
-    /* Bottom-sheet modal content */
-    #sync-modal .modal-content {
+    /* Bottom-sheet modal content extended */
+    #sync-modal .modal-content, #upload-ledger-modal .modal-content {
         width: 100vw;
         height: 90vh; /* Fixed height */
         background-color: #fff;
@@ -464,7 +491,7 @@ padding-bottom: env(safe-area-inset-bottom, 25px);
     }
 
     /* Handle bar at top */
-    .modal-content::before {
+    #sync-modal .modal-content::before, #upload-ledger-modal .modal-content::before {
         content: "";
         display: block;
         width: 36px;
@@ -476,26 +503,26 @@ padding-bottom: env(safe-area-inset-bottom, 25px);
     }
 
     /* Show state */
-    #sync-modal.show {
+    #sync-modal.show, #upload-ledger-modal.show {
         display: flex;
         opacity: 1;
     }
 
-    #sync-modal.show .modal-content {
+    #sync-modal.show .modal-content, #upload-ledger-modal.show .modal-content {
         transform: translateY(0);
     }
 
     /* Hide state */
-    #sync-modal.hide {
+    #sync-modal.hide, #upload-ledger-modal.hide {
         opacity: 0;
     }
 
-    #sync-modal.hide .modal-content {
+    #sync-modal.hide .modal-content, #upload-ledger-modal.hide .modal-content {
         transform: translateY(100%);
     }
 
     /* Header styling inside modal */
-    #sync-modal h3 {
+    #sync-modal h3, #upload-ledger-modal h3 {
         flex-shrink: 0;
         padding-bottom: 15px;
         margin-bottom: 10px;
@@ -510,13 +537,13 @@ padding-bottom: env(safe-area-inset-bottom, 25px);
     }
 
     /* Cancel button at the bottom */
-    #sync-modal button {
+    #sync-modal button, #upload-ledger-modal button {
         flex-shrink: 0;
         margin-top: 10px;
         margin-bottom: env(safe-area-inset-bottom, 10px); /* Respects iPhone home bar */
     }
 
-    #sync-modal .modal-item-list div {
+    #sync-modal .modal-item-list div, #upload-ledger-modal .modal-item-list div {
         padding: 16px 0;
         font-size: 16px;
     }
@@ -535,6 +562,24 @@ padding-bottom: env(safe-area-inset-bottom, 25px);
 
         <button 
             onclick="closeSyncModal()" 
+            class="w-full mt-4 py-2 bg-gray-200 text-gray-800 rounded-lg font-medium active:bg-gray-300">
+            Cancel
+        </button>
+    </div>
+</div>
+
+<div id="upload-ledger-modal" class="modal" onclick="closeUploadLedgerModal()">
+    <div class="modal-content" onclick="event.stopPropagation()">
+        <h3 style="border-bottom: 0.5px solid #d1d1d6; padding-bottom: 5px;" class="text-xl font-semibold mb-4 text-center">Upload Global Ledger</h3>
+
+        <p class="text-sm text-gray-600 mb-4 text-center">
+            Select a localized user profile. Their saved statistical ledger data will immediately overwrite the global master file.
+        </p>
+
+        <div id="upload-profile-list" class="modal-item-list max-h-100 overflow-y-auto"></div>
+
+        <button 
+            onclick="closeUploadLedgerModal()" 
             class="w-full mt-4 py-2 bg-gray-200 text-gray-800 rounded-lg font-medium active:bg-gray-300">
             Cancel
         </button>
@@ -807,6 +852,90 @@ function applyAdminLockUI(locked) {
 }
 
 
+// --- NEW: Global Ledger Core Database Actions ---
+async function downloadGlobalLedger() {
+    if (!accountName || !username) return;
+    if (!confirm("Are you sure you want to download the global ledger? This will overwrite your profile's local avanti_stats data completely.")) return;
+
+    const globalPath = `accounts/${accountName}/global_ledger/avanti_stats`;
+    const localPath = `accounts/${accountName}/profiles/${username}/avanti_stats`;
+
+    try {
+        const globalStats = await getFirebaseData(globalPath);
+        if (!globalStats) {
+            alert("No data found inside the Global Ledger registry yet.");
+            return;
+        }
+        await setFirebaseData(localPath, globalStats);
+        alert("Global ledger downloaded successfully! Your profile stats have been updated.");
+    } catch (err) {
+        console.error("Ledger download exception:", err);
+        alert("An error occurred during global download execution.");
+    }
+}
+
+function openUploadLedgerModal() {
+    if (currentAuthStatus !== 'Admin') {
+        alert("Action restricted. Admin validation required.");
+        return;
+    }
+
+    const listContainer = document.getElementById('upload-profile-list');
+    listContainer.innerHTML = '';
+
+    for (const profileKey in allProfiles) {
+        const targetProfile = allProfiles[profileKey];
+        
+        const listItem = document.createElement('div');
+        listItem.className = "border-bottom border-gray-100 py-4 flex justify-between items-center active:bg-gray-50 px-2 rounded-md";
+        listItem.style.cursor = "pointer";
+        listItem.onclick = () => uploadGlobalLedgerFromProfile(profileKey);
+        
+        listItem.innerHTML = `
+            <div>
+                <p class="font-bold text-gray-800">${profileKey}</p>
+                <p class="text-xs text-gray-500">${targetProfile.authStatus || 'Standard'}</p>
+            </div>
+            <i class="fas fa-chevron-right text-gray-300 text-xs"></i>
+        `;
+        listContainer.appendChild(listItem);
+    }
+
+    const modal = document.getElementById('upload-ledger-modal');
+    modal.style.display = 'flex';
+    modal.classList.remove('hide');
+    setTimeout(() => modal.classList.add('show'), 10);
+}
+
+function closeUploadLedgerModal() {
+    const modal = document.getElementById('upload-ledger-modal');
+    modal.classList.remove('show');
+    modal.classList.add('hide');
+    setTimeout(() => { modal.style.display = 'none'; }, 250);
+}
+
+async function uploadGlobalLedgerFromProfile(profileKey) {
+    if (!confirm(`Are you absolutely sure? Overwriting global statistics using database parameters from profile "${profileKey}"?`)) return;
+
+    const localPath = `accounts/${accountName}/profiles/${profileKey}/avanti_stats`;
+    const globalPath = `accounts/${accountName}/global_ledger/avanti_stats`;
+
+    try {
+        const profileData = await getFirebaseData(localPath);
+        if (!profileData) {
+            alert(`The selected profile "${profileKey}" contains blank or empty avanti_stats records.`);
+            return;
+        }
+        await setFirebaseData(globalPath, profileData);
+        alert(`Global ledger successfully replaced using metrics from "${profileKey}"!`);
+        closeUploadLedgerModal();
+    } catch (err) {
+        console.error("Ledger upload exception:", err);
+        alert("An error occurred during global upload execution.");
+    }
+}
+
+
 function loadSettingsData() {
     if (!accountName || !username) return;
 
@@ -877,6 +1006,12 @@ function loadSettingsData() {
             adminContainer.style.display = (currentAuthStatus === 'Admin' ? 'flex' : 'none');
         }
         document.getElementById('sync-data-standard-link-container').style.display = 'flex';
+
+        // --- NEW: Toggle Upload Ledger view dynamically based on Admin Authorization Status ---
+        const uploadGlobalLink = document.getElementById('upload-global-ledger-link');
+        if (uploadGlobalLink) {
+            uploadGlobalLink.style.display = (currentAuthStatus === 'Admin' ? 'flex' : 'none');
+        }
 
         applyAdminLockUI(adminSyncAllActive);
         applyAuthorizationRestrictions();
@@ -950,6 +1085,10 @@ document.getElementById('manage-devices-link').onclick = () => window.location.h
 document.getElementById('about-link').onclick = () => window.location.href='about.html';
 document.getElementById('help-link').onclick = () => window.location.href='help.html';
 
+// --- NEW: Attach Event Click Methods ---
+document.getElementById('download-global-ledger-link').onclick = downloadGlobalLedger;
+document.getElementById('upload-global-ledger-link').onclick = openUploadLedgerModal;
+
 ['edit-profile-link', 'change-password-link', 'delete-account-link'].forEach(id => {
     document.getElementById(id).onclick = async (e) => {
         if (e.currentTarget.classList.contains('disabled-link')) return alert('Admin access only.');
@@ -968,6 +1107,7 @@ document.getElementById('help-link').onclick = () => window.location.href='help.
 window.toggleSync = toggleSync;
 window.closeSyncModal = closeSyncModal;
 window.filterSettings = filterSettings;
+window.closeUploadLedgerModal = closeUploadLedgerModal;
 loadSettingsData();
 
 </script>
