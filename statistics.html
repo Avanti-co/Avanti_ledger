@@ -2368,8 +2368,13 @@ function saveToDatabase(data){
 
     const updates = {};
 
-    updates[`currentDate`] = state.currentDate;
-    updates[`dates/${state.currentDate}`] = state.dates[state.currentDate];
+    touchDate(state.currentDate);
+
+updates[`currentDate`] = state.currentDate;
+
+updates[
+    `dates/${state.currentDate}`
+] = state.dates[state.currentDate];
 
     // Record-of-truth timestamp
     updates[`_meta/lastUpdated`] =
@@ -2392,7 +2397,37 @@ function initializeDefault(){
 
 /* ---------- Data Model Helpers ---------- */
 function makeEmptyDate(){
-    return { items: {}, expenses: [], incomes: [], balanced: false };
+    return {
+        items: {},
+        expenses: [],
+        incomes: [],
+        balanced: false,
+
+        _meta:{
+            lastUpdated: Date.now()
+        }
+    };
+}
+function touchDate(dateKey){
+
+    ensureDateExists(dateKey);
+
+    if(!state.dates[dateKey]._meta){
+        state.dates[dateKey]._meta = {};
+    }
+
+    state.dates[dateKey]._meta.lastUpdated = Date.now();
+
+    if(firebaseDB && isOnline){
+
+        firebaseDB
+            .ref(
+                `${REMOTE_DB_PATH}/dates/${dateKey}/_meta/lastUpdated`
+            )
+            .set(
+                firebase.database.ServerValue.TIMESTAMP
+            );
+    }
 }
 let nextItemId = 1;
 function makeItem(idHint, name='new item', opening=0, orders=0, price=0, closing=0, position=0){
@@ -3032,6 +3067,17 @@ function deleteItemFromDateAndFuture(itemId, fromDateKey){
         if(dateData.items && dateData.items[itemId]){
 
             delete dateData.items[itemId];
+if(!dateData._meta){
+    dateData._meta = {};
+}
+
+dateData._meta.lastUpdated =
+    Date.now();
+
+updates[
+    `dates/${dKey}/_meta/lastUpdated`
+] =
+    firebase.database.ServerValue.TIMESTAMP;
 
             updates[
                 `dates/${dKey}/items/${itemId}`
@@ -3055,6 +3101,7 @@ function persistItemChange(itemId){
     item.price   = Number(item.price||0);
 
     propagateClosingToNext(itemId);
+touchDate(dateKey);
 
     const path = `${REMOTE_DB_PATH}/dates/${dateKey}/items/${itemId}`;
     firebaseDB.ref(path).update(item);
@@ -3085,6 +3132,17 @@ function propagateNameAcrossDates(itemId, newName){
         if(dateData.items && dateData.items[itemId]){
 
             dateData.items[itemId].name = newName;
+if(!dateData._meta){
+    dateData._meta = {};
+}
+
+dateData._meta.lastUpdated =
+    Date.now();
+
+updates[
+    `dates/${dKey}/_meta/lastUpdated`
+] =
+    firebase.database.ServerValue.TIMESTAMP;
 
             updates[
                 `dates/${dKey}/items/${itemId}/name`
@@ -3118,6 +3176,17 @@ function propagatePriceToFuture(itemId,newPrice){
             const price = Number(newPrice);
 
             dateData.items[itemId].price = price;
+if(!dateData._meta){
+    dateData._meta = {};
+}
+
+dateData._meta.lastUpdated =
+    Date.now();
+
+updates[
+    `dates/${dKey}/_meta/lastUpdated`
+] =
+    firebase.database.ServerValue.TIMESTAMP;
 
             updates[
                 `dates/${dKey}/items/${itemId}/price`
@@ -3177,6 +3246,17 @@ function propagateClosingToNext(itemId){
 
         nextDateData.items[itemId].opening =
             Number(thisItem.closing || 0);
+if(!nextDateData._meta){
+    nextDateData._meta = {};
+}
+
+nextDateData._meta.lastUpdated =
+    Date.now();
+
+updates[
+    `dates/${nextDate}/_meta/lastUpdated`
+] =
+    firebase.database.ServerValue.TIMESTAMP;
 
         updates[
             `dates/${nextDate}/items/${itemId}/opening`
@@ -3222,7 +3302,17 @@ function propagateItemToFuture(item, fromDateKey){
             copy.batches = clone(item.batches || []);
 
             dateData.items[item.id] = copy;
+if(!dateData._meta){
+    dateData._meta = {};
+}
 
+dateData._meta.lastUpdated =
+    Date.now();
+
+updates[
+    `dates/${dKey}/_meta/lastUpdated`
+] =
+    firebase.database.ServerValue.TIMESTAMP;
             updates[
                 `dates/${dKey}/items/${item.id}`
             ] = copy;
@@ -3332,8 +3422,14 @@ function nextDate(){
 /* ---------- Balancing Switch ---------- */
 function saveBalancingStatus(){
     ensureDateExists(state.currentDate);
-    state.dates[state.currentDate].balanced = !!document.getElementById('doneBalancingSwitch').checked;
-    saveState();
+    state.dates[state.currentDate].balanced =
+    !!document.getElementById(
+        'doneBalancingSwitch'
+    ).checked;
+
+touchDate(state.currentDate);
+
+saveState();
 }
 
 /* ---------- Finance (expenses/incomes) via modals ---------- */
@@ -3349,6 +3445,7 @@ function saveExpenseFromModal(){
     const id = `exp${Date.now()}`;
     ensureDateExists(state.currentDate);
     state.dates[state.currentDate].expenses.push({ id, amount: amt, description: desc });
+touchDate(state.currentDate);
     saveState(); renderExpensesIncomes(); closeExpenseModal();
 }
 
@@ -5827,6 +5924,9 @@ document.addEventListener('DOMContentLoaded', () => {
 <script>
 (function(){
 
+/* =========================================================
+   CACHE KEY
+========================================================= */
 function getCacheKey(){
     const accountKey =
         localStorage.getItem("AV_ledger_account_key") ||
@@ -5840,40 +5940,53 @@ function getCacheKey(){
     return `AVANTI_LEDGER_LOCAL_MIRROR_${accountKey}_${dbPath}`;
 }
 
+/* =========================================================
+   LOAD CACHE
+========================================================= */
 function getLocalMirror(){
     try{
         return JSON.parse(
             localStorage.getItem(getCacheKey()) || "{}"
         );
-    }catch{
+    }catch(err){
+        console.error(err);
         return {};
     }
 }
 
+/* =========================================================
+   SAVE CACHE
+========================================================= */
 function saveLocalMirror(){
 
-    const CACHE_KEY = getCacheKey();
+    try{
 
-    const mirror = {
-        currentDate: state.currentDate,
-        dates: state.dates,
-        _meta: {
-            lastUpdated: Date.now(),
-            accountKey: localStorage.getItem("AV_ledger_account_key"),
-            dbPath: window.REMOTE_DB_PATH
-        }
-    };
+        const mirror = {
+            currentDate: state.currentDate,
+            dates: state.dates,
+            _meta: {
+                lastUpdated: Date.now(),
+                accountKey:
+                    localStorage.getItem(
+                        "AV_ledger_account_key"
+                    ),
+                dbPath: window.REMOTE_DB_PATH
+            }
+        };
 
-    localStorage.setItem(
-        CACHE_KEY,
-        JSON.stringify(mirror)
-    );
+        localStorage.setItem(
+            getCacheKey(),
+            JSON.stringify(mirror)
+        );
+
+    }catch(err){
+        console.error(err);
+    }
 }
 
 /* =========================================================
-   OVERRIDE SAVE STATE
+   SAVE OVERRIDE
 ========================================================= */
-
 const originalSaveState = window.saveState;
 
 window.saveState = function(){
@@ -5881,14 +5994,86 @@ window.saveState = function(){
     saveLocalMirror();
 
     if(typeof originalSaveState === "function"){
-        return originalSaveState.apply(this, arguments);
+        return originalSaveState.apply(
+            this,
+            arguments
+        );
     }
 };
 
 /* =========================================================
-   FIREBASE CONFLICT RESOLUTION ENGINE
+   DATE-BY-DATE MERGE ENGINE
 ========================================================= */
+function mergeDates(localData, firebaseData){
 
+    const merged = {
+        currentDate:
+            firebaseData.currentDate ||
+            localData.currentDate,
+
+        dates: {}
+    };
+
+    const localDates =
+        localData.dates || {};
+
+    const firebaseDates =
+        firebaseData.dates || {};
+
+    const allDates = new Set([
+        ...Object.keys(localDates),
+        ...Object.keys(firebaseDates)
+    ]);
+
+    allDates.forEach(dateKey => {
+
+        const localDate =
+            localDates[dateKey];
+
+        const firebaseDate =
+            firebaseDates[dateKey];
+
+        /* only local exists */
+        if(localDate && !firebaseDate){
+            merged.dates[dateKey] =
+                localDate;
+            return;
+        }
+
+        /* only firebase exists */
+        if(firebaseDate && !localDate){
+            merged.dates[dateKey] =
+                firebaseDate;
+            return;
+        }
+
+        /* both exist */
+        const localUpdated =
+            localDate?._meta?.lastUpdated || 0;
+
+        const firebaseUpdated =
+            firebaseDate?._meta?.lastUpdated || 0;
+
+        if(localUpdated >= firebaseUpdated){
+
+            merged.dates[dateKey] =
+                localDate;
+
+        }else{
+
+            merged.dates[dateKey] =
+                firebaseDate;
+
+        }
+
+    });
+
+    return merged;
+}
+
+/* =========================================================
+   FIREBASE LISTENER OVERRIDE
+========================================================= */
 const originalSetupDataListener =
     window.setupDataListener;
 
@@ -5898,113 +6083,172 @@ window.setupDataListener = function(){
         originalSetupDataListener();
     }
 
-    if(!firebaseDB || !REMOTE_DB_PATH) return;
+    if(!firebaseDB || !REMOTE_DB_PATH){
+        return;
+    }
 
-    firebaseDB.ref(REMOTE_DB_PATH).on("value", snap => {
+    firebaseDB
+        .ref(REMOTE_DB_PATH)
+        .on("value", snap => {
 
-        const firebaseData = snap.val();
+            const firebaseData =
+                snap.val() || {};
 
-        if(!firebaseData) return;
+            const localData =
+                getLocalMirror();
 
-        const localData = getLocalMirror();
+            const mergedData =
+                mergeDates(
+                    localData,
+                    firebaseData
+                );
 
-        const firebaseTimestamp =
-            firebaseData?._meta?.lastUpdated || 0;
-
-        const localTimestamp =
-            localData?._meta?.lastUpdated || 0;
-
-        console.log(
-            "Local:",
-            localTimestamp,
-            "Firebase:",
-            firebaseTimestamp
-        );
-
-        /* ==========================================
-           FIREBASE WINS
-        ========================================== */
-
-        if(firebaseTimestamp > localTimestamp){
+            /* =====================================
+               UPDATE LOCAL CACHE
+            ===================================== */
 
             localStorage.setItem(
                 getCacheKey(),
-                JSON.stringify(firebaseData)
+                JSON.stringify(mergedData)
             );
 
-            console.log(
-                "Firebase is newer → cache updated"
-            );
+            /* =====================================
+               UPDATE PAGE STATE
+            ===================================== */
 
-            if(firebaseData.currentDate){
+            if(mergedData.currentDate){
                 state.currentDate =
-                    firebaseData.currentDate;
+                    mergedData.currentDate;
             }
 
-            if(firebaseData.dates){
+            if(mergedData.dates){
                 state.dates =
-                    firebaseData.dates;
+                    mergedData.dates;
             }
 
-            renderAll();
+            if(
+                typeof ensureDateExists ===
+                "function"
+            ){
+                ensureDateExists(
+                    state.currentDate
+                );
+            }
 
-            return;
-        }
+            if(
+                typeof renderAll ===
+                "function"
+            ){
+                renderAll();
+            }
 
-        /* ==========================================
-           LOCAL WINS
-        ========================================== */
+            /* =====================================
+               PUSH ONLY NEWER LOCAL DATES
+            ===================================== */
 
-        if(localTimestamp > firebaseTimestamp){
+            const updates = {};
 
-            console.log(
-                "Local cache newer → pushing to Firebase"
-            );
+            Object.keys(
+                mergedData.dates || {}
+            ).forEach(dateKey => {
 
-            firebaseDB
-                .ref(REMOTE_DB_PATH)
-                .set(localData);
+                const mergedDate =
+                    mergedData.dates[dateKey];
 
-            return;
-        }
+                const firebaseDate =
+                    firebaseData?.dates?.[
+                        dateKey
+                    ];
 
-        /* ==========================================
-           SAME VERSION
-        ========================================== */
+                const mergedTs =
+                    mergedDate?._meta
+                        ?.lastUpdated || 0;
 
-        console.log(
-            "Local and Firebase already synchronized"
-        );
+                const firebaseTs =
+                    firebaseDate?._meta
+                        ?.lastUpdated || 0;
 
-    });
+                if(mergedTs > firebaseTs){
+
+                    updates[
+                        `dates/${dateKey}`
+                    ] = mergedDate;
+                }
+
+            });
+
+            if(
+                Object.keys(updates)
+                    .length > 0
+            ){
+
+                updates[
+                    "_meta/lastUpdated"
+                ] =
+                    firebase.database
+                    .ServerValue.TIMESTAMP;
+
+                firebaseDB
+                    .ref(REMOTE_DB_PATH)
+                    .update(updates)
+                    .then(() => {
+                        console.log(
+                            "Merged dates synced:",
+                            Object.keys(
+                                updates
+                            ).length - 1
+                        );
+                    })
+                    .catch(err =>
+                        console.error(err)
+                    );
+            }
+
+        });
 };
 
 /* =========================================================
-   LOCAL FIRST STARTUP
+   INSTANT LOCAL STARTUP
 ========================================================= */
+document.addEventListener(
+    "DOMContentLoaded",
+    () => {
 
-document.addEventListener("DOMContentLoaded", () => {
+        const localData =
+            getLocalMirror();
 
-    const cached = getLocalMirror();
+        if(localData.currentDate){
+            state.currentDate =
+                localData.currentDate;
+        }
 
-    if(cached.currentDate){
-        state.currentDate = cached.currentDate;
+        if(localData.dates){
+            state.dates =
+                localData.dates;
+        }
+
+        if(
+            typeof ensureDateExists ===
+            "function" &&
+            state.currentDate
+        ){
+            ensureDateExists(
+                state.currentDate
+            );
+        }
+
+        if(
+            typeof renderAll ===
+            "function"
+        ){
+            renderAll();
+        }
+
+        console.log(
+            "Rendered instantly from local cache"
+        );
     }
-
-    if(cached.dates){
-        state.dates = cached.dates;
-    }
-
-    if(state.currentDate){
-        ensureDateExists(state.currentDate);
-    }
-
-    renderAll();
-
-    console.log(
-        "Instant render from local cache"
-    );
-});
+);
 
 })();
 </script>
