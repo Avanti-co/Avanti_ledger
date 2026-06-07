@@ -2358,30 +2358,14 @@ function saveState(){
 function saveToDatabase(data){
     if(!firebaseDB || !isOnline || REMOTE_DB_PATH === DEFAULT_FALLBACK_PATH) return;
 
-    const ref = firebaseDB.ref(REMOTE_DB_PATH);
-
+    // Only save current date and NOT the entire table
     const updates = {};
-
-    // Save current date
-    updates["currentDate"] = state.currentDate;
-
-    // Save current day's data
+    updates[`currentDate`] = state.currentDate;
     updates[`dates/${state.currentDate}`] = state.dates[state.currentDate];
 
-    // 🔥 THIS IS THE IMPORTANT PART (Firebase timestamp update)
-    updates["_meta/lastUpdated"] = Date.now();
-
-    ref.update(updates)
+    firebaseDB.ref(REMOTE_DB_PATH).update(updates)
         .catch(err => console.error('Firebase update failed', err));
 }
-
-function touchFirebaseTimestamp(){
-    if(!firebaseDB || !REMOTE_DB_PATH) return;
-
-    firebaseDB.ref(`${REMOTE_DB_PATH}/_meta/lastUpdated`)
-        .set(Date.now());
-}
-
 /* ---------- Initialize Default (No Hardcoded Items) ---------- */
 function initializeDefault(){
     const start = todayKey();
@@ -3044,7 +3028,6 @@ function deleteItemFromDateAndFuture(itemId, fromDateKey){
 
     if(firebaseDB && isOnline && Object.keys(updates).length){
         firebaseDB.ref(REMOTE_DB_PATH).update(updates);
-touchFirebaseTimestamp();
     }
 }
 
@@ -3062,7 +3045,6 @@ function persistItemChange(itemId){
 
     const path = `${REMOTE_DB_PATH}/dates/${dateKey}/items/${itemId}`;
     firebaseDB.ref(path).update(item);
-touchFirebaseTimestamp();
 
     updateRow(itemId); // only re-render this row
 }
@@ -3099,7 +3081,6 @@ function propagateNameAcrossDates(itemId, newName){
 
     if(firebaseDB && isOnline && Object.keys(updates).length){
         firebaseDB.ref(REMOTE_DB_PATH).update(updates);
-touchFirebaseTimestamp();
     }
 }
 /**
@@ -3133,7 +3114,6 @@ function propagatePriceToFuture(itemId,newPrice){
 
     if(firebaseDB && isOnline && Object.keys(updates).length){
         firebaseDB.ref(REMOTE_DB_PATH).update(updates);
-touchFirebaseTimestamp();
     }
 }
 
@@ -3192,7 +3172,6 @@ function propagateClosingToNext(itemId){
 
     if(firebaseDB && isOnline){
         firebaseDB.ref(REMOTE_DB_PATH).update(updates);
-touchFirebaseTimestamp();
     }
 }
 
@@ -3239,7 +3218,6 @@ function propagateItemToFuture(item, fromDateKey){
 
     if(firebaseDB && isOnline && Object.keys(updates).length){
         firebaseDB.ref(REMOTE_DB_PATH).update(updates);
-touchFirebaseTimestamp();
     }
 }
 
@@ -5837,7 +5815,8 @@ document.addEventListener('DOMContentLoaded', () => {
 (function(){
 
 /* =========================================================
-   CACHE KEY (ACCOUNT ISOLATION)
+   DYNAMIC CACHE KEY (CRITICAL FIX)
+   - prevents cross-profile data leakage
 ========================================================= */
 function getCacheKey(){
     const accountKey =
@@ -5853,42 +5832,15 @@ function getCacheKey(){
 }
 
 /* =========================================================
-   TIMESTAMP HELPERS
-========================================================= */
-function touchDate(dateKey){
-    if(!state.dates[dateKey]){
-        state.dates[dateKey] = {};
-    }
-
-    if(!state.dates[dateKey]._meta){
-        state.dates[dateKey]._meta = {};
-    }
-
-    state.dates[dateKey]._meta.lastUpdated = Date.now();
-}
-
-/* Get latest local change timestamp across all dates */
-function getLocalLatestTime(){
-    let latest = 0;
-
-    if(!state.dates) return 0;
-
-    for(const key in state.dates){
-        const t = state.dates[key]?._meta?.lastUpdated || 0;
-        if(t > latest) latest = t;
-    }
-
-    return latest;
-}
-
-/* =========================================================
-   LOAD LOCAL CACHE (INSTANT RENDER)
+   LOAD LOCAL CACHE FIRST
 ========================================================= */
 function loadLocalMirror(){
     try{
         const CACHE_KEY = getCacheKey();
+
         const cached = JSON.parse(localStorage.getItem(CACHE_KEY) || "{}");
 
+        // only apply if valid structure
         if(cached && typeof cached === "object"){
 
             if(cached.currentDate){
@@ -5906,15 +5858,15 @@ function loadLocalMirror(){
 
         renderAll();
 
-        console.log("⚡ Local render complete:", CACHE_KEY);
+        console.log("Rendered instantly from isolated local mirror:", CACHE_KEY);
 
     }catch(err){
-        console.error("Local load failed", err);
+        
     }
 }
 
 /* =========================================================
-   SAVE LOCAL CACHE
+   SAVE LOCAL CACHE (ISOLATED PER ACCOUNT + DB PATH)
 ========================================================= */
 function saveLocalMirror(){
     try{
@@ -5933,123 +5885,16 @@ function saveLocalMirror(){
         localStorage.setItem(CACHE_KEY, JSON.stringify(mirror));
 
     }catch(err){
-        console.error("Local save failed", err);
+        console.error("Mirror save failed", err);
     }
 }
 
 /* =========================================================
-   FIREBASE SYNC ENGINE
-========================================================= */
-function setupSync(){
-
-    if(!firebaseDB || !REMOTE_DB_PATH) return;
-
-    const ref = firebaseDB.ref(REMOTE_DB_PATH);
-
-    /* =========================
-       INITIAL SYNC
-    ========================= */
-    ref.once("value", snap => {
-
-        const remote = snap.val();
-        if(!remote) return;
-
-        const firebaseTime = remote._meta?.lastUpdated || 0;
-        const localTime = getLocalLatestTime();
-
-        console.log("Sync check:", { firebaseTime, localTime });
-
-        // FIREBASE IS NEWER → overwrite local
-        if(firebaseTime > localTime){
-
-            state.currentDate = remote.currentDate;
-            state.dates = remote.dates || {};
-
-            if(state.currentDate){
-                ensureDateExists(state.currentDate);
-            }
-
-            renderAll();
-            saveLocalMirror();
-
-            console.log("⬇️ Firebase is newer → local updated");
-        }
-
-        // LOCAL IS NEWER → push to firebase
-        else if(localTime > firebaseTime){
-
-            const payload = {
-                currentDate: state.currentDate,
-                dates: state.dates,
-                _meta: {
-                    lastUpdated: Date.now()
-                }
-            };
-
-            ref.set(payload);
-
-            console.log("⬆️ Local is newer → pushed to Firebase");
-        }
-
-    });
-
-    /* =========================
-       REALTIME LISTENER
-    ========================= */
-    ref.on("value", snap => {
-
-        const remote = snap.val();
-        if(!remote) return;
-
-        const firebaseTime = remote._meta?.lastUpdated || 0;
-        const localTime = getLocalLatestTime();
-
-        // Firebase newer → overwrite local
-        if(firebaseTime > localTime){
-
-            state.currentDate = remote.currentDate;
-            state.dates = remote.dates || {};
-
-            if(state.currentDate){
-                ensureDateExists(state.currentDate);
-            }
-
-            renderAll();
-            saveLocalMirror();
-
-            console.log("🔁 Firebase update applied");
-        }
-
-        // Local newer → push update
-        else if(localTime > firebaseTime){
-
-            const payload = {
-                currentDate: state.currentDate,
-                dates: state.dates,
-                _meta: {
-                    lastUpdated: Date.now()
-                }
-            };
-
-            ref.set(payload);
-
-            console.log("⬆️ Local override pushed");
-        }
-
-    });
-}
-
-/* =========================================================
-   SAVE OVERRIDE (AUTO TIMESTAMPING)
+   OVERRIDE SAVE STATE
 ========================================================= */
 const originalSaveState = window.saveState;
 
 window.saveState = function(){
-
-    if(state.currentDate){
-        touchDate(state.currentDate);
-    }
-
     saveLocalMirror();
 
     if(typeof originalSaveState === "function"){
@@ -6058,11 +5903,35 @@ window.saveState = function(){
 };
 
 /* =========================================================
-   INIT
+   FIREBASE SYNC → ALSO RESPECTS CACHE KEY
+========================================================= */
+const originalSetupDataListener = window.setupDataListener;
+
+window.setupDataListener = function(){
+
+    if(typeof originalSetupDataListener === "function"){
+        originalSetupDataListener();
+    }
+
+    if(!firebaseDB || !REMOTE_DB_PATH) return;
+
+    firebaseDB.ref(REMOTE_DB_PATH).on("value", snap => {
+        const data = snap.val();
+        if(!data) return;
+
+        const CACHE_KEY = getCacheKey();
+
+        localStorage.setItem(CACHE_KEY, JSON.stringify(data));
+
+        console.log("Mirror updated from Firebase:", CACHE_KEY);
+    });
+};
+
+/* =========================================================
+   FAST STARTUP (LOCAL ONLY)
 ========================================================= */
 document.addEventListener("DOMContentLoaded", () => {
     loadLocalMirror();
-    setupSync();
 });
 
 })();
