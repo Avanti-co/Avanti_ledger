@@ -2351,19 +2351,32 @@ async function loadState(){
  * Triggers a save of the local state to the determined remote path.
  */
 function saveState(){
-    const toSave = { currentDate: state.currentDate, dates: state.dates };
+    const toSave = {
+        currentDate: state.currentDate,
+        dates: state.dates,
+
+        _meta: {
+            lastUpdated: Date.now()
+        }
+    };
+
     saveToDatabase(toSave);
 }
 
 function saveToDatabase(data){
     if(!firebaseDB || !isOnline || REMOTE_DB_PATH === DEFAULT_FALLBACK_PATH) return;
 
-    // Only save current date and NOT the entire table
     const updates = {};
+
     updates[`currentDate`] = state.currentDate;
     updates[`dates/${state.currentDate}`] = state.dates[state.currentDate];
 
-    firebaseDB.ref(REMOTE_DB_PATH).update(updates)
+    // Record-of-truth timestamp
+    updates[`_meta/lastUpdated`] =
+        firebase.database.ServerValue.TIMESTAMP;
+
+    firebaseDB.ref(REMOTE_DB_PATH)
+        .update(updates)
         .catch(err => console.error('Firebase update failed', err));
 }
 /* ---------- Initialize Default (No Hardcoded Items) ---------- */
@@ -5814,10 +5827,6 @@ document.addEventListener('DOMContentLoaded', () => {
 <script>
 (function(){
 
-/* =========================================================
-   DYNAMIC CACHE KEY (CRITICAL FIX)
-   - prevents cross-profile data leakage
-========================================================= */
 function getCacheKey(){
     const accountKey =
         localStorage.getItem("AV_ledger_account_key") ||
@@ -5831,70 +5840,44 @@ function getCacheKey(){
     return `AVANTI_LEDGER_LOCAL_MIRROR_${accountKey}_${dbPath}`;
 }
 
-/* =========================================================
-   LOAD LOCAL CACHE FIRST
-========================================================= */
-function loadLocalMirror(){
+function getLocalMirror(){
     try{
-        const CACHE_KEY = getCacheKey();
-
-        const cached = JSON.parse(localStorage.getItem(CACHE_KEY) || "{}");
-
-        // only apply if valid structure
-        if(cached && typeof cached === "object"){
-
-            if(cached.currentDate){
-                state.currentDate = cached.currentDate;
-            }
-
-            if(cached.dates && typeof cached.dates === "object"){
-                state.dates = cached.dates;
-            }
-        }
-
-        if(state.currentDate){
-            ensureDateExists(state.currentDate);
-        }
-
-        renderAll();
-
-        console.log("Rendered instantly from isolated local mirror:", CACHE_KEY);
-
-    }catch(err){
-        
+        return JSON.parse(
+            localStorage.getItem(getCacheKey()) || "{}"
+        );
+    }catch{
+        return {};
     }
 }
 
-/* =========================================================
-   SAVE LOCAL CACHE (ISOLATED PER ACCOUNT + DB PATH)
-========================================================= */
 function saveLocalMirror(){
-    try{
-        const CACHE_KEY = getCacheKey();
 
-        const mirror = {
-            currentDate: state.currentDate,
-            dates: state.dates,
-            _meta: {
-                accountKey: localStorage.getItem("AV_ledger_account_key"),
-                dbPath: window.REMOTE_DB_PATH,
-                savedAt: Date.now()
-            }
-        };
+    const CACHE_KEY = getCacheKey();
 
-        localStorage.setItem(CACHE_KEY, JSON.stringify(mirror));
+    const mirror = {
+        currentDate: state.currentDate,
+        dates: state.dates,
+        _meta: {
+            lastUpdated: Date.now(),
+            accountKey: localStorage.getItem("AV_ledger_account_key"),
+            dbPath: window.REMOTE_DB_PATH
+        }
+    };
 
-    }catch(err){
-        console.error("Mirror save failed", err);
-    }
+    localStorage.setItem(
+        CACHE_KEY,
+        JSON.stringify(mirror)
+    );
 }
 
 /* =========================================================
    OVERRIDE SAVE STATE
 ========================================================= */
+
 const originalSaveState = window.saveState;
 
 window.saveState = function(){
+
     saveLocalMirror();
 
     if(typeof originalSaveState === "function"){
@@ -5903,9 +5886,11 @@ window.saveState = function(){
 };
 
 /* =========================================================
-   FIREBASE SYNC → ALSO RESPECTS CACHE KEY
+   FIREBASE CONFLICT RESOLUTION ENGINE
 ========================================================= */
-const originalSetupDataListener = window.setupDataListener;
+
+const originalSetupDataListener =
+    window.setupDataListener;
 
 window.setupDataListener = function(){
 
@@ -5916,22 +5901,109 @@ window.setupDataListener = function(){
     if(!firebaseDB || !REMOTE_DB_PATH) return;
 
     firebaseDB.ref(REMOTE_DB_PATH).on("value", snap => {
-        const data = snap.val();
-        if(!data) return;
 
-        const CACHE_KEY = getCacheKey();
+        const firebaseData = snap.val();
 
-        localStorage.setItem(CACHE_KEY, JSON.stringify(data));
+        if(!firebaseData) return;
 
-        console.log("Mirror updated from Firebase:", CACHE_KEY);
+        const localData = getLocalMirror();
+
+        const firebaseTimestamp =
+            firebaseData?._meta?.lastUpdated || 0;
+
+        const localTimestamp =
+            localData?._meta?.lastUpdated || 0;
+
+        console.log(
+            "Local:",
+            localTimestamp,
+            "Firebase:",
+            firebaseTimestamp
+        );
+
+        /* ==========================================
+           FIREBASE WINS
+        ========================================== */
+
+        if(firebaseTimestamp > localTimestamp){
+
+            localStorage.setItem(
+                getCacheKey(),
+                JSON.stringify(firebaseData)
+            );
+
+            console.log(
+                "Firebase is newer → cache updated"
+            );
+
+            if(firebaseData.currentDate){
+                state.currentDate =
+                    firebaseData.currentDate;
+            }
+
+            if(firebaseData.dates){
+                state.dates =
+                    firebaseData.dates;
+            }
+
+            renderAll();
+
+            return;
+        }
+
+        /* ==========================================
+           LOCAL WINS
+        ========================================== */
+
+        if(localTimestamp > firebaseTimestamp){
+
+            console.log(
+                "Local cache newer → pushing to Firebase"
+            );
+
+            firebaseDB
+                .ref(REMOTE_DB_PATH)
+                .set(localData);
+
+            return;
+        }
+
+        /* ==========================================
+           SAME VERSION
+        ========================================== */
+
+        console.log(
+            "Local and Firebase already synchronized"
+        );
+
     });
 };
 
 /* =========================================================
-   FAST STARTUP (LOCAL ONLY)
+   LOCAL FIRST STARTUP
 ========================================================= */
+
 document.addEventListener("DOMContentLoaded", () => {
-    loadLocalMirror();
+
+    const cached = getLocalMirror();
+
+    if(cached.currentDate){
+        state.currentDate = cached.currentDate;
+    }
+
+    if(cached.dates){
+        state.dates = cached.dates;
+    }
+
+    if(state.currentDate){
+        ensureDateExists(state.currentDate);
+    }
+
+    renderAll();
+
+    console.log(
+        "Instant render from local cache"
+    );
 });
 
 })();
