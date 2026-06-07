@@ -2993,22 +2993,35 @@ function addRow() {
  * UNLESS the target date has the 'balanced' status set to true.
  */
 function deleteItemFromDateAndFuture(itemId, fromDateKey){
+
+    const updates = {};
+
     for(let i=0;i<=state.futureWindowDays;i++){
+
         const dKey = addDays(fromDateKey,i);
+
         const dateData = state.dates[dKey];
-        
-        // Remove locally
-        if(dateData && dateData.items && dateData.items[itemId] && dateData.balanced !== true){
+
+        if(!dateData) continue;
+
+        if(dateData.balanced === true){
+            continue;
+        }
+
+        if(dateData.items && dateData.items[itemId]){
+
             delete dateData.items[itemId];
-            
-            // Push deletion to Firebase for every future day
-            if(firebaseDB && isOnline) {
-                firebaseDB.ref(`${REMOTE_DB_PATH}/dates/${dKey}/items/${itemId}`).remove();
-            }
+
+            updates[
+                `dates/${dKey}/items/${itemId}`
+            ] = null;
         }
     }
-}
 
+    if(firebaseDB && isOnline && Object.keys(updates).length){
+        firebaseDB.ref(REMOTE_DB_PATH).update(updates);
+    }
+}
 
 function persistItemChange(itemId){
     const dateKey = state.currentDate;
@@ -3028,104 +3041,176 @@ function persistItemChange(itemId){
     updateRow(itemId); // only re-render this row
 }
 
-/* ---------- Propagation ---------- */
-/**
- * Propagates item name changes forward from the current date.
- */
+function saveDateImmediately(dateKey){
+    if(!firebaseDB || !isOnline) return;
+
+    firebaseDB
+        .ref(`${REMOTE_DB_PATH}/dates/${dateKey}`)
+        .set(state.dates[dateKey]);
+} 
+
 function propagateNameAcrossDates(itemId, newName){
-    for(let i=0; i<= state.futureWindowDays; i++){
-        const dKey = addDays(state.currentDate, i);
+
+    const updates = {};
+
+    for(let i=0;i<=state.futureWindowDays;i++){
+
+        const dKey = addDays(state.currentDate,i);
         const dateData = state.dates[dKey];
-        if(dateData && dateData.balanced === true) {
-            
-            continue; // Skip this balanced day, but check following days
-        }
-        
-        if(dateData && dateData.items && dateData.items[itemId]){
-            state.dates[dKey].items[itemId].name = newName;
+
+        if(!dateData) continue;
+        if(dateData.balanced === true) continue;
+
+        if(dateData.items && dateData.items[itemId]){
+
+            dateData.items[itemId].name = newName;
+
+            updates[
+                `dates/${dKey}/items/${itemId}/name`
+            ] = newName;
         }
     }
-    saveState();
-    renderAll();
-}
 
+    if(firebaseDB && isOnline && Object.keys(updates).length){
+        firebaseDB.ref(REMOTE_DB_PATH).update(updates);
+    }
+}
 /**
  * Propagates price changes forward from the current date.
  */
-function propagatePriceToFuture(itemId, newPrice){
+function propagatePriceToFuture(itemId,newPrice){
+
+    const updates = {};
+
     for(let i=0;i<=state.futureWindowDays;i++){
-        const dKey = addDays(state.currentDate, i);
+
+        const dKey = addDays(state.currentDate,i);
+
         ensureDateExists(dKey);
+
         const dateData = state.dates[dKey];
-        
-        if(dateData && dateData.balanced === true) {
-            
-            continue;
-        }
-        
-        if(dateData && dateData.items && dateData.items[itemId]){
-            state.dates[dKey].items[itemId].price = Number(newPrice);
+
+        if(dateData.balanced === true) continue;
+
+        if(dateData.items && dateData.items[itemId]){
+
+            const price = Number(newPrice);
+
+            dateData.items[itemId].price = price;
+
+            updates[
+                `dates/${dKey}/items/${itemId}/price`
+            ] = price;
         }
     }
-    saveState();
-    renderAll();
+
+    if(firebaseDB && isOnline && Object.keys(updates).length){
+        firebaseDB.ref(REMOTE_DB_PATH).update(updates);
+    }
 }
 
 /**
  * Propagates closing stock to the immediate next day's opening stock.
  */
 function propagateClosingToNext(itemId){
+
     const thisDate = state.currentDate;
     const nextDate = addDays(thisDate,1);
-    const thisItem = state.dates[thisDate] && state.dates[thisDate].items && state.dates[thisDate].items[itemId];
+
+    const thisItem =
+        state.dates[thisDate]?.items?.[itemId];
+
     if(!thisItem) return;
+
     ensureDateExists(nextDate);
-    
-    // Check if the NEXT date is already balanced. 
+
     const nextDateData = state.dates[nextDate];
-    const isNextDateBalanced = nextDateData && nextDateData.balanced === true;
 
-    if(!nextDateData.items[itemId]) {
-        if (!isNextDateBalanced) {
-// Inside the item creation block:
-const copy = makeItem(itemId, thisItem.name, thisItem.closing, 0, thisItem.price, 0, thisItem.position || 0);
-
-
-            copy.batches = clone(thisItem.batches || []);
-            state.dates[nextDate].items[itemId] = copy;
-        } 
-    } else {
-        // If the item exists, update the opening stock regardless of balanced status
-        state.dates[nextDate].items[itemId].opening = Number(thisItem.closing||0);
+    if(nextDateData.balanced === true){
+        return;
     }
-    saveState();
-    renderTable();
+
+    const updates = {};
+
+    if(!nextDateData.items[itemId]){
+
+        const copy = makeItem(
+            itemId,
+            thisItem.name,
+            thisItem.closing,
+            0,
+            thisItem.price,
+            0,
+            thisItem.position || 0
+        );
+
+        copy.batches = clone(thisItem.batches || []);
+
+        nextDateData.items[itemId] = copy;
+
+        updates[
+            `dates/${nextDate}/items/${itemId}`
+        ] = copy;
+
+    }else{
+
+        nextDateData.items[itemId].opening =
+            Number(thisItem.closing || 0);
+
+        updates[
+            `dates/${nextDate}/items/${itemId}/opening`
+        ] = Number(thisItem.closing || 0);
+    }
+
+    if(firebaseDB && isOnline){
+        firebaseDB.ref(REMOTE_DB_PATH).update(updates);
+    }
 }
 
 /**
  * Propagates item creation (add new row) to future dates.
  */
 function propagateItemToFuture(item, fromDateKey){
+
+    const updates = {};
+
     for(let i=1;i<=state.futureWindowDays;i++){
-        const dKey = addDays(fromDateKey, i);
+
+        const dKey = addDays(fromDateKey,i);
+
         ensureDateExists(dKey);
+
         const dateData = state.dates[dKey];
 
-        if(dateData && dateData.balanced === true) {
-            
-            continue; 
+        if(dateData.balanced === true){
+            continue;
         }
 
         if(!dateData.items[item.id]){
-// Inside the item creation block:
-const copy = makeItem(item.id, item.name, item.closing || item.opening || 0, 0, item.price, 0, item.position || 0);
 
+            const copy = makeItem(
+                item.id,
+                item.name,
+                item.closing || item.opening || 0,
+                0,
+                item.price,
+                0,
+                item.position || 0
+            );
 
             copy.batches = clone(item.batches || []);
+
             dateData.items[item.id] = copy;
+
+            updates[
+                `dates/${dKey}/items/${item.id}`
+            ] = copy;
         }
     }
-    saveState();
+
+    if(firebaseDB && isOnline && Object.keys(updates).length){
+        firebaseDB.ref(REMOTE_DB_PATH).update(updates);
+    }
 }
 
 /* ---------- Search ---------- */
@@ -4185,6 +4270,7 @@ document.addEventListener('DOMContentLoaded', () => {
   (function() {
     const header = document.getElementById('header');
     const body = document.body;
+    const container = document.querySelector('.stats-table-container');
     
     if (!header) return;
 
@@ -4192,7 +4278,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const originalPadding = window.getComputedStyle(body).paddingTop;
     const originalMargin = window.getComputedStyle(body).marginTop;
 
-    // List of element IDs that should NOT trigger the layout shift when the keyboard opens
     const overrideIds = [
       'searchItemInput', 
       'orderQuantity', 
@@ -4203,14 +4288,35 @@ document.addEventListener('DOMContentLoaded', () => {
       'incomeAmt'
     ];
 
+    let scrollLockTimer = null;
+
+    // Enforce layout locking over multiple animation frames to defeat native browser auto-scrolls
+    const enforceScrollBaseline = () => {
+      cancelAnimationFrame(scrollLockTimer);
+      let frames = 6; // Spans across the native layout pass duration
+
+      const lock = () => {
+        window.scrollTo(0, 0);
+        
+        // If the browser attempts to scroll your inner table container on cell focus, reset it
+        if (container && document.activeElement && !overrideIds.includes(document.activeElement.id)) {
+          // Uncomment the line below if the inner table container is what gets thrown off balance:
+          // container.scrollTop = 0;
+        }
+
+        frames--;
+        if (frames > 0) {
+          scrollLockTimer = requestAnimationFrame(lock);
+        }
+      };
+      scrollLockTimer = requestAnimationFrame(lock);
+    };
+
     const handleViewportChange = () => {
       const currentHeight = window.visualViewport ? window.visualViewport.height : window.innerHeight;
       const isKeyboardOpen = currentHeight < initialHeight * 0.85;
-
-      // --- Override Logic ---
       const activeEl = document.activeElement;
       
-      // If the focused element is in our override list, maintain default layout
       if (activeEl && overrideIds.includes(activeEl.id)) {
         if (header.style.display === 'none') {
             header.style.display = 'block';
@@ -4221,18 +4327,12 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       if (isKeyboardOpen) {
-        // Apply layout shift for all other inputs to maximize screen real estate
         header.style.display = 'none';
         body.style.paddingTop = '10px';
         body.style.marginTop = '-150px';
 
-        window.scrollTo({
-          top: 0,
-          behavior: 'instant'
-        });
-
+        enforceScrollBaseline();
       } else {
-        // Reset layout when keyboard is closed
         if (header.style.display === 'none') {
           header.style.display = 'block';
           body.style.paddingTop = originalPadding;
@@ -4246,6 +4346,26 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     };
 
+    // Catch early native focus adjustments before the keyboard resizing finishes
+    document.addEventListener('focusin', (e) => {
+      if (e.target && !overrideIds.includes(e.target.id)) {
+        enforceScrollBaseline();
+      }
+    });
+
+    // Fallback Sentinel: If the browser sneaks a window scroll past us while open, snap it back
+    window.addEventListener('scroll', () => {
+      const currentHeight = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+      const isKeyboardOpen = currentHeight < initialHeight * 0.85;
+      const activeEl = document.activeElement;
+
+      if (isKeyboardOpen && activeEl && !overrideIds.includes(activeEl.id)) {
+        if (window.scrollY !== 0) {
+          window.scrollTo(0, 0);
+        }
+      }
+    });
+
     if (window.visualViewport) {
       window.visualViewport.addEventListener('resize', handleViewportChange);
     } else {
@@ -4253,8 +4373,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   })();
 </script>
-
-
 
 <script>
   /**
@@ -4273,29 +4391,32 @@ document.addEventListener('DOMContentLoaded', () => {
     const observer = new MutationObserver(() => {
       const currentCount = targetNode.children.length;
 
-      // STAGE 1: Wait for data to exist to set the baseline
+      // STAGE 1: Wait for data to exist to set baseline
       if (!isInitialized && currentCount > 0) {
         baselineRowCount = currentCount;
         isInitialized = true;
-        return; // Exit here so we don't scroll on the initial load
+        return; 
       }
 
-      // STAGE 2: Only scroll if the count has actually increased from the baseline
+      // STAGE 2: Only scroll if the count has actually increased from baseline
       if (isInitialized && currentCount > baselineRowCount) {
-        container.scrollTo({
-          top: container.scrollHeight,
-          behavior: 'instant'
-        });
+        // Only auto-scroll to bottom if the user isn't actively editing a cell 
+        // to prevent jarring view jumps while typing.
+        if (document.activeElement && document.activeElement.tagName !== 'INPUT') {
+          container.scrollTo({
+            top: container.scrollHeight,
+            behavior: 'instant'
+          });
+        }
         
-        // Update baseline so the next addition is measured correctly
         baselineRowCount = currentCount;
       }
     });
 
-    // Start observing immediately
     observer.observe(targetNode, { childList: true });
   })();
 </script>
+
 
 <style>
     /* 1. Select Mode UI Overrides */
@@ -5266,434 +5387,7 @@ body.select-mode-active #statsTableBody tr {
 
 
 
-<script>
-/**
- * ============================================================================
- * Avanti Ledger - Scope-Aware Controlled Interceptor (FIXED MULTI-ITEM SYNC)
- * Architecture: Proxy Interceptor with Transactional Table State Preservation
- * ============================================================================
- */
-(function() {
-    const SYNC_REGISTRY_KEY = 'AV_ledger_pending_sync_registry';
-    let firebaseSyncTimer = null;
-    
-    // Notification deduplication states
-    let fallbackModeActive = false;
-    let lastSyncStateWasClean = true;
 
-    /**
-     * Dynamically generates a storage key unique to the active profile or global scope.
-     */
-    function getActiveScopeCacheKey() {
-        const accountKey = localStorage.getItem('AV_ledger_account_key') || 'default_account';
-        const scopeTarget = TARGET_PROFILE_USERNAME || localStorage.getItem('AV_ledger_username') || 'fallback';
-        return `AV_ledger_cache_${accountKey}_${scopeTarget}`;
-    }
-
-    function verifyLocalStorageStructure() {
-        if (!localStorage.getItem(SYNC_REGISTRY_KEY)) {
-            localStorage.setItem(SYNC_REGISTRY_KEY, JSON.stringify({}));
-        }
-    }
-
-    function computeStateHash(data) {
-        return btoa(unescape(encodeURIComponent(JSON.stringify(data || ''))));
-    }
-
-    function commitToLocalCache(currentDate, datesData) {
-        const scopeKey = getActiveScopeCacheKey();
-        const localCache = { currentDate: null, dates: {} };
-        
-        if (currentDate) localCache.currentDate = currentDate;
-        if (datesData) {
-            localCache.dates = JSON.parse(JSON.stringify(datesData));
-        }
-        localStorage.setItem(scopeKey, JSON.stringify(localCache));
-    }
-
-    function bootstrapStateFromActiveScope() {
-        const scopeKey = getActiveScopeCacheKey();
-        const historicalCache = localStorage.getItem(scopeKey);
-        
-        if (historicalCache) {
-            try {
-                const parsedCache = JSON.parse(historicalCache);
-                if (parsedCache.dates) state.dates = parsedCache.dates;
-                if (parsedCache.currentDate) state.currentDate = parsedCache.currentDate;
-            } catch (err) {
-                console.error('[Avanti Storage] Error reading isolated scope cache:', err);
-            }
-        } else {
-            state.dates = {};
-            state.currentDate = null;
-        }
-    }
-
-    function logSynchronizationState() {
-        const registry = JSON.parse(localStorage.getItem(SYNC_REGISTRY_KEY) || '{}');
-        const pendingCount = Object.keys(registry).length;
-        
-        if (pendingCount > 0 && lastSyncStateWasClean) {
-            lastSyncStateWasClean = false;
-            
-        } else if (pendingCount === 0 && !lastSyncStateWasClean) {
-            lastSyncStateWasClean = true;
-           
-        }
-    }
-
-    function stageDataForUpload(path, data) {
-        if (!path || path === DEFAULT_FALLBACK_PATH) return;
-        
-        verifyLocalStorageStructure();
-        const registry = JSON.parse(localStorage.getItem(SYNC_REGISTRY_KEY) || '{}');
-        
-        registry[path] = {
-            payload: data,
-            timestamp: Date.now(),
-            targetPath: path
-        };
-        
-        localStorage.setItem(SYNC_REGISTRY_KEY, JSON.stringify(registry));
-        triggerUpstreamSynchronization();
-    }
-
-    async function triggerUpstreamSynchronization() {
-        if (!navigator.onLine || !firebaseDB) {
-            evaluateOperationalMode(true);
-            return;
-        }
-        
-        verifyLocalStorageStructure();
-        const registry = JSON.parse(localStorage.getItem(SYNC_REGISTRY_KEY) || '{}');
-        const sortedPaths = Object.keys(registry).sort((a, b) => registry[a].timestamp - registry[b].timestamp);
-        
-        if (sortedPaths.length === 0) {
-            evaluateOperationalMode(false);
-            return;
-        }
-
-        for (const path of sortedPaths) {
-            const operationsRecord = registry[path];
-            try {
-                const latencyProbeStart = Date.now();
-                await firebaseDB.ref('.info/connected').once('value');
-                const dynamicLatency = Date.now() - latencyProbeStart;
-
-                if (dynamicLatency > 1200) {
-                    evaluateOperationalMode(true);
-                    break;
-                }
-
-                if (typeof operationsRecord.payload === 'object' && operationsRecord.payload !== null) {
-                    await firebaseDB.ref(operationsRecord.targetPath).update(operationsRecord.payload);
-                } else {
-                    await firebaseDB.ref(operationsRecord.targetPath).set(operationsRecord.payload);
-                }
-
-                const runningRegistry = JSON.parse(localStorage.getItem(SYNC_REGISTRY_KEY) || '{}');
-                delete runningRegistry[path];
-                localStorage.setItem(SYNC_REGISTRY_KEY, JSON.stringify(runningRegistry));
-                
-                evaluateOperationalMode(false);
-            } catch (networkError) {
-                evaluateOperationalMode(true);
-                break;
-            }
-        }
-    }
-
-    function evaluateOperationalMode(shouldBeLocalOnly) {
-        if (shouldBeLocalOnly && !fallbackModeActive) {
-            fallbackModeActive = true;
-            lastSyncStateWasClean = false;
-            console.error('🚨 Poor internet connection. changes are now saving locally.');
-        } else if (!shouldBeLocalOnly && fallbackModeActive) {
-            const registry = JSON.parse(localStorage.getItem(SYNC_REGISTRY_KEY) || '{}');
-            if (Object.keys(registry).length === 0) {
-                fallbackModeActive = false;
-                lastSyncStateWasClean = true;
-                console.log('🌐 ONLINE RECOVERY: You are back online. Offline changes have been updated in the database.');
-            }
-        }
-    }
-
-    function secureDataListenerLayer() {
-        if (!firebaseDB || REMOTE_DB_PATH === DEFAULT_FALLBACK_PATH || dataListenerActive) {
-            return;
-        }
-
-        if (currentDataRef) {
-            currentDataRef.off();
-        }
-
-        currentDataRef = firebaseDB.ref(REMOTE_DB_PATH);
-        dataListenerActive = true;
-
-        const datesRef = currentDataRef.child('dates');
-
-        datesRef.on('child_added', snap => {
-            const registry = JSON.parse(localStorage.getItem(SYNC_REGISTRY_KEY) || '{}');
-            if (Object.keys(registry).length > 0) return;
-
-            const dateKey = snap.key;
-            state.dates[dateKey] = snap.val();
-        });
-
-        datesRef.on('child_changed', snap => {
-            const registry = JSON.parse(localStorage.getItem(SYNC_REGISTRY_KEY) || '{}');
-            if (Object.keys(registry).length > 0) return;
-
-            const dateKey = snap.key;
-            state.dates[dateKey] = snap.val();
-            
-            if (dateKey === state.currentDate) {
-                renderTable();
-                renderExpensesIncomes();
-                updateTotalsNumbers();
-            }
-        });
-
-        datesRef.on('child_removed', snap => {
-            const registry = JSON.parse(localStorage.getItem(SYNC_REGISTRY_KEY) || '{}');
-            if (Object.keys(registry).length > 0) return;
-
-            delete state.dates[snap.key];
-            if (snap.key === state.currentDate) {
-                renderAll();
-            }
-        });
-
-        currentDataRef.child('currentDate').on('value', snap => {
-            const registry = JSON.parse(localStorage.getItem(SYNC_REGISTRY_KEY) || '{}');
-            if (Object.keys(registry).length > 0) return;
-
-            let newDate = snap.val();
-            if (!newDate) {
-                newDate = new Date().toISOString().split('T')[0];
-                currentDataRef.child('currentDate').set(newDate);
-                ensureDateExists(newDate);
-            }
-
-            if (newDate !== state.currentDate) {
-                state.currentDate = newDate;
-                ensureDateExists(state.currentDate);
-                renderAll();
-            }
-        });
-    }
-
-    async function executeInterceptionLayer() {
-        verifyLocalStorageStructure();
-        
-        await checkProfileAndSyncSettings();
-        bootstrapStateFromActiveScope();
-
-        // --- TACTICAL HOTFIXES FOR CORE INVENTORY CLONING DISORDERS ---
-        
-        // 1. Repair the core script's broken todayKey expression
-        window.todayKey = function() {
-            return new Date().toISOString().slice(0, 10);
-        };
-
-        // 2. Patch ensureDateExists to enforce unconditional catalog replication across dates
-        window.ensureDateExists = function(dateKey) {
-            if (!dateKey) return;
-            if (!state.dates) state.dates = {};
-            
-            if (!state.dates[dateKey]) {
-                state.dates[dateKey] = { items: {}, expenses: [], incomes: [], balanced: false };
-                const searchRange = 30;
-                let foundKey = null;
-                
-                // Scan backwards first to inherit the current item configurations
-                for (let i = 1; i <= searchRange; i++) {
-                    const k = addDays(dateKey, -i);
-                    if (state.dates[k] && state.dates[k].items && Object.keys(state.dates[k].items).length > 0) {
-                        foundKey = k;
-                        break;
-                    }
-                }
-                
-                // Secondary scan forward if historical data is unavailable
-                if (!foundKey) {
-                    for (let i = 1; i <= searchRange; i++) {
-                        const k = addDays(dateKey, i);
-                        if (state.dates[k] && state.dates[k].items && Object.keys(state.dates[k].items).length > 0) {
-                            foundKey = k;
-                            break;
-                        }
-                    }
-                }
-
-                if (foundKey) {
-                    Object.values(state.dates[foundKey].items).forEach(it => {
-                        const copy = makeItem(it.id, it.name, it.opening || it.closing || 0, 0, it.price || 0, 0, it.position || 0);
-                        copy.batches = JSON.parse(JSON.stringify(it.batches || []));
-                        state.dates[dateKey].items[copy.id] = copy;
-                    });
-                }
-            } else {
-                if (!state.dates[dateKey].items) state.dates[dateKey].items = {};
-                if (!Array.isArray(state.dates[dateKey].expenses)) state.dates[dateKey].expenses = [];
-                if (!Array.isArray(state.dates[dateKey].incomes)) state.dates[dateKey].incomes = [];
-            }
-        };
-
-        // 3. Intercept propagateClosingToNext to explicitly protect sibling items from vanishing
-        const nativePropagateClosingToNext = window.propagateClosingToNext;
-        window.propagateClosingToNext = function(itemId) {
-            const thisDate = state.currentDate;
-            const nextDate = addDays(thisDate, 1);
-            
-            // Re-verify that target container structure is initialized safely
-            ensureDateExists(nextDate);
-            
-            // Forcefully clone all sibling items forward into nextDate's map layout
-            if (state.dates[thisDate] && state.dates[nextDate]) {
-                Object.values(state.dates[thisDate].items || {}).forEach(it => {
-                    if (!state.dates[nextDate].items[it.id]) {
-                        const copy = makeItem(it.id, it.name, it.closing || 0, 0, it.price || 0, 0, it.position || 0);
-                        copy.batches = JSON.parse(JSON.stringify(it.batches || []));
-                        state.dates[nextDate].items[it.id] = copy;
-                    }
-                });
-            }
-            
-            if (typeof nativePropagateClosingToNext === 'function') {
-                nativePropagateClosingToNext(itemId);
-            } else {
-                const thisItem = state.dates[thisDate]?.items?.[itemId];
-                if (thisItem && state.dates[nextDate].items[itemId]) {
-                    state.dates[nextDate].items[itemId].opening = Number(thisItem.closing || 0);
-                }
-                window.saveState();
-            }
-        };
-
-        // --- STANDARD LOCAL CORES & UPSTREAM WRAPPERS ---
-
-        window.saveState = function() {
-            if (!state.currentDate) return;
-            ensureDateExists(state.currentDate);
-            
-            commitToLocalCache(state.currentDate, state.dates);
-            
-            const toSave = { 
-                currentDate: state.currentDate, 
-                dates: state.dates 
-            };
-            stageDataForUpload(REMOTE_DB_PATH, toSave);
-        };
-
-        window.saveToDatabase = function(data) {
-            if (!REMOTE_DB_PATH || REMOTE_DB_PATH === DEFAULT_FALLBACK_PATH) return;
-            commitToLocalCache(state.currentDate, state.dates);
-
-            const updates = {
-                currentDate: state.currentDate,
-                dates: state.dates
-            };
-
-            stageDataForUpload(REMOTE_DB_PATH, updates);
-        };
-
-        window.persistItemChange = function(itemId) {
-            const dateKey = state.currentDate;
-            const item = state.dates[dateKey]?.items?.[itemId];
-            if (!item) return;
-
-            item.opening = Number(item.opening || 0);
-            item.orders  = Number(item.orders || 0);
-            item.closing = Number(item.closing || 0);
-            item.price   = Number(item.price || 0);
-
-            if (typeof propagateClosingToNext === 'function') {
-                propagateClosingToNext(itemId);
-            }
-
-            if (typeof window.saveState === 'function') {
-                window.saveState();
-            }
-
-            if (typeof renderTable === 'function') renderTable();
-            if (typeof updateTotalsNumbers === 'function') updateTotalsNumbers();
-        };
-
-        if (firebaseDB && REMOTE_DB_PATH !== DEFAULT_FALLBACK_PATH) {
-            firebaseDB.ref(REMOTE_DB_PATH).on('value', (snapshot) => {
-                const upstreamData = snapshot.val();
-                if (!upstreamData) return;
-
-                const registry = JSON.parse(localStorage.getItem(SYNC_REGISTRY_KEY) || '{}');
-                if (Object.keys(registry).length > 0) return;
-
-                let stateMutated = false;
-                if (upstreamData.currentDate && upstreamData.currentDate !== state.currentDate) {
-                    state.currentDate = upstreamData.currentDate;
-                    stateMutated = true;
-                }
-
-                if (upstreamData.dates) {
-                    if (computeStateHash(upstreamData.dates) !== computeStateHash(state.dates)) {
-                        state.dates = upstreamData.dates;
-                        stateMutated = true;
-                    }
-                }
-
-                if (stateMutated) {
-                    commitToLocalCache(state.currentDate, state.dates);
-                    renderAll();
-                }
-            });
-
-            secureDataListenerLayer();
-        } else {
-            initializeDefault();
-            if (!state.currentDate) state.currentDate = (typeof todayKey === 'function' ? todayKey() : new Date().toISOString().slice(0, 10));
-            ensureDateExists(state.currentDate);
-            evaluateOperationalMode(true);
-            renderAll();
-        }
-
-        if (firebaseSyncTimer) clearInterval(firebaseSyncTimer);
-        firebaseSyncTimer = setInterval(() => {
-            triggerUpstreamSynchronization();
-            logSynchronizationState();
-        }, 4000);
-    }
-
-    const nativeUserSwitchHook = window.switchUser;
-    if (typeof nativeUserSwitchHook === 'function') {
-        window.switchUser = async function(newAccountKey, newUsername) {
-            console.log(`[Avanti Interceptor] Intercepting switchUser context payload allocation for: ${newUsername}`);
-            
-            localStorage.setItem('AV_ledger_account_key', newAccountKey);
-            localStorage.setItem('AV_ledger_username', newUsername);
-            
-            await checkProfileAndSyncSettings();
-            bootstrapStateFromActiveScope();
-            
-            await nativeUserSwitchHook(newAccountKey, newUsername);
-        };
-    }
-
-    window.addEventListener('online', () => {
-        triggerUpstreamSynchronization();
-    });
-    
-    window.addEventListener('offline', () => {
-        evaluateOperationalMode(true);
-    });
-
-    if (document.readyState === 'complete' || document.readyState === 'interactive') {
-        executeInterceptionLayer();
-    } else {
-        document.addEventListener('DOMContentLoaded', executeInterceptionLayer);
-    }
-})();
-
-</script>
 
 <script>
     let collapseTimer = null;
@@ -6225,6 +5919,161 @@ document.addEventListener('DOMContentLoaded', () => {
   // Continuously check for Firebase SDK initialization to patch it instantly
   setInterval(patchFirebaseSDK, 50);
 })();
+</script>
+
+<script>
+(function(){
+
+const CACHE_KEY = "AVANTI_LEDGER_LOCAL_MIRROR";
+
+/* -------------------------------
+   LOAD LOCAL CACHE FIRST
+--------------------------------*/
+function loadLocalMirror(){
+    try{
+        const cached = JSON.parse(localStorage.getItem(CACHE_KEY) || "{}");
+
+        if(cached.currentDate){
+            state.currentDate = cached.currentDate;
+        }
+
+        if(cached.dates && typeof cached.dates === "object"){
+            state.dates = cached.dates;
+        }
+
+        if(state.currentDate){
+            ensureDateExists(state.currentDate);
+        }
+
+        renderAll();
+
+        console.log("Rendered instantly from local mirror.");
+    }catch(err){
+        console.error("Local mirror load failed", err);
+    }
+}
+
+/* -------------------------------
+   SAVE LOCAL CACHE
+--------------------------------*/
+function saveLocalMirror(){
+    try{
+        const mirror = {
+            currentDate: state.currentDate,
+            dates: state.dates
+        };
+
+        localStorage.setItem(
+            CACHE_KEY,
+            JSON.stringify(mirror)
+        );
+    }catch(err){
+        console.error("Mirror save failed", err);
+    }
+}
+
+/* -------------------------------
+   OVERRIDE SAVE
+--------------------------------*/
+const originalSaveState = window.saveState;
+
+window.saveState = function(){
+
+    saveLocalMirror();
+
+    if(typeof originalSaveState === "function"){
+        originalSaveState.apply(this, arguments);
+    }
+};
+
+/* -------------------------------
+   FIREBASE -> LOCAL MIRROR
+--------------------------------*/
+const originalSetupDataListener = window.setupDataListener;
+
+window.setupDataListener = function(){
+
+    originalSetupDataListener();
+
+    if(!firebaseDB || !REMOTE_DB_PATH) return;
+
+    firebaseDB.ref(REMOTE_DB_PATH)
+    .on("value", snap => {
+
+        const data = snap.val();
+
+        if(!data) return;
+
+        localStorage.setItem(
+            CACHE_KEY,
+            JSON.stringify(data)
+        );
+
+        console.log("Mirror updated from Firebase.");
+    });
+};
+
+/* -------------------------------
+   FAST STARTUP
+--------------------------------*/
+document.addEventListener("DOMContentLoaded", () => {
+
+    loadLocalMirror();
+
+});
+})();
+</script>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+    // Select the specific buttons by their IDs
+    const actionButtons = [
+        document.getElementById('optTransfer'),
+        document.getElementById('optDuplicate'),
+        document.getElementById('optClear')
+    ];
+
+    function updateButtonStatus() {
+        const isOffline = !navigator.onLine;
+
+        actionButtons.forEach(button => {
+            if (!button) return; // Guard clause in case a button doesn't exist on the page
+
+            if (isOffline) {
+                button.disabled = true;
+                // Add a visual cue (optional but helpful for user experience)
+                button.style.opacity = "0.5";
+                button.style.cursor = "not-allowed";
+            } else {
+                button.disabled = false;
+                button.style.opacity = "1";
+                button.style.cursor = "pointer";
+            }
+        });
+    }
+
+    // Intercept clicks to log the message if offline
+    actionButtons.forEach(button => {
+        if (!button) return;
+
+        button.addEventListener('click', (event) => {
+            if (!navigator.onLine) {
+                // Prevent the inline onclick="selectLedgerAction(...)" from firing
+                event.stopImmediatePropagation(); 
+                event.preventDefault();
+                
+                console.log("Page actions are unavailable in offline mode.");
+            }
+        }, true); // Use capturing phase (true) to intercept the click before inline onclick fires
+    });
+
+    // Listen for live network status changes
+    window.addEventListener('online', updateButtonStatus);
+    window.addEventListener('offline', updateButtonStatus);
+
+    // Run initial check on page load
+    updateButtonStatus();
+});
 </script>
 
 
