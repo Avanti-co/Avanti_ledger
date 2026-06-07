@@ -3517,6 +3517,8 @@ renderAll();
 
 </script>
 
+
+
 <script>
 (function () {
     const requiredKeys = [
@@ -5799,146 +5801,47 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 </script>
-<script>
-(function() {
-  // Helper to check the current block status
-  function isAvantiStore() {
-    return localStorage.getItem('AV_ledger_account_key') === 'avanti-store';
-  }
 
-  // Helper to determine if a network request is trying to write/send data
-  function isSendingMethod(method) {
-    if (!method) return false;
-    const m = method.toUpperCase();
-    return m === 'POST' || m === 'PUT' || m === 'PATCH' || m === 'DELETE';
-  }
-
-  // ==========================================
-  // 1. LIQUID-LOCK LOCAL STORAGE
-  // ==========================================
-  const originalSetItem = Storage.prototype.setItem;
-  Storage.prototype.setItem = function(key, value) {
-    if (isAvantiStore() && key !== 'AV_ledger_account_key') {
-      
-      return; 
-    }
-    return originalSetItem.apply(this, arguments);
-  };
-
-  // ==========================================
-  // 2. ULTRA FETCH & XHR NETWORK BLOCK
-  // ==========================================
-  const originalFetch = window.fetch;
-  window.fetch = function(input, init) {
-    const method = (init && init.method) || 'GET';
-    let url = '';
-    if (typeof input === 'string') url = input;
-    else if (input && input.url) url = input.url;
-
-    if (isAvantiStore() && (url.includes('firebase') || url.includes('firestore')) && isSendingMethod(method)) {
-      
-      return Promise.reject(new Error("Firebase outgoing data blocked."));
-    }
-    return originalFetch.apply(this, arguments);
-  };
-
-  const originalOpen = XMLHttpRequest.prototype.open;
-  XMLHttpRequest.prototype.open = function(method, url, ...args) {
-    this._method = method;
-    this._url = url;
-    return originalOpen.apply(this, arguments);
-  };
-
-  const originalSend = XMLHttpRequest.prototype.send;
-  XMLHttpRequest.prototype.send = function(body) {
-    const url = this._url || '';
-    const method = this._method || 'GET';
-
-    if (isAvantiStore() && (url.includes('firebase') || url.includes('firestore')) && isSendingMethod(method)) {
-      
-      this.send = function() {};
-      return;
-    }
-    return originalSend.apply(this, arguments);
-  };
-
-  // ==========================================
-  // 3. FIREBASE SDK DEEP-PATCH (For WebSockets/gRPC)
-  // ==========================================
-  // This watches the window object for when Firebase loads and neutralizes its write functions
-  function patchFirebaseSDK() {
-    if (window.firebase) {
-      // Patch Realtime Database
-      if (window.firebase.database && !window.firebase.database.__patched) {
-        window.firebase.database.__patched = true;
-        const originalDb = window.firebase.database;
-        window.firebase.database = function(...args) {
-          const db = originalDb.apply(this, args);
-          const originalRef = db.ref;
-          db.ref = function(...refArgs) {
-            const reference = originalRef.apply(this, refArgs);
-            
-            // Override data-sending functions
-            const originalSet = reference.set;
-            reference.set = function(...setArgs) {
-              if (isAvantiStore()) { console.warn("[Blocked] Firebase ref().set() denied."); return Promise.resolve(); }
-              return originalSet.apply(this, setArgs);
-            };
-            const originalUpdate = reference.update;
-            reference.update = function(...upArgs) {
-              if (isAvantiStore()) { console.warn("[Blocked] Firebase ref().update() denied."); return Promise.resolve(); }
-              return originalUpdate.apply(this, upArgs);
-            };
-            return reference;
-          };
-          return db;
-        };
-      }
-
-      // Patch Firestore
-      if (window.firebase.firestore && !window.firebase.firestore.__patched) {
-        window.firebase.firestore.__patched = true;
-        const originalFs = window.firebase.firestore;
-        window.firebase.firestore = function(...args) {
-          const fs = originalFs.apply(this, args);
-          const originalCollection = fs.collection;
-          fs.collection = function(...colArgs) {
-            const col = originalCollection.apply(this, colArgs);
-            col.add = function() {
-              if (isAvantiStore()) { console.warn("[Blocked] Firestore collection().add() denied."); return Promise.resolve({}); }
-              return originalCollection.apply(this, colArgs).add.apply(this, arguments);
-            };
-            return col;
-          };
-          return fs;
-        };
-      }
-    }
-  }
-
-  // Continuously check for Firebase SDK initialization to patch it instantly
-  setInterval(patchFirebaseSDK, 50);
-})();
-</script>
 
 <script>
 (function(){
 
-const CACHE_KEY = "AVANTI_LEDGER_LOCAL_MIRROR";
+/* =========================================================
+   DYNAMIC CACHE KEY (CRITICAL FIX)
+   - prevents cross-profile data leakage
+========================================================= */
+function getCacheKey(){
+    const accountKey =
+        localStorage.getItem("AV_ledger_account_key") ||
+        window.AV_LEDGER_ACCOUNT_KEY ||
+        "default";
 
-/* -------------------------------
+    const dbPath =
+        window.REMOTE_DB_PATH ||
+        "default_db";
+
+    return `AVANTI_LEDGER_LOCAL_MIRROR_${accountKey}_${dbPath}`;
+}
+
+/* =========================================================
    LOAD LOCAL CACHE FIRST
---------------------------------*/
+========================================================= */
 function loadLocalMirror(){
     try{
+        const CACHE_KEY = getCacheKey();
+
         const cached = JSON.parse(localStorage.getItem(CACHE_KEY) || "{}");
 
-        if(cached.currentDate){
-            state.currentDate = cached.currentDate;
-        }
+        // only apply if valid structure
+        if(cached && typeof cached === "object"){
 
-        if(cached.dates && typeof cached.dates === "object"){
-            state.dates = cached.dates;
+            if(cached.currentDate){
+                state.currentDate = cached.currentDate;
+            }
+
+            if(cached.dates && typeof cached.dates === "object"){
+                state.dates = cached.dates;
+            }
         }
 
         if(state.currentDate){
@@ -5947,80 +5850,82 @@ function loadLocalMirror(){
 
         renderAll();
 
-        console.log("Rendered instantly from local mirror.");
+        console.log("Rendered instantly from isolated local mirror:", CACHE_KEY);
+
     }catch(err){
-        console.error("Local mirror load failed", err);
+        
     }
 }
 
-/* -------------------------------
-   SAVE LOCAL CACHE
---------------------------------*/
+/* =========================================================
+   SAVE LOCAL CACHE (ISOLATED PER ACCOUNT + DB PATH)
+========================================================= */
 function saveLocalMirror(){
     try{
+        const CACHE_KEY = getCacheKey();
+
         const mirror = {
             currentDate: state.currentDate,
-            dates: state.dates
+            dates: state.dates,
+            _meta: {
+                accountKey: localStorage.getItem("AV_ledger_account_key"),
+                dbPath: window.REMOTE_DB_PATH,
+                savedAt: Date.now()
+            }
         };
 
-        localStorage.setItem(
-            CACHE_KEY,
-            JSON.stringify(mirror)
-        );
+        localStorage.setItem(CACHE_KEY, JSON.stringify(mirror));
+
     }catch(err){
         console.error("Mirror save failed", err);
     }
 }
 
-/* -------------------------------
-   OVERRIDE SAVE
---------------------------------*/
+/* =========================================================
+   OVERRIDE SAVE STATE
+========================================================= */
 const originalSaveState = window.saveState;
 
 window.saveState = function(){
-
     saveLocalMirror();
 
     if(typeof originalSaveState === "function"){
-        originalSaveState.apply(this, arguments);
+        return originalSaveState.apply(this, arguments);
     }
 };
 
-/* -------------------------------
-   FIREBASE -> LOCAL MIRROR
---------------------------------*/
+/* =========================================================
+   FIREBASE SYNC → ALSO RESPECTS CACHE KEY
+========================================================= */
 const originalSetupDataListener = window.setupDataListener;
 
 window.setupDataListener = function(){
 
-    originalSetupDataListener();
+    if(typeof originalSetupDataListener === "function"){
+        originalSetupDataListener();
+    }
 
     if(!firebaseDB || !REMOTE_DB_PATH) return;
 
-    firebaseDB.ref(REMOTE_DB_PATH)
-    .on("value", snap => {
-
+    firebaseDB.ref(REMOTE_DB_PATH).on("value", snap => {
         const data = snap.val();
-
         if(!data) return;
 
-        localStorage.setItem(
-            CACHE_KEY,
-            JSON.stringify(data)
-        );
+        const CACHE_KEY = getCacheKey();
 
-        console.log("Mirror updated from Firebase.");
+        localStorage.setItem(CACHE_KEY, JSON.stringify(data));
+
+        console.log("Mirror updated from Firebase:", CACHE_KEY);
     });
 };
 
-/* -------------------------------
-   FAST STARTUP
---------------------------------*/
+/* =========================================================
+   FAST STARTUP (LOCAL ONLY)
+========================================================= */
 document.addEventListener("DOMContentLoaded", () => {
-
     loadLocalMirror();
-
 });
+
 })();
 </script>
 
