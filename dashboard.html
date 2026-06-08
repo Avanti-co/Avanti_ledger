@@ -561,6 +561,10 @@ padding-bottom: env(safe-area-inset-bottom, 20px);
         let fullData = null;
         let userDetails = { accountName: 'Account', username: '', logoUrl: '', profileUrl: '', authStatus: 'Verified' };
         
+        // Dynamic Local Cache Buffers
+        let cachedRawStats = {};
+        let cachedRawEmpties = {};
+
         let lineChartInstance = null;
         let doughnutChartInstance = null;
         let barChartInstance = null;
@@ -831,24 +835,20 @@ padding-bottom: env(safe-area-inset-bottom, 20px);
             };
         };
 
-        // --- PIPELINE DATA LISTENER SETUP (REALTIME ENGINE) ---
-        const initializeRealtimeEngine = async () => {
-            document.getElementById('loading-overlay').style.display = 'flex';
+        // --- PIPELINE DATA LISTENER SETUP (SILENT REALTIME SYNC) ---
+        const initializeRealtimeEngine = async (hasCache) => {
+            // ONLY display the loading screen if we don't have cached data to show
+            if (!hasCache) {
+                document.getElementById('loading-overlay').style.display = 'flex';
+            }
             document.getElementById('error-overlay').classList.add('hidden');
 
             try {
                 const { accountKey, username, logoUrl, profileUrl } = await getLocalStorage();
                 if (!accountKey || !username) throw new Error("Critical storage key missing.");
 
-                // Keep memory objects populated but remove DOM text updates
                 database.ref(`accounts/${accountKey}/displayName`).on("value", (accNameSnap) => {
                     userDetails.accountName = accNameSnap.exists() && accNameSnap.val() ? accNameSnap.val() : "Account Container";
-                });
-                
-                database.ref(`accounts/${accountKey}/url`).on("value", (imgSnap) => {
-                    if (imgSnap.exists() && imgSnap.val()) {
-                        const dbImageUrl = imgSnap.val();
-                    }
                 });
                 
                 database.ref(`accounts/${accountKey}/profiles/${username}/authStatus`).on('value', (authStatusSnap) => {
@@ -859,11 +859,21 @@ padding-bottom: env(safe-area-inset-bottom, 20px);
                 userDetails.profileUrl = profileUrl;
 
                 const { statsPath, emptiesPath } = await getFirebasePaths(accountKey, username);
+                const statsCacheKey = `AV_cache_stats_${accountKey}`;
+                const emptiesCacheKey = `AV_cache_empties_${accountKey}`;
 
-                // Setup Active Realtime Node Observers on paths
+                // Establish continuous sync context
                 database.ref(statsPath).on('value', (statsSnap) => {
                     database.ref(emptiesPath).on('value', (emptiesSnap) => {
-                        processAndRenderData(statsSnap.val() || {}, emptiesSnap.val() || {});
+                        cachedRawStats = statsSnap.val() || {};
+                        cachedRawEmpties = emptiesSnap.val() || {};
+                        
+                        // Silently commit fresh mutations down into hot storage
+                        localStorage.setItem(statsCacheKey, JSON.stringify(cachedRawStats));
+                        localStorage.setItem(emptiesCacheKey, JSON.stringify(cachedRawEmpties));
+                        
+                        // Dynamically updates UI without disruptions
+                        processAndRenderData(cachedRawStats, cachedRawEmpties);
                     });
                 });
 
@@ -952,7 +962,7 @@ padding-bottom: env(safe-area-inset-bottom, 20px);
             document.getElementById('loading-overlay').style.display = 'none';
         };
 
-        // --- GRAPHICS CHANNELS MATRIX (THEMED TO #3f72af AVANTI PRIMARY) ---
+        // --- GRAPHICS CHANNELS MATRIX ---
         const drawLineChart = (labels, points) => {
             if(lineChartInstance) lineChartInstance.destroy();
             const holder = document.getElementById('line-chart-holder');
@@ -963,7 +973,6 @@ padding-bottom: env(safe-area-inset-bottom, 20px);
                 return;
             }
 
-            // Re-inject canvas to ensure it exists after an empty state
             holder.innerHTML = '<canvas id="lineChart"></canvas>';
             const canvas = document.getElementById('lineChart');
             const ctx = canvas.getContext('2d');
@@ -1009,7 +1018,6 @@ padding-bottom: env(safe-area-inset-bottom, 20px);
                 return;
             }
 
-            // Re-inject canvas and center text box
             holder.innerHTML = `
                 <canvas id="doughnutChart"></canvas>
                 <div class="absolute inset-0 flex items-center justify-center pointer-events-none" id="doughnut-center-text-box">
@@ -1045,54 +1053,51 @@ padding-bottom: env(safe-area-inset-bottom, 20px);
         };
 
         const drawBarChart = (labels, data, shouldSlant, isRevenue) => {
-    if(barChartInstance) barChartInstance.destroy();
-    const holder = document.getElementById('bar-chart-holder');
-    
-    const hasData = data.reduce((sum, v) => sum + v, 0) > 0;
-    if(!hasData) {
-        holder.innerHTML = '<div class="h-full flex items-center justify-center text-ios-gray text-xs italic">No stock transaction volumes.</div>';
-        return;
-    }
-
-    // Re-inject canvas 
-    holder.innerHTML = '<canvas id="barChart"></canvas>';
-    const canvas = document.getElementById('barChart');
-    const ctx = canvas.getContext('2d');
-    
-    barChartInstance = new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels: labels,
-            datasets: [{
-                data: data,
-                backgroundColor: '#3f72af',
-                borderRadius: 5,
-                barThickness: 35
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: { 
-                legend: { display: false },
-                tooltip: { 
-                    callbacks: { 
-                        // FIX: Target context.parsed.y to extract the actual numerical value
-                        label: (context) => {
-                            const value = context.parsed.y !== undefined ? context.parsed.y : context.raw;
-                            return ` ${isRevenue ? formatCurrency(value) : value + ' Units'}`;
-                        } 
-                    } 
-                }
-            },
-            scales: {
-                y: { beginAtZero: true, ticks: { color: '#636366', font: { size: 10 }, callback: (val) => isRevenue ? 'K' + val : val }, grid: { color: 'rgba(0,0,0,0.04)' } },
-                x: { ticks: { color: '#000000', font: { size: 10, weight: 'bold' }, maxRotation: shouldSlant ? 45 : 0, minRotation: shouldSlant ? 45 : 0 }, grid: { display: false } }
+            if(barChartInstance) barChartInstance.destroy();
+            const holder = document.getElementById('bar-chart-holder');
+            
+            const hasData = data.reduce((sum, v) => sum + v, 0) > 0;
+            if(!hasData) {
+                holder.innerHTML = '<div class="h-full flex items-center justify-center text-ios-gray text-xs italic">No stock transaction Entries.</div>';
+                return;
             }
-        }
-    });
-};
 
+            holder.innerHTML = '<canvas id="barChart"></canvas>';
+            const canvas = document.getElementById('barChart');
+            const ctx = canvas.getContext('2d');
+            
+            barChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: data,
+                        backgroundColor: '#3f72af',
+                        borderRadius: 5,
+                        barThickness: 35
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { 
+                        legend: { display: false },
+                        tooltip: { 
+                            callbacks: { 
+                                label: (context) => {
+                                    const value = context.parsed.y !== undefined ? context.parsed.y : context.raw;
+                                    return ` ${isRevenue ? formatCurrency(value) : value + ' Units'}`;
+                                } 
+                            } 
+                        }
+                    },
+                    scales: {
+                        y: { beginAtZero: true, ticks: { color: '#636366', font: { size: 10 }, callback: (val) => isRevenue ? 'K' + val : val }, grid: { color: 'rgba(0,0,0,0.04)' } },
+                        x: { ticks: { color: '#000000', font: { size: 10, weight: 'bold' }, maxRotation: shouldSlant ? 45 : 0, minRotation: shouldSlant ? 45 : 0 }, grid: { display: false } }
+                    }
+                }
+            });
+        };
 
         // --- DASHBOARD OBJECT DOCUMENT TEMPLATE INJECTION RENDERER ---
         const renderDashboardView = () => {
@@ -1150,27 +1155,25 @@ padding-bottom: env(safe-area-inset-bottom, 20px);
             }
 
             const alertBox = document.getElementById('unbalanced-alert-container');
-if (fullData.unbalancedDays && fullData.unbalancedDays.length > 0) {
-    alertBox.innerHTML = `
-        <div class="bg-ios-orange/10 border border-ios-orange/20 p-3.5 rounded-ios shadow-sm animate-fade-in flex items-start space-x-3">
-            <i class="fas fa-shield-halved text-ios-orange text-base mt-0.5"></i>
-            <div>
-                <p class="text-xs font-bold text-black tracking-tight">Forensic Accounting Guardrail Active</p>
-                <p class="text-[11px] text-ios-text-secondary leading-normal mt-0.5">Data for <strong class="text-ios-orange font-bold">${fullData.unbalancedDays.join(', ')}</strong> is excluded because those days are not yet balanced.</p>
-            </div>
-        </div>`;
-} else {
-    // Elegant green success alert when all days are perfectly balanced
-    alertBox.innerHTML = `
-        <div class="bg-ios-green/10 border border-ios-green/20 p-3.5 rounded-ios shadow-sm animate-fade-in flex items-start space-x-3">
-            <i class="fas fa-circle-check text-ios-green text-base mt-0.5"></i>
-            <div>
-                <p class="text-xs font-bold text-black tracking-tight">Forensic Accounting Guardrail Secure</p>
-                <p class="text-[11px] text-ios-text-secondary leading-normal mt-0.5">No days were skipped because all recorded days this week are perfectly balanced!</p>
-            </div>
-        </div>`;
-}
-
+            if (fullData.unbalancedDays && fullData.unbalancedDays.length > 0) {
+                alertBox.innerHTML = `
+                    <div class="bg-ios-orange/10 border border-ios-orange/20 p-3.5 rounded-ios shadow-sm animate-fade-in flex items-start space-x-3">
+                        <i class="fas fa-shield-halved text-ios-orange text-base mt-0.5"></i>
+                        <div>
+                            <p class="text-xs font-bold text-black tracking-tight">Forensic Accounting Guardrail Active</p>
+                            <p class="text-[11px] text-ios-text-secondary leading-normal mt-0.5">Data for <strong class="text-ios-orange font-bold">${fullData.unbalancedDays.join(', ')}</strong> is excluded because those days are not yet balanced.</p>
+                        </div>
+                    </div>`;
+            } else {
+                alertBox.innerHTML = `
+                    <div class="bg-ios-green/10 border border-ios-green/20 p-3.5 rounded-ios shadow-sm animate-fade-in flex items-start space-x-3">
+                        <i class="fas fa-circle-check text-ios-green text-base mt-0.5"></i>
+                        <div>
+                            <p class="text-xs font-bold text-black tracking-tight">Forensic Accounting Guardrail Secure</p>
+                            <p class="text-[11px] text-ios-text-secondary leading-normal mt-0.5">No days were skipped because all recorded days this week are perfectly balanced!</p>
+                        </div>
+                    </div>`;
+            }
 
             const netRevenueChartPoints = currentWeekData.map(day => {
                 const dayMetric = salesData.currentWeekMetrics.find(d => d.dateKey === day.dateKey);
@@ -1191,7 +1194,7 @@ if (fullData.unbalancedDays && fullData.unbalancedDays.length > 0) {
 
             if (allTransactions.length > 0) {
                 transactionsContainer.innerHTML = allTransactions.map(t => `
-                    <div onclick="alert('${t.type} Scope Entry:\\nDescription: ${t.title}\\nVolume: ${t.value}')" class="snap-start flex-none w-52 p-3.5 rounded-ios bg-ios-card border border-black/5 shadow-sm flex flex-col justify-between active:scale-95 transition-transform">
+                    <div onclick="alert('${t.type} Scope Entry:\\nDescription: ${t.title}\\nAmount: ${t.value}')" class="snap-start flex-none w-52 p-3.5 rounded-ios bg-ios-card border border-black/5 shadow-sm flex flex-col justify-between active:scale-95 transition-transform">
                         <div class="flex items-center justify-between mb-2">
                             <span class="px-2 py-0.5 text-[9px] font-bold uppercase rounded ${t.bg} ${t.color} border ${t.border}">${t.type}</span>
                             <i class="fas ${t.icon} text-[11px] text-ios-gray"></i>
@@ -1202,7 +1205,6 @@ if (fullData.unbalancedDays && fullData.unbalancedDays.length > 0) {
                     </div>
                 `).join('');
 
-                // Render functional transaction carousel synchronization indicator dots
                 const dotsContainer = document.getElementById('transactions-dots-container');
                 if (dotsContainer) {
                     dotsContainer.innerHTML = allTransactions.map((_, idx) => `
@@ -1243,30 +1245,12 @@ if (fullData.unbalancedDays && fullData.unbalancedDays.length > 0) {
         // --- CALENDAR SELECTION EVENT LISTENERS ---
         document.getElementById('prev-week-btn').addEventListener('click', () => {
             currentWeekStartDate.setDate(currentWeekStartDate.getDate() - 7);
-            document.getElementById('loading-overlay').style.display = 'flex';
-            const accountKey = localStorage.getItem('AV_ledger_account_key');
-            const username = localStorage.getItem('AV_ledger_username');
-            getFirebasePaths(accountKey, username).then(({statsPath}) => {
-                database.ref(statsPath).once('value', (statsSnap) => {
-                    database.ref(`accounts/${accountKey}/global_ledger/empties_tracking`).once('value', (emptiesSnap) => {
-                        processAndRenderData(statsSnap.val() || {}, emptiesSnap.val() || {});
-                    });
-                });
-            });
+            processAndRenderData(cachedRawStats, cachedRawEmpties);
         });
         
         document.getElementById('next-week-btn').addEventListener('click', () => {
             currentWeekStartDate.setDate(currentWeekStartDate.getDate() + 7);
-            document.getElementById('loading-overlay').style.display = 'flex';
-            const accountKey = localStorage.getItem('AV_ledger_account_key');
-            const username = localStorage.getItem('AV_ledger_username');
-            getFirebasePaths(accountKey, username).then(({statsPath}) => {
-                database.ref(statsPath).once('value', (statsSnap) => {
-                    database.ref(`accounts/${accountKey}/global_ledger/empties_tracking`).once('value', (emptiesSnap) => {
-                        processAndRenderData(statsSnap.val() || {}, emptiesSnap.val() || {});
-                    });
-                });
-            });
+            processAndRenderData(cachedRawStats, cachedRawEmpties);
         });
         
         document.getElementById('top5-metric-select').addEventListener('change', () => {
@@ -1295,7 +1279,7 @@ if (fullData.unbalancedDays && fullData.unbalancedDays.length > 0) {
         const txCarouselElement = document.getElementById('transactions-container');
         if (txCarouselElement) {
             txCarouselElement.addEventListener('scroll', () => {
-                const cardWidthStep = 222; // 208px card width + 14px spacer margins
+                const cardWidthStep = 222; 
                 const index = Math.round(txCarouselElement.scrollLeft / cardWidthStep);
                 const dots = document.getElementById('transactions-dots-container').children;
                 for (let i = 0; i < dots.length; i++) {
@@ -1308,7 +1292,7 @@ if (fullData.unbalancedDays && fullData.unbalancedDays.length > 0) {
             });
         }
 
-        // --- BOOTSTRAP PIPELINE RUNTIME ---
+        // --- BOOTSTRAP PIPELINE RUNTIME (CRITICAL SYNCHRONOUS CACHE HYDRATION) ---
         (() => {
             const requiredKeys = ['AV_ledger_account_key', 'AV_ledger_username', 'AV_ledger_auth_status'];
             if (requiredKeys.some(key => !localStorage.getItem(key))) {
@@ -1316,10 +1300,40 @@ if (fullData.unbalancedDays && fullData.unbalancedDays.length > 0) {
                 window.location.replace('index.html');
                 return;
             }
+            
             currentWeekStartDate = getStartOfWeek(new Date());
-            initializeRealtimeEngine();
+
+            // Synchronously tap local storage BEFORE entering async execution contexts
+            const accountKey = localStorage.getItem('AV_ledger_account_key');
+            const statsCacheKey = `AV_cache_stats_${accountKey}`;
+            const emptiesCacheKey = `AV_cache_empties_${accountKey}`;
+            
+            const localStats = localStorage.getItem(statsCacheKey);
+            const localEmpties = localStorage.getItem(emptiesCacheKey);
+            let verifiedCacheHit = false;
+
+            if (localStats || localEmpties) {
+                try {
+                    cachedRawStats = localStats ? JSON.parse(localStats) : {};
+                    cachedRawEmpties = localEmpties ? JSON.parse(localEmpties) : {};
+                    
+                    // Force render instantly right here, blocking the loader from triggering
+                    processAndRenderData(cachedRawStats, cachedRawEmpties);
+                    
+                    const primaryLoader = document.getElementById('loading-overlay');
+                    if (primaryLoader) primaryLoader.style.display = 'none';
+                    
+                    verifiedCacheHit = true;
+                } catch(e) { 
+                    console.error("Cache parsing mismatch caught safely:", e); 
+                }
+            }
+
+            // Start Firebase listeners. Pass cache status to intercept full-screen loading states.
+            initializeRealtimeEngine(verifiedCacheHit);
         })();
     </script>
+
 
 </body>
 </html>
