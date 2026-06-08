@@ -609,7 +609,7 @@ const auth = firebase.auth();
 // --- Global Variables ---
 const accountName = localStorage.getItem('AV_ledger_account_key');
 const username = localStorage.getItem('AV_ledger_username');
-let currentAuthStatus = 'Admin'; 
+let currentAuthStatus = 'Standard'; 
 let allProfiles = {};
 let adminSyncAllActive = false; 
 
@@ -785,7 +785,6 @@ async function toggleSync(targetProfileKey, isChecked, mode) {
 
     try {
         await database.ref().update(updates);
-        // We don't close the modal immediately so the user can see the status change
     } catch (error) {
         console.error("Sync update failed:", error);
         alert("Failed to update sync settings.");
@@ -845,14 +844,11 @@ function applyAdminLockUI(locked) {
     } else {
         container.classList.remove('disabled-link');
         container.onclick = openSyncModal;
-        
-        // This part is now handled by the main profile listener above 
-        // to ensure it stays reactive to both sending and receiving.
     }
 }
 
 
-// --- NEW: Global Ledger Core Database Actions ---
+// --- Global Ledger Core Database Actions ---
 async function downloadGlobalLedger() {
     if (!accountName || !username) return;
     if (!confirm("Are you sure you want to download the global ledger? This will overwrite your profile's local avanti_stats data completely.")) return;
@@ -935,138 +931,175 @@ async function uploadGlobalLedgerFromProfile(profileKey) {
     }
 }
 
+// --- Local Cache UI Rendering Layers ---
+function updateProfilesUI(profilesData) {
+    if (!profilesData) return;
+    allProfiles = profilesData;
+    const me = allProfiles[username];
+    if (!me) return;
+
+    currentAuthStatus = me.authStatus || 'Standard';
+    
+    let admins = 0, standards = 0;
+    Object.values(allProfiles).forEach(p => (p.authStatus === 'Admin' ? admins++ : standards++));
+
+    const iconColorClass = currentAuthStatus === 'Admin' ? 'text-blue-600' : 'text-slate-400';
+    const userIcon = `<i class="fas fa-user-circle ${iconColorClass} mr-1"></i>`;
+    const statusIcon = `<i class="fas fa-shield-alt ${iconColorClass} mr-1"></i>`;
+
+    document.getElementById('profile-info-display').innerHTML = `
+        ${userIcon}${username} 
+        <span class="mx-1 text-slate-300">|</span> 
+        ${statusIcon}${currentAuthStatus}
+    `;
+
+    const adminIcon = `<i class="fas fa-crown text-yellow-500 mr-1"></i>`;
+    const deviceIcon = `<i class="fas fa-laptop text-blue-500 mr-1"></i>`;
+
+    document.getElementById('device-counts').innerHTML = `
+        ${adminIcon}${admins} admin(s)
+        <span class="mx-1 text-gray-300">•</span> 
+        ${deviceIcon}${standards} standard device(s)
+    `;
+
+    let syncStatusText = "None";
+    let statusColor = "#8E8E93";
+
+    if (me.syncingTo) {
+        const receivers = Object.keys(me.syncingTo).filter(k => me.syncingTo[k] === true);
+        if (receivers.length > 0) {
+            syncStatusText = `Broadcasting to ${receivers.length} device${receivers.length > 1 ? 's' : ''}`;
+            statusColor = "#007AFF";
+        }
+    } 
+    
+    if (syncStatusText === "None" && me.syncingWith) {
+        const sourceDevice = Object.keys(me.syncingWith).find(k => me.syncingWith[k] === true);
+        if (sourceDevice) {
+            syncStatusText = `Receiving from ${sourceDevice}`;
+            statusColor = "#34c759";
+        }
+    }
+
+    const statusDisplay = document.getElementById('sync-status-display');
+    if (statusDisplay) {
+        statusDisplay.innerText = syncStatusText;
+        statusDisplay.style.color = statusColor;
+    }
+
+    const adminContainer = document.getElementById('sync-data-admin-switch-container');
+    if (adminContainer) {
+        adminContainer.style.display = (currentAuthStatus === 'Admin' ? 'flex' : 'none');
+    }
+    document.getElementById('sync-data-standard-link-container').style.display = 'flex';
+
+    const uploadGlobalLink = document.getElementById('upload-global-ledger-link');
+    if (uploadGlobalLink) {
+        uploadGlobalLink.style.display = (currentAuthStatus === 'Admin' ? 'flex' : 'none');
+    }
+
+    applyAdminLockUI(adminSyncAllActive);
+    applyAuthorizationRestrictions();
+}
+
+function updateDescriptionUI(desc) {
+    const descDisplay = document.getElementById('profile-description-display');
+    if (descDisplay) {
+        descDisplay.innerText = desc || "No description available.";
+    }
+}
+
+function updateSettingsUI(settings) {
+    adminSyncAllActive = (settings.synchronization === 'all');
+    
+    const syncSwitch = document.getElementById('sync-data-switch');
+    if (syncSwitch) {
+        syncSwitch.checked = adminSyncAllActive;
+    }
+
+    const gfaSwitch = document.getElementById('gfa-switch');
+    if (gfaSwitch) {
+        gfaSwitch.checked = !!settings[username]?.GFA;
+    }
+    
+    applyAdminLockUI(adminSyncAllActive);
+}
+
+function updateUrlUI(url) {
+    const img = document.getElementById('profile-icon');
+    const svg = document.getElementById('profile-icon-svg');
+    if (url && url.trim() !== "") {
+        img.src = url;
+        img.classList.remove('hidden');
+        svg.classList.add('hidden');
+    } else {
+        img.classList.add('hidden');
+        svg.classList.remove('hidden');
+    }
+}
+
+function updateDisplayNameUI(name) {
+    const nameDisplay = document.getElementById('account-name-display');
+    if (nameDisplay) {
+        nameDisplay.innerText = name || accountName;
+    }
+}
 
 function loadSettingsData() {
     if (!accountName || !username) return;
 
-    // 1. Profiles & UI Status Listener
+    // --- 1. Load from Local Storage First (Instant Cache Render) ---
+    const cachedProfiles = localStorage.getItem(`cache_profiles_${accountName}`);
+    const cachedDesc = localStorage.getItem(`cache_desc_${accountName}`);
+    const cachedSettings = localStorage.getItem(`cache_settings_${accountName}`);
+    const cachedUrl = localStorage.getItem(`cache_url_${accountName}`);
+    const cachedName = localStorage.getItem(`cache_name_${accountName}`);
+
+    if (cachedProfiles) updateProfilesUI(JSON.parse(cachedProfiles));
+    if (cachedDesc) updateDescriptionUI(cachedDesc);
+    if (cachedSettings) updateSettingsUI(JSON.parse(cachedSettings));
+    if (cachedUrl) updateUrlUI(cachedUrl);
+    if (cachedName) updateDisplayNameUI(cachedName);
+
+    // --- 2. Live Network Connect & Synchronize Cache (Firebase Nodes) ---
     database.ref(`accounts/${accountName}/profiles`).on('value', (snap) => {
-        allProfiles = snap.val() || {};
-        const me = allProfiles[username];
-        if (!me) return;
-
-        currentAuthStatus = me.authStatus || 'Standard';
-        
-        // --- Calculate Device Counts ---
-        let admins = 0, standards = 0;
-        Object.values(allProfiles).forEach(p => (p.authStatus === 'Admin' ? admins++ : standards++));
-
-        // --- Update Profile Header ---
-        const iconColorClass = currentAuthStatus === 'Admin' ? 'text-blue-600' : 'text-slate-400';
-        const userIcon = `<i class="fas fa-user-circle ${iconColorClass} mr-1"></i>`;
-        const statusIcon = `<i class="fas fa-shield-alt ${iconColorClass} mr-1"></i>`;
-
-        document.getElementById('profile-info-display').innerHTML = `
-            ${userIcon}${username} 
-            <span class="mx-1 text-slate-300">|</span> 
-            ${statusIcon}${currentAuthStatus}
-        `;
-
-        // --- Update Manage Devices Subtitle ---
-        const adminIcon = `<i class="fas fa-crown text-yellow-500 mr-1"></i>`;
-        const deviceIcon = `<i class="fas fa-laptop text-blue-500 mr-1"></i>`;
-
-        document.getElementById('device-counts').innerHTML = `
-            ${adminIcon}${admins} admin(s)
-            <span class="mx-1 text-gray-300">•</span> 
-            ${deviceIcon}${standards} standard device(s)
-        `;
-
-        // --- DIRECTIONAL SYNC STATUS LOGIC ---
-        let syncStatusText = "None";
-        let statusColor = "#8E8E93"; // Muted gray
-
-        if (me.syncingTo) {
-            // Find keys where value is explicitly true
-            const receivers = Object.keys(me.syncingTo).filter(k => me.syncingTo[k] === true);
-            if (receivers.length > 0) {
-                syncStatusText = `Broadcasting to ${receivers.length} device${receivers.length > 1 ? 's' : ''}`;
-                statusColor = "#007AFF"; // iOS Blue
-            }
-        } 
-        
-        // If not broadcasting, check if we are receiving
-        if (syncStatusText === "None" && me.syncingWith) {
-            const sourceDevice = Object.keys(me.syncingWith).find(k => me.syncingWith[k] === true);
-            if (sourceDevice) {
-                syncStatusText = `Receiving from ${sourceDevice}`;
-                statusColor = "#34c759"; // iOS Green
-            }
-        }
-
-        const statusDisplay = document.getElementById('sync-status-display');
-        if (statusDisplay) {
-            statusDisplay.innerText = syncStatusText;
-            statusDisplay.style.color = statusColor;
-        }
-
-        // --- Admin/Standard Visibility ---
-        const adminContainer = document.getElementById('sync-data-admin-switch-container');
-        if (adminContainer) {
-            adminContainer.style.display = (currentAuthStatus === 'Admin' ? 'flex' : 'none');
-        }
-        document.getElementById('sync-data-standard-link-container').style.display = 'flex';
-
-        // --- NEW: Toggle Upload Ledger view dynamically based on Admin Authorization Status ---
-        const uploadGlobalLink = document.getElementById('upload-global-ledger-link');
-        if (uploadGlobalLink) {
-            uploadGlobalLink.style.display = (currentAuthStatus === 'Admin' ? 'flex' : 'none');
-        }
-
-        applyAdminLockUI(adminSyncAllActive);
-        applyAuthorizationRestrictions();
+        const val = snap.val() || {};
+        localStorage.setItem(`cache_profiles_${accountName}`, JSON.stringify(val));
+        updateProfilesUI(val);
     });
 
-    // 2. Load Account Description
     database.ref(`accounts/${accountName}/description`).on('value', (snap) => {
-        const desc = snap.val();
-        const descDisplay = document.getElementById('profile-description-display');
-        if (descDisplay) {
-            descDisplay.innerText = desc || "No description available.";
-        }
+        const val = snap.val();
+        localStorage.setItem(`cache_desc_${accountName}`, val || "");
+        updateDescriptionUI(val);
     });
 
-    // 3. Global Synchronization Settings
     database.ref(`accounts/${accountName}/settings`).on('value', (snap) => {
-        const settings = snap.val() || {};
-        adminSyncAllActive = (settings.synchronization === 'all');
+        const val = snap.val() || {};
+        localStorage.setItem(`cache_settings_${accountName}`, JSON.stringify(val));
+        updateSettingsUI(val);
         
         const syncSwitch = document.getElementById('sync-data-switch');
         if (syncSwitch) {
-            syncSwitch.checked = adminSyncAllActive;
             syncSwitch.onchange = (e) => e.target.checked ? enableAdminAllSync() : disableAdminAllSync();
         }
 
         const gfaSwitch = document.getElementById('gfa-switch');
         if (gfaSwitch) {
-            gfaSwitch.checked = !!settings[username]?.GFA;
             gfaSwitch.onchange = (e) => setFirebaseData(`accounts/${accountName}/settings/${username}/GFA`, e.target.checked);
         }
-        
-        applyAdminLockUI(adminSyncAllActive);
     });
 
-    // 4. Profile Image
     database.ref(`accounts/${accountName}/url`).on('value', (snap) => {
-        const url = snap.val();
-        const img = document.getElementById('profile-icon');
-        const svg = document.getElementById('profile-icon-svg');
-        if (url && url.trim() !== "") {
-            img.src = url;
-            img.classList.remove('hidden');
-            svg.classList.add('hidden');
-        } else {
-            img.classList.add('hidden');
-            svg.classList.remove('hidden');
-        }
+        const val = snap.val();
+        localStorage.setItem(`cache_url_${accountName}`, val || "");
+        updateUrlUI(val);
     });
 
-    // 5. Account Display Name
     database.ref(`accounts/${accountName}/displayName`).on('value', (snap) => {
-        const nameDisplay = document.getElementById('account-name-display');
-        if (nameDisplay) {
-            nameDisplay.innerText = snap.val() || accountName;
-        }
+        const val = snap.val();
+        localStorage.setItem(`cache_name_${accountName}`, val || "");
+        updateDisplayNameUI(val);
     });
 }
 
@@ -1083,9 +1116,14 @@ function filterSettings() {
 document.getElementById('logout-link').onclick = () => { if(confirm('Logout?')) { localStorage.clear(); window.location.href='index.html'; }};
 document.getElementById('manage-devices-link').onclick = () => window.location.href='manage-devices.html';
 document.getElementById('about-link').onclick = () => window.location.href='about.html';
-document.getElementById('help-link').onclick = () => window.location.href='help.html';
+document.getElementById('help-link').onclick = () => {
+    const phoneNumber = '260766512632';
+    const templateMessage = 'Hello Customer Support, I need assistance with Avanti Ledger.';
+    
+    window.location.href = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(templateMessage)}`;
+};
 
-// --- NEW: Attach Event Click Methods ---
+
 document.getElementById('download-global-ledger-link').onclick = downloadGlobalLedger;
 document.getElementById('upload-global-ledger-link').onclick = openUploadLedgerModal;
 
@@ -1125,10 +1163,7 @@ loadSettingsData();
     });
 
     if (isMissing) {
-        // Clear anything partially stored (safety)
         localStorage.clear();
-
-        // Redirect to login
         window.location.replace('index.html');
     }
 })();
@@ -1142,7 +1177,6 @@ loadSettingsData();
 </div>
 
 <style>
-    /* Full frosted background */
     #network-overlay {
         position: fixed;
         top: 0;
@@ -1150,7 +1184,7 @@ loadSettingsData();
         width: 100%;
         height: 100%;
         background: rgba(255, 255, 255, 0.4);
-        backdrop-filter: blur(8px); /* The "frosted" effect */
+        backdrop-filter: blur(8px);
         -webkit-backdrop-filter: blur(8px);
         z-index: 9;
         display: flex;
@@ -1164,7 +1198,6 @@ loadSettingsData();
         color: #333;
     }
 
-    /* Simple CSS Spinner */
     .spinner {
         width: 50px;
         height: 50px;
@@ -1188,15 +1221,13 @@ loadSettingsData();
         const isOnline = navigator.onLine;
         let isSlow = false;
 
-        // Check for slow connection types using the Network Information API
         if (navigator.connection) {
-            const type = navigator.connection.effectiveType; // 'slow-2g', '2g', '3g', or '4g'
+            const type = navigator.connection.effectiveType;
             if (type === 'slow-2g' || type === '2g') {
                 isSlow = true;
             }
         }
 
-        // Show overlay if offline OR if the connection is very slow
         if (!isOnline || isSlow) {
             overlay.style.display = 'flex';
         } else {
@@ -1204,16 +1235,13 @@ loadSettingsData();
         }
     }
 
-    // 1. Listen for immediate online/offline changes
     window.addEventListener('online', checkNetwork);
     window.addEventListener('offline', checkNetwork);
 
-    // 2. Listen for connection quality changes (speed drops)
     if (navigator.connection) {
         navigator.connection.addEventListener('change', checkNetwork);
     }
 
-    // 3. Run on initial page load
     checkNetwork();
 </script>
 <script>
@@ -1221,7 +1249,6 @@ loadSettingsData();
     const ACCOUNT_KEY = localStorage.getItem('AV_ledger_account_key');
     const LOCAL_USERNAME = localStorage.getItem('AV_ledger_username');
 
-    // Only run if we are actually logged in
     if (!ACCOUNT_KEY || !LOCAL_USERNAME) return;
 
     const migrationRef = firebase.database().ref(`accounts/${ACCOUNT_KEY}/profiles`);
@@ -1230,16 +1257,13 @@ loadSettingsData();
         const profiles = snapshot.val();
         if (!profiles) return;
 
-        // 1. Check if our current local name still exists
         if (!profiles[LOCAL_USERNAME]) {
             console.log("Current profile name not found. Checking for migration...");
 
-            // 2. Scan for our old name in the history of other profiles
             let migrated = false;
             for (const [newName, data] of Object.entries(profiles)) {
                 if (data.oldNames && Array.isArray(data.oldNames) && data.oldNames.includes(LOCAL_USERNAME)) {
                     
-                    // 3. Update all local storage keys associated with the identity
                     localStorage.setItem('AV_ledger_username', newName);
                     
                     if (data.authStatus) {
@@ -1253,16 +1277,13 @@ loadSettingsData();
                     console.log(`Successfully migrated identity: ${LOCAL_USERNAME} -> ${newName}`);
                     migrated = true;
                     
-                    // 4. Force reload to apply the new name to the UI/Listeners
                     window.location.reload();
                     break;
                 }
             }
 
-            // 5. If it's completely gone with no trail, the profile was likely deleted
             if (!migrated) {
                 console.warn("Profile has been removed. Redirecting to login.");
-                // Clear local storage and bounce to login
                 localStorage.clear(); 
                 window.location.href = "index.html";
             }
@@ -1277,57 +1298,40 @@ loadSettingsData();
     const ACCOUNT_KEY_STORAGE = 'AV_ledger_account_key';
     const currentLocalKey = localStorage.getItem(ACCOUNT_KEY_STORAGE);
 
-    // Only run if we are actually logged into an account
     if (!currentLocalKey) return;
 
-    // Listen to the top-level accounts node
     const accountsRef = firebase.database().ref('accounts');
 
     accountsRef.on('value', (snapshot) => {
         const allAccounts = snapshot.val();
         if (!allAccounts) return;
 
-        // 1. If our current account key still exists, we are fine.
         if (allAccounts[currentLocalKey]) {
-            // Optional: You could sync the Account Name to local storage here if needed
             return;
         }
 
-        // 2. If our key is MISSING, look for it in the history of other accounts
         console.warn("Current Account Key not found. Searching for migration...");
         let migrationFound = false;
 
         for (const [newSlug, data] of Object.entries(allAccounts)) {
-            // Check if this account has a list of 'oldAccountKeys' 
-            // and if our missing key is one of them.
             if (data.oldAccountKeys && Array.isArray(data.oldAccountKeys) && data.oldAccountKeys.includes(currentLocalKey)) {
                 
                 console.log(`Account Migration Detected! ${currentLocalKey} -> ${newSlug}`);
-                
-                // 3. Update the local storage with the new Slug
                 localStorage.setItem(ACCOUNT_KEY_STORAGE, newSlug);
-                
                 migrationFound = true;
-                
-                // 4. Force a reload so the entire app points to the new Firebase path
                 window.location.reload();
                 break;
             }
         }
 
-        // 5. If it's truly gone (no migration found), the account was likely deleted.
         if (!migrationFound) {
             console.error("Account has been deleted or access revoked.");
             localStorage.clear();
             window.location.href = "index.html";
         }
     }, (error) => {
-        // If we get a permission error, it usually means our key was deleted 
-        // and we no longer have access to the accounts node.
         if (error.code === 'PERMISSION_DENIED') {
             console.warn("Access denied. Attempting global account search...");
-            // In a strict security setup, you might need a dedicated 'migrations' node 
-            // that is publicly readable to find where your account moved to.
         }
     });
 })();
@@ -1368,7 +1372,6 @@ loadSettingsData();
 
     .av-handle { width: 36px; height: 5px; background: #d1d1d6; border-radius: 10px; margin: 0 auto 24px; }
 
-    /* Redesigned Visual Stage */
     .av-visual-container {
         flex: 1; display: flex; align-items: center; justify-content: center;
         gap: 15px; padding: 10px 0 30px;
@@ -1388,7 +1391,6 @@ loadSettingsData();
 
     .av-device-name { font-size: 11px; font-weight: 700; color: #3a3a3c; text-transform: uppercase; letter-spacing: 0.8px; }
 
-    /* Animated Sync Path */
     .av-sync-path { 
         flex: 1; height: 4px; background: #e5e5ea; border-radius: 4px; 
         position: relative; overflow: hidden; max-width: 120px;
@@ -1406,13 +1408,11 @@ loadSettingsData();
         100% { left: 150%; } 
     }
 
-    /* Content Area */
     .av-content { text-align: center; }
     .av-title { font-size: 26px; font-weight: 800; color: #000; margin-bottom: 10px; letter-spacing: -0.5px; }
     .av-subtitle { font-size: 16px; color: #636366; line-height: 1.45; margin-bottom: 30px; padding: 0 10px; }
     .av-subtitle strong { color: #000; font-weight: 700; }
 
-    /* Button Actions */
     .av-actions { display: flex; flex-direction: column; gap: 12px; }
     .av-btn { 
         height: 58px; border-radius: 16px; font-size: 17px; font-weight: 700; 
@@ -1528,7 +1528,6 @@ loadSettingsData();
             setTimeout(() => {
                 overlay.classList.add('active');
                 sheet.classList.add('active');
-                // Animation sequence
                 setTimeout(() => {
                     targetNode.classList.add('active');
                     targetIco.classList.add('active');
@@ -1554,8 +1553,6 @@ loadSettingsData();
             if (isApproved) {
                 btn.innerText = "Approving...";
                 btn.style.pointerEvents = "none";
-                
-                // Acceleration effect
                 pulse.style.animationDuration = "0.5s";
 
                 await currentRequestData.db.ref(`${path}/status`).set('approved');
@@ -1581,13 +1578,9 @@ loadSettingsData();
 </script>
 
 <script>
-    /**
-     * ADMIN-ONLY & SYNC-ONLY: Clear Global Stats Logic
-     */
     (function() {
         const btn = document.getElementById('clear-stats-item');
 
-        // Function to check both conditions
         const updateVisibility = () => {
             const isAdmin = (typeof currentAuthStatus !== 'undefined' && currentAuthStatus === 'Admin');
             const isSyncOn = (typeof adminSyncAllActive !== 'undefined' && adminSyncAllActive === true);
@@ -1599,11 +1592,8 @@ loadSettingsData();
             }
         };
 
-        // Re-check visibility whenever the global variables change
-        // We hook into the existing Firebase variables used in your script
         setInterval(updateVisibility, 500);
 
-        // Execution Logic
         btn.onclick = async () => {
             const firstPrompt = confirm("WARNING: This will permanently delete ALL data shared across your account's profiles. Are you sure?");
             
