@@ -291,6 +291,11 @@ padding-bottom: env(safe-area-inset-bottom, 25px);
     if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
+    // Cache key namespaces scoped securely by identity properties
+    const ACCOUNT_KEY_STORAGE = 'AV_ledger_account_key';
+    const USERNAME_STORAGE = 'AV_ledger_username';
+    const ACCOUNT_CACHE_KEY = `AV_cache_account_data_${localStorage.getItem(ACCOUNT_KEY_STORAGE)}`;
+
     let currentProfilesData = {}; 
 
     function formatTS(ts) {
@@ -355,9 +360,142 @@ padding-bottom: env(safe-area-inset-bottom, 25px);
         setTimeout(() => { modal.classList.add('hidden'); modal.classList.remove('flex'); }, 300);
     }
 
+    // --- REFACTORED CORE RENDERING SYSTEM ---
+    function renderDashboardData(data, currentUserKey, descField, syncPill) {
+        document.getElementById('accountNameDisplay').textContent = data.displayName || 'Unnamed Account';
+        if (document.activeElement !== descField) descField.textContent = data.description || 'Add profile summary';
+        
+        const email = data.email || '';
+        document.getElementById('contactDisplay').textContent = email.endsWith('@phone.avanti') ? (data.phone || 'No Phone') : (email || 'No Email');
+
+        if (data.url) {
+            const img = document.getElementById('profileImage');
+            img.src = data.url;
+            img.classList.remove('hidden');
+            document.getElementById('defaultUserIcon').classList.add('hidden');
+        }
+
+        // --- STRATEGIC CLUSTERING & TOPOLOGY ---
+        const profiles = data.profiles || {};
+        currentProfilesData = profiles;
+        const carousel = document.getElementById('deviceCarousel');
+        const nodeContainer = document.getElementById('bracketNodes');
+        const svg = document.getElementById('bracketSvg');
+        const syncBracketContainer = document.getElementById('syncBracketContainer');
+        
+        svg.style.zIndex = "5"; 
+        nodeContainer.style.zIndex = "10";
+        nodeContainer.style.position = "relative";
+
+        carousel.innerHTML = '';
+        nodeContainer.innerHTML = '';
+        
+        svg.innerHTML = `
+            <defs>
+                <marker id="arrow-mutual" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+                    <path d="M 0 0 L 10 5 L 0 10 z" fill="#3f72af" />
+                </marker>
+                <marker id="arrow-single" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+                    <path d="M 0 0 L 10 5 L 0 10 z" fill="#cbd5e1" />
+                </marker>
+                <marker id="arrow-universal" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+                    <path d="M 0 0 L 10 5 L 0 10 z" fill="#10b981" />
+                </marker>
+            </defs>`;
+
+        const allKeys = Object.keys(profiles);
+        const density = {};
+        allKeys.forEach(k => {
+            const out = Object.keys(profiles[k].syncingTo || {}).length;
+            const inc = allKeys.filter(o => profiles[o].syncingTo?.[k]).length;
+            density[k] = out + inc;
+        });
+
+        const densitySorted = [...allKeys].sort((a, b) => density[b] - density[a]);
+        const sortedKeys = [];
+        const visited = new Set();
+
+        function cluster(key) {
+            if (visited.has(key)) return;
+            visited.add(key);
+            sortedKeys.push(key);
+            const targets = Object.keys(profiles[key].syncingTo || {});
+            targets.sort((a, b) => (profiles[b]?.syncingTo?.[key] ? 1 : 0) - (profiles[a]?.syncingTo?.[key] ? 1 : 0));
+            targets.forEach(t => { if (profiles[t]) cluster(t); });
+        }
+        densitySorted.forEach(k => cluster(k));
+
+        let isUniversal = sortedKeys.length > 1 && sortedKeys.every(p1 => 
+            sortedKeys.every(p2 => p1 === p2 || (profiles[p1].syncingTo && profiles[p1].syncingTo[p2]))
+        );
+
+        const oldBadge = document.getElementById('universal-badge');
+        if (oldBadge) oldBadge.remove();
+        if (isUniversal) {
+            syncBracketContainer.classList.add('ring-2', 'ring-emerald-400', 'bg-emerald-50/20');
+            const badge = document.createElement('div');
+            badge.id = 'universal-badge';
+            badge.className = "absolute top-4 left-1/2 -translate-x-1/2 bg-emerald-100 text-emerald-700 text-[10px] font-bold px-3 py-1 rounded-full shadow-sm z-20 flex items-center gap-1 border border-emerald-200 tracking-wider";
+            badge.innerHTML = '<i class="fa fa-bolt"></i> UNIVERSAL SYNC';
+            syncBracketContainer.appendChild(badge);
+        } else {
+            syncBracketContainer.classList.remove('ring-2', 'ring-emerald-400', 'bg-emerald-50/20');
+        }
+
+        let adm = 0, std = 0;
+        sortedKeys.forEach((name) => {
+            const p = profiles[name];
+            const isMe = name === currentUserKey;
+            const status = (p.authStatus || 'standard').toLowerCase();
+            status === 'admin' ? adm++ : std++;
+            
+            const card = document.createElement('div');
+            card.className = `device-pill cursor-pointer ${isMe ? 'current-device-border' : ''}`;
+            card.onclick = () => showDeviceModal(name);
+            card.innerHTML = `
+                <div class="flex justify-between items-start mb-2">
+                    <p class="font-bold text-slate-800">${name} ${isMe ? '<span class="ml-1 text-[10px] text-blue-500">(You)</span>' : ''}</p>
+                    <span class="text-[9px] px-2 py-0.5 rounded-full ${status === 'admin' ? 'bg-red-50 text-red-600' : 'bg-blue-50 text-blue-600'} font-bold uppercase">${status}</span>
+                </div>
+                <div class="flex items-center gap-2 text-slate-400 text-[11px]">
+                    <i class="fa ${p.deviceName?.toLowerCase().includes('phone') ? 'fa-mobile-screen' : 'fa-desktop'}"></i>
+                    <p>${p.deviceName || 'Unknown'}</p>
+                </div>
+                <p class="text-[9px] text-slate-300 mt-3 font-medium">Created: ${formatTS(p.createdAt)}</p>`;
+            carousel.appendChild(card);
+
+            const node = document.createElement('div');
+            node.id = `node-${name}`;
+            node.className = `sync-node cursor-pointer ${isMe ? 'active-me' : ''}`;
+            node.onclick = () => showDeviceModal(name);
+            node.innerHTML = `
+                <div class="w-10 h-10 rounded-full bg-white flex items-center justify-center shadow-sm border border-slate-100 text-slate-400 mb-1 pointer-events-auto">
+                    <i class="fa ${p.deviceName?.toLowerCase().includes('phone') ? 'fa-mobile' : 'fa-laptop'} text-sm"></i>
+                </div>
+                <p class="text-[10px] font-bold text-slate-700 leading-tight text-center select-none">${name}</p>`;
+            nodeContainer.appendChild(node);
+        });
+
+        document.getElementById('adminCount').textContent = adm;
+        document.getElementById('standardCount').textContent = std;
+        const sync = data.settings?.synchronization?.toLowerCase();
+        syncPill.textContent = sync === 'all' ? 'LIVE SYNC' : 'LOCAL ONLY';
+        syncPill.className = `text-[10px] font-bold py-1 px-2 rounded-full ${sync === 'all' ? 'bg-green-50 text-green-600' : 'bg-gray-100 text-gray-400'}`;
+        document.getElementById('currentProfileDetails').textContent = `${currentUserKey} • ${profiles[currentUserKey]?.deviceName || 'Unknown'}`;
+
+        setTimeout(() => {
+            sortedKeys.forEach(name => {
+                const targets = profiles[name].syncingTo || {};
+                Object.keys(targets).forEach(tName => {
+                    if (profiles[tName]) drawFlow(name, tName, profiles[tName].syncingTo?.[name], isUniversal);
+                });
+            });
+        }, 500);
+    }
+
     document.addEventListener('DOMContentLoaded', () => {
-        const acc = localStorage.getItem('AV_ledger_account_key');
-        const currentUserKey = localStorage.getItem('AV_ledger_username');
+        const acc = localStorage.getItem(ACCOUNT_KEY_STORAGE);
+        const currentUserKey = localStorage.getItem(USERNAME_STORAGE);
         const descField = document.getElementById('descriptionDisplay');
         const syncPill = document.getElementById('syncStatusDisplay');
 
@@ -367,140 +505,24 @@ padding-bottom: env(safe-area-inset-bottom, 25px);
 
         const accountRef = db.ref(`accounts/${acc}`);
 
+        // --- SUB-SECOND CACHE HYDRATION TRIGGER ---
+        const cachedPayload = localStorage.getItem(ACCOUNT_CACHE_KEY);
+        if (cachedPayload) {
+            try {
+                const parsedData = JSON.parse(cachedPayload);
+                renderDashboardData(parsedData, currentUserKey, descField, syncPill);
+            } catch (e) {
+                console.error("Local data buffer exception handled safely:", e);
+            }
+        }
+
+        // Active database listener pipeline updates cache dynamically in the background
         accountRef.on('value', snap => {
             const data = snap.val();
             if (!data) return;
 
-            document.getElementById('accountNameDisplay').textContent = data.displayName || 'Unnamed Account';
-            if (document.activeElement !== descField) descField.textContent = data.description || 'Add profile summary';
-            
-            const email = data.email || '';
-            document.getElementById('contactDisplay').textContent = email.endsWith('@phone.avanti') ? (data.phone || 'No Phone') : (email || 'No Email');
-
-            if (data.url) {
-                const img = document.getElementById('profileImage');
-                img.src = data.url;
-                img.classList.remove('hidden');
-                document.getElementById('defaultUserIcon').classList.add('hidden');
-            }
-
-            // --- STRATEGIC CLUSTERING & TOPOLOGY ---
-            const profiles = data.profiles || {};
-            currentProfilesData = profiles;
-            const carousel = document.getElementById('deviceCarousel');
-            const nodeContainer = document.getElementById('bracketNodes');
-            const svg = document.getElementById('bracketSvg');
-            const syncBracketContainer = document.getElementById('syncBracketContainer');
-            
-            // Ensure SVG is visually above background but below interactivity if needed
-            svg.style.zIndex = "5"; 
-            nodeContainer.style.zIndex = "10";
-            nodeContainer.style.position = "relative";
-
-            carousel.innerHTML = '';
-            nodeContainer.innerHTML = '';
-            
-            svg.innerHTML = `
-                <defs>
-                    <marker id="arrow-mutual" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
-                        <path d="M 0 0 L 10 5 L 0 10 z" fill="#3f72af" />
-                    </marker>
-                    <marker id="arrow-single" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
-                        <path d="M 0 0 L 10 5 L 0 10 z" fill="#cbd5e1" />
-                    </marker>
-                    <marker id="arrow-universal" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
-                        <path d="M 0 0 L 10 5 L 0 10 z" fill="#10b981" />
-                    </marker>
-                </defs>`;
-
-            const allKeys = Object.keys(profiles);
-            const density = {};
-            allKeys.forEach(k => {
-                const out = Object.keys(profiles[k].syncingTo || {}).length;
-                const inc = allKeys.filter(o => profiles[o].syncingTo?.[k]).length;
-                density[k] = out + inc;
-            });
-
-            const densitySorted = [...allKeys].sort((a, b) => density[b] - density[a]);
-            const sortedKeys = [];
-            const visited = new Set();
-
-            function cluster(key) {
-                if (visited.has(key)) return;
-                visited.add(key);
-                sortedKeys.push(key);
-                const targets = Object.keys(profiles[key].syncingTo || {});
-                targets.sort((a, b) => (profiles[b]?.syncingTo?.[key] ? 1 : 0) - (profiles[a]?.syncingTo?.[key] ? 1 : 0));
-                targets.forEach(t => { if (profiles[t]) cluster(t); });
-            }
-            densitySorted.forEach(k => cluster(k));
-
-            let isUniversal = sortedKeys.length > 1 && sortedKeys.every(p1 => 
-                sortedKeys.every(p2 => p1 === p2 || (profiles[p1].syncingTo && profiles[p1].syncingTo[p2]))
-            );
-
-            const oldBadge = document.getElementById('universal-badge');
-            if (oldBadge) oldBadge.remove();
-            if (isUniversal) {
-                syncBracketContainer.classList.add('ring-2', 'ring-emerald-400', 'bg-emerald-50/20');
-                const badge = document.createElement('div');
-                badge.id = 'universal-badge';
-                badge.className = "absolute top-4 left-1/2 -translate-x-1/2 bg-emerald-100 text-emerald-700 text-[10px] font-bold px-3 py-1 rounded-full shadow-sm z-20 flex items-center gap-1 border border-emerald-200 tracking-wider";
-                badge.innerHTML = '<i class="fa fa-bolt"></i> UNIVERSAL SYNC';
-                syncBracketContainer.appendChild(badge);
-            } else {
-                syncBracketContainer.classList.remove('ring-2', 'ring-emerald-400', 'bg-emerald-50/20');
-            }
-
-            let adm = 0, std = 0;
-            sortedKeys.forEach((name) => {
-                const p = profiles[name];
-                const isMe = name === currentUserKey;
-                const status = (p.authStatus || 'standard').toLowerCase();
-                status === 'admin' ? adm++ : std++;
-                
-                const card = document.createElement('div');
-                card.className = `device-pill cursor-pointer ${isMe ? 'current-device-border' : ''}`;
-                card.onclick = () => showDeviceModal(name);
-                card.innerHTML = `
-                    <div class="flex justify-between items-start mb-2">
-                        <p class="font-bold text-slate-800">${name} ${isMe ? '<span class="ml-1 text-[10px] text-blue-500">(You)</span>' : ''}</p>
-                        <span class="text-[9px] px-2 py-0.5 rounded-full ${status === 'admin' ? 'bg-red-50 text-red-600' : 'bg-blue-50 text-blue-600'} font-bold uppercase">${status}</span>
-                    </div>
-                    <div class="flex items-center gap-2 text-slate-400 text-[11px]">
-                        <i class="fa ${p.deviceName?.toLowerCase().includes('phone') ? 'fa-mobile-screen' : 'fa-desktop'}"></i>
-                        <p>${p.deviceName || 'Unknown'}</p>
-                    </div>
-                    <p class="text-[9px] text-slate-300 mt-3 font-medium">Created: ${formatTS(p.createdAt)}</p>`;
-                carousel.appendChild(card);
-
-                const node = document.createElement('div');
-                node.id = `node-${name}`;
-                node.className = `sync-node cursor-pointer ${isMe ? 'active-me' : ''}`;
-                node.onclick = () => showDeviceModal(name);
-                node.innerHTML = `
-                    <div class="w-10 h-10 rounded-full bg-white flex items-center justify-center shadow-sm border border-slate-100 text-slate-400 mb-1 pointer-events-auto">
-                        <i class="fa ${p.deviceName?.toLowerCase().includes('phone') ? 'fa-mobile' : 'fa-laptop'} text-sm"></i>
-                    </div>
-                    <p class="text-[10px] font-bold text-slate-700 leading-tight text-center select-none">${name}</p>`;
-                nodeContainer.appendChild(node);
-            });
-
-            document.getElementById('adminCount').textContent = adm;
-            document.getElementById('standardCount').textContent = std;
-            const sync = data.settings?.synchronization?.toLowerCase();
-            syncPill.textContent = sync === 'all' ? 'LIVE SYNC' : 'LOCAL ONLY';
-            syncPill.className = `text-[10px] font-bold py-1 px-2 rounded-full ${sync === 'all' ? 'bg-green-50 text-green-600' : 'bg-gray-100 text-gray-400'}`;
-            document.getElementById('currentProfileDetails').textContent = `${currentUserKey} • ${profiles[currentUserKey]?.deviceName || 'Unknown'}`;
-
-            setTimeout(() => {
-                sortedKeys.forEach(name => {
-                    const targets = profiles[name].syncingTo || {};
-                    Object.keys(targets).forEach(tName => {
-                        if (profiles[tName]) drawFlow(name, tName, profiles[tName].syncingTo?.[name], isUniversal);
-                    });
-                });
-            }, 500);
+            localStorage.setItem(ACCOUNT_CACHE_KEY, JSON.stringify(data));
+            renderDashboardData(data, currentUserKey, descField, syncPill);
         });
 
         // --- AUTO-SAVE ---
@@ -529,7 +551,7 @@ padding-bottom: env(safe-area-inset-bottom, 25px);
         const eR = eEl.getBoundingClientRect();
 
         const x1 = sR.left + sR.width / 2 - cR.left;
-        const y1 = sR.top + (sR.height / 2) - cR.top - 10; // Adjusted for label height
+        const y1 = sR.top + (sR.height / 2) - cR.top - 10; 
         const x2 = eR.left + eR.width / 2 - cR.left;
         const y2 = eR.top + (eR.height / 2) - cR.top - 10;
 
@@ -537,8 +559,6 @@ padding-bottom: env(safe-area-inset-bottom, 25px);
         const len = Math.sqrt(dx * dx + dy * dy);
         if (len < 45) return;
 
-        // "rad" is the distance from the center of the node where the arrow starts/ends
-        // We increase this to ensure the arrow head isn't hidden under the node's white circle
         const rad = 2; 
         const sX = x1 + dx * (rad / len);
         const sY = y1 + dy * (rad / len);
@@ -553,7 +573,6 @@ padding-bottom: env(safe-area-inset-bottom, 25px);
         line.setAttribute("class", `flow-line ${cls}`);
         line.setAttribute("marker-end", isUniversal ? "url(#arrow-universal)" : (isMutual ? "url(#arrow-mutual)" : "url(#arrow-single)"));
         
-        // Append lines before nodes are fully rendered or manage z-index
         svg.appendChild(line);
     }
 
@@ -562,6 +581,7 @@ padding-bottom: env(safe-area-inset-bottom, 25px);
     window.addEventListener('online', checkNetwork); window.addEventListener('offline', checkNetwork);
     checkNetwork();
 </script>
+
 
 <script>
 (function() {
