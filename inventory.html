@@ -503,7 +503,6 @@ const firebaseConfig = {
   messagingSenderId: "262165456072",
   appId: "1:262165456072:web:40926b87a0eb513cc971fd",
   measurementId: "G-LVWW6PJ0P0"
-
 };
 
 if (!firebase.apps.length) {
@@ -547,76 +546,107 @@ async function getFirebasePaths(accName, user) {
     return { basePath, targetUser };
 }
 
-// --- CORE DATA FETCHING ---
+function getCacheKey() {
+    const accName = localStorage.getItem('AV_ledger_account_key');
+    return accName ? `AV_cache_inventory_${accName}` : null;
+}
+
+// --- CENTRALIZED DATA PROCESSING & RENDER ENGINE ---
+function processAndRenderSnapshot(data, basePath) {
+    fullStatsData = data.avanti_stats?.dates || {};
+    const emptiesRaw = data.empties_tracking || {};
+    datesKeys = Object.keys(fullStatsData).sort();
+
+    const allHistoricalItemIds = new Set();
+    Object.values(fullStatsData).forEach(dateObj => {
+        if (dateObj.items) Object.keys(dateObj.items).forEach(id => allHistoricalItemIds.add(id));
+    });
+
+    const cleanupUpdates = {};
+    emptiesData = [];
+
+    // --- CALCULATION LOGIC ---
+    for (const [id, e] of Object.entries(emptiesRaw)) {
+        if (!allHistoricalItemIds.has(id)) {
+            cleanupUpdates[`${basePath}/empties_tracking/${id}`] = null;
+            continue;
+        }
+
+        let count = e.initialCount || 0;
+        datesKeys.forEach(dk => {
+            const dayObj = fullStatsData[dk];
+            if (dk >= e.startDate && dayObj?.balanced === true) {
+                const day = dayObj.items?.[id];
+                if (day) {
+                    const sales = (day.opening || 0) + (day.orders || 0) - (day.closing || 0);
+                    count += (sales - (day.orders || 0));
+                }
+            }
+        });
+
+        const name = Object.values(fullStatsData).reverse()
+            .find(d => d.items?.[id])?.items[id].name || "Unknown";
+
+        emptiesData.push({ id, name, units: Math.max(0, count), startDate: e.startDate, initial: e.initialCount });
+    }
+
+    if (basePath && Object.keys(cleanupUpdates).length > 0) {
+        db.ref().update(cleanupUpdates);
+    }
+
+    const latestBalancedDate = [...datesKeys].reverse().find(dk => fullStatsData[dk]?.balanced === true);
+    const sourceDate = yesterdayToggle.checked ? yesterdayStr : (latestBalancedDate || today);
+    
+    const dayData = fullStatsData[sourceDate]?.items || {};
+    inventoryData = Object.entries(dayData).map(([id, item]) => ({
+        id, name: item.name, stock: item.closing || 0, price: item.price || 0
+    }));
+
+    renderUI(sourceDate);
+    
+    if (currentSelectedItem) {
+        renderStockChangeCarousel(currentSelectedItem.id);
+    } else {
+        renderStockChangeCarousel(null);
+    }
+}
+
+// --- CRITICAL: INSTANT SYNCHRONOUS COLD-START HYDRATION BLOCK ---
+// This runs inline instantly before fetching network paths to prevent page flashing.
+(() => {
+    const cacheKey = getCacheKey();
+    if (cacheKey) {
+        const localCache = localStorage.getItem(cacheKey);
+        if (localCache) {
+            try {
+                const parsedCache = JSON.parse(localCache);
+                // Render the cache immediately using standard fallback logic
+                processAndRenderSnapshot(parsedCache, null);
+            } catch (e) {
+                console.error("Instant cache build-up interrupted:", e);
+            }
+        }
+    }
+})();
+
+// --- CORE DATA FETCHING (BACKGROUND SYNC) ---
 async function fetchData() {
     const accName = localStorage.getItem('AV_ledger_account_key');
     const user = localStorage.getItem('AV_ledger_username');
     if (!accName || !user) return;
 
     const { basePath } = await getFirebasePaths(accName, user);
+    const cacheKey = getCacheKey();
     
+    // Listen for realtime background adjustments
     db.ref(`${basePath}`).on('value', (snapshot) => {
         const data = snapshot.val() || {};
-        fullStatsData = data.avanti_stats?.dates || {};
-        const emptiesRaw = data.empties_tracking || {};
-        datesKeys = Object.keys(fullStatsData).sort();
-
-        const allHistoricalItemIds = new Set();
-        Object.values(fullStatsData).forEach(dateObj => {
-            if (dateObj.items) Object.keys(dateObj.items).forEach(id => allHistoricalItemIds.add(id));
-        });
-
-        const cleanupUpdates = {};
-        emptiesData = [];
-
-                // --- UPDATED CALCULATION LOGIC ---
-        for (const [id, e] of Object.entries(emptiesRaw)) {
-            if (!allHistoricalItemIds.has(id)) {
-                cleanupUpdates[`${basePath}/empties_tracking/${id}`] = null;
-                continue;
-            }
-
-            let count = e.initialCount || 0;
-            datesKeys.forEach(dk => {
-                const dayObj = fullStatsData[dk];
-                // ONLY calculate if date is >= start AND status is balanced
-                if (dk >= e.startDate && dayObj?.balanced === true) {
-                    const day = dayObj.items?.[id];
-                    if (day) {
-                        const sales = (day.opening || 0) + (day.orders || 0) - (day.closing || 0);
-                        // Sales add to empties, Orders (purchases) remove empties
-                        count += (sales - (day.orders || 0));
-                    }
-                }
-            });
-
-            const name = Object.values(fullStatsData).reverse()
-                .find(d => d.items?.[id])?.items[id].name || "Unknown";
-
-            emptiesData.push({ id, name, units: Math.max(0, count), startDate: e.startDate, initial: e.initialCount });
+        
+        if (cacheKey && Object.keys(data).length > 0) {
+            localStorage.setItem(cacheKey, JSON.stringify(data));
         }
 
-        if (Object.keys(cleanupUpdates).length > 0) db.ref().update(cleanupUpdates);
-
-        // Find the most recent date that has been balanced
-        const latestBalancedDate = [...datesKeys].reverse().find(dk => fullStatsData[dk]?.balanced === true);
-        
-        // Use yesterday if toggled, otherwise use the latest balanced date
-        const sourceDate = yesterdayToggle.checked ? yesterdayStr : (latestBalancedDate || today);
-        
-        const dayData = fullStatsData[sourceDate]?.items || {};
-        inventoryData = Object.entries(dayData).map(([id, item]) => ({
-            id, name: item.name, stock: item.closing || 0, price: item.price || 0
-        }));
-
-
-        renderUI(sourceDate);
-        
-        if (currentSelectedItem) {
-            renderStockChangeCarousel(currentSelectedItem.id);
-        } else {
-            renderStockChangeCarousel(null);
-        }
+        processAndRenderSnapshot(data, basePath);
     });
 }
 
@@ -644,7 +674,6 @@ function renderStockChangeCarousel(activeItemId = null) {
 
     let changeCards = [];
 
-    // Process each date individually instead of totaling
     datesKeys.forEach(date => {
         if (date >= sunStr && date <= satStr) {
             const items = fullStatsData[date]?.items || {};
@@ -654,7 +683,6 @@ function renderStockChangeCarousel(activeItemId = null) {
                 const sales = (item.opening || 0) + (item.orders || 0) - (item.closing || 0);
                 const orders = (item.orders || 0);
 
-                // Add card for Purchase on this day
                 if (orders > 0) {
                     changeCards.push(`
                         <div class="carousel-card bg-blue-50 border-blue-100 border p-3 rounded-xl min-w-[130px] snap-center">
@@ -665,7 +693,6 @@ function renderStockChangeCarousel(activeItemId = null) {
                         </div>
                     `);
                 }
-                // Add card for Sales on this day
                 if (sales > 0) {
                     changeCards.push(`
                         <div class="carousel-card bg-orange-50 border-orange-100 border p-3 rounded-xl min-w-[130px] snap-center">
@@ -680,7 +707,6 @@ function renderStockChangeCarousel(activeItemId = null) {
         }
     });
 
-    // Reverse so the most recent day of the week shows first in the carousel
     carouselTrack.innerHTML = changeCards.length > 0 ? changeCards.reverse().join('') : 
         `<p class="text-gray-400 text-[10px] italic p-4 text-center w-full">No activity this week</p>`;
 }
@@ -704,7 +730,6 @@ function toggleTopDrawer() {
     const overlay = document.getElementById('top-drawer-overlay');
     const icon = document.getElementById('drawer-icon');
     
-    // Check if the drawer is currently tucked away
     const isHidden = drawer.style.transform === 'translateY(0px)' ? false : true;
 
     if (isHidden) {
@@ -713,14 +738,12 @@ function toggleTopDrawer() {
         overlay.classList.remove('hidden');
         overlay.style.opacity = '1';
     } else {
-        // Hide it back up, leaving only the 45px handle visible
         drawer.style.transform = 'translateY(calc(-100% + 45px))';
         icon.style.transform = 'rotate(0deg)';
         overlay.classList.add('hidden');
         overlay.style.opacity = '0';
     }
 }
-
 
 function renderInventoryList(data) {
     inventoryList.innerHTML = data.map(item => `
@@ -784,11 +807,10 @@ window.openItemModal = function(id) {
         startSpan.textContent = "Not Tracking";
     }
 
-        const calculateLocalEmpties = (initialVal, startDate) => {
+    const calculateLocalEmpties = (initialVal, startDate) => {
         let count = initialVal;
         datesKeys.forEach(dk => {
             const dayObj = fullStatsData[dk];
-            // Match the logic: Start date check + Balanced status check
             if (dk >= startDate && dayObj?.balanced === true) {
                 const day = dayObj.items?.[id];
                 if (day) {
@@ -845,7 +867,6 @@ document.getElementById('close-modal-btn').onclick = () => {
     setTimeout(() => document.getElementById('item-modal').classList.add('hidden'), 300);
 };
 
-// The existing overlay click handler
 document.getElementById('item-modal').onclick = () => {
     const content = document.getElementById('modal-content');
     content.style.transform = "translateY(100%)";
@@ -857,11 +878,9 @@ document.getElementById('item-modal').onclick = () => {
     }, 300);
 };
 
-// Add this to prevent the "bubble" effect
 document.getElementById('modal-content').onclick = (event) => {
     event.stopPropagation();
 };
-
 
 yesterdayToggle.onchange = fetchData;
 
@@ -893,8 +912,10 @@ document.getElementById('empties-search-input').addEventListener('input', (e) =>
     renderEmptiesList(filtered);
 });
 
+// Run live data background fetching
 fetchData();
 </script>
+
 
 <script>
 (function () {
