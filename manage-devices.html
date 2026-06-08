@@ -543,14 +543,13 @@ padding-bottom: env(safe-area-inset-bottom, 25px);
     // 1. FIREBASE SETUP - REPLACE WITH YOUR CONFIG
     const firebaseConfig = {
         apiKey: "AIzaSyDZeQXOHRjhqijerFLyNkOLcbQUIwRLRqY",
-  authDomain: "mwelaisha-shaba.firebaseapp.com",
-  databaseURL: "https://mwelaisha-shaba-default-rtdb.firebaseio.com",
-  projectId: "mwelaisha-shaba",
-  storageBucket: "mwelaisha-shaba.firebasestorage.app",
-  messagingSenderId: "262165456072",
-  appId: "1:262165456072:web:40926b87a0eb513cc971fd",
-  measurementId: "G-LVWW6PJ0P0"
-
+        authDomain: "mwelaisha-shaba.firebaseapp.com",
+        databaseURL: "https://mwelaisha-shaba-default-rtdb.firebaseio.com",
+        projectId: "mwelaisha-shaba",
+        storageBucket: "mwelaisha-shaba.firebasestorage.app",
+        messagingSenderId: "262165456072",
+        appId: "1:262165456072:web:40926b87a0eb513cc971fd",
+        measurementId: "G-LVWW6PJ0P0"
     };
 
     firebase.initializeApp(firebaseConfig);
@@ -563,6 +562,8 @@ padding-bottom: env(safe-area-inset-bottom, 25px);
     const USERNAME_STORAGE = 'AV_ledger_username';
     const AUTH_STATUS_STORAGE = 'AV_ledger_auth_status';
     const ACCOUNT_EMAIL_STORAGE = 'AV_ledger_account_email';
+    // Unified cache key matching the structure of your architecture
+    const PROFILES_CACHE_KEY = `AV_cache_profiles_${localStorage.getItem(ACCOUNT_KEY_STORAGE)}`;
 
     let CURRENT_ACCOUNT_KEY = localStorage.getItem(ACCOUNT_KEY_STORAGE);
     let CURRENT_PROFILE_NAME = localStorage.getItem(USERNAME_STORAGE);
@@ -614,40 +615,38 @@ padding-bottom: env(safe-area-inset-bottom, 25px);
      * Toggle reciprocity: this writes both sides so A<->B are consistent.
      */
     async function toggleSync(targetProfileName, isChecked, mode) {
-    const currentUserPath = `accounts/${CURRENT_ACCOUNT_KEY}/profiles/${CURRENT_PROFILE_NAME}`;
-    const targetUserPath = `accounts/${CURRENT_ACCOUNT_KEY}/profiles/${targetProfileName}`;
-    const updates = {};
+        const currentUserPath = `accounts/${CURRENT_ACCOUNT_KEY}/profiles/${CURRENT_PROFILE_NAME}`;
+        const targetUserPath = `accounts/${CURRENT_ACCOUNT_KEY}/profiles/${targetProfileName}`;
+        const updates = {};
 
-    if (mode === 'broadcast') {
-        if (isChecked) {
-            updates[`${currentUserPath}/syncingTo/${targetProfileName}`] = true;
-            updates[`${targetUserPath}/syncingWith/${CURRENT_PROFILE_NAME}`] = true;
-        } else {
-            updates[`${currentUserPath}/syncingTo/${targetProfileName}`] = null;
-            updates[`${targetUserPath}/syncingWith/${CURRENT_PROFILE_NAME}`] = null;
+        if (mode === 'broadcast') {
+            if (isChecked) {
+                updates[`${currentUserPath}/syncingTo/${targetProfileName}`] = true;
+                updates[`${targetUserPath}/syncingWith/${CURRENT_PROFILE_NAME}`] = true;
+            } else {
+                updates[`${currentUserPath}/syncingTo/${targetProfileName}`] = null;
+                updates[`${targetUserPath}/syncingWith/${CURRENT_PROFILE_NAME}`] = null;
+            }
+        } else if (mode === 'receive') {
+            if (isChecked) {
+                updates[`${currentUserPath}/syncingWith/${targetProfileName}`] = true;
+                updates[`${targetUserPath}/syncingTo/${CURRENT_PROFILE_NAME}`] = true;
+            } else {
+                updates[`${currentUserPath}/syncingWith/${targetProfileName}`] = null;
+                updates[`${targetUserPath}/syncingTo/${CURRENT_PROFILE_NAME}`] = null;
+            }
         }
-    } else if (mode === 'receive') {
-        if (isChecked) {
-            updates[`${currentUserPath}/syncingWith/${targetProfileName}`] = true;
-            updates[`${targetUserPath}/syncingTo/${CURRENT_PROFILE_NAME}`] = true;
-        } else {
-            updates[`${currentUserPath}/syncingWith/${targetProfileName}`] = null;
-            updates[`${targetUserPath}/syncingTo/${CURRENT_PROFILE_NAME}`] = null;
+
+        try {
+            await db.ref().update(updates);
+            toast('Success', `Sync ${isChecked ? 'enabled' : 'disabled'}.`);
+            fetchAndRenderDevices(); 
+        } catch (err) {
+            toast('Error', 'Update failed.', false);
         }
     }
 
-    try {
-        await db.ref().update(updates);
-        toast('Success', `Sync ${isChecked ? 'enabled' : 'disabled'}.`);
-        fetchAndRenderDevices(); 
-    } catch (err) {
-        toast('Error', 'Update failed.', false);
-    }
-}
-
-
-
-    // --- NAME EDIT & UPDATE LOGIC (unchanged, kept for completeness) ---
+    // --- NAME EDIT & UPDATE LOGIC ---
     async function handleNameEdit(e) {
         if(e.currentTarget.closest('#devices-container')) return;
         const span = e.target.closest('span');
@@ -683,70 +682,65 @@ padding-bottom: env(safe-area-inset-bottom, 25px);
         span.addEventListener('keydown', handleKeydown);
     }
 
-async function updateUsername(oldName, newName, accountKey) {
-    if (allProfiles[newName]) {
-        toast('Error', 'Username already exists!', false);
-        const modalSpan = document.querySelector(".modal .user-name span");
-        if(modalSpan) modalSpan.textContent = oldName;
-        return;
-    }
-
-    const oldProfileRef = db.ref(`accounts/${accountKey}/profiles/${oldName}`);
-
-    try {
-        const snapshot = await oldProfileRef.once('value');
-        const profileData = snapshot.val();
-
-        if (!profileData) {
-            toast('Error', 'Profile not found.', false);
+    async function updateUsername(oldName, newName, accountKey) {
+        if (allProfiles[newName]) {
+            toast('Error', 'Username already exists!', false);
+            const modalSpan = document.querySelector(".modal .user-name span");
+            if(modalSpan) modalSpan.textContent = oldName;
             return;
         }
 
-        const allUpdates = {};
-        
-        // --- NEW LOGIC: Manage name history ---
-        // Initialize or update the oldNames array
-        if (!profileData.oldNames) profileData.oldNames = [];
-        if (!profileData.oldNames.includes(oldName)) {
-            profileData.oldNames.push(oldName);
-        }
-        // --------------------------------------
+        const oldProfileRef = db.ref(`accounts/${accountKey}/profiles/${oldName}`);
 
-        profileData.displayName = newName;
-        allUpdates[`accounts/${accountKey}/profiles/${newName}`] = profileData;
-        allUpdates[`accounts/${accountKey}/profiles/${oldName}`] = null;
+        try {
+            const snapshot = await oldProfileRef.once('value');
+            const profileData = snapshot.val();
 
-        // Update references across all profiles (keep your existing reference logic)
-        Object.keys(allProfiles).forEach(otherProfileName => {
-            if (otherProfileName !== oldName) {
-                const otherProfile = allProfiles[otherProfileName];
-                const pathBase = `accounts/${accountKey}/profiles/${otherProfileName}`;
-                if (otherProfile.syncingTo && otherProfile.syncingTo[oldName] !== undefined) {
-                    allUpdates[`${pathBase}/syncingTo/${newName}`] = otherProfile.syncingTo[oldName];
-                    allUpdates[`${pathBase}/syncingTo/${oldName}`] = null;
-                }
-                if (otherProfile.syncingWith && otherProfile.syncingWith[oldName] !== undefined) {
-                    allUpdates[`${pathBase}/syncingWith/${newName}`] = otherProfile.syncingWith[oldName];
-                    allUpdates[`${pathBase}/syncingWith/${oldName}`] = null;
-                }
+            if (!profileData) {
+                toast('Error', 'Profile not found.', false);
+                return;
             }
-        });
 
-        await db.ref().update(allUpdates);
+            const allUpdates = {};
+            
+            if (!profileData.oldNames) profileData.oldNames = [];
+            if (!profileData.oldNames.includes(oldName)) {
+                profileData.oldNames.push(oldName);
+            }
 
-        // Update local storage for the device that made the change
-        localStorage.setItem(USERNAME_STORAGE, newName);
-        CURRENT_PROFILE_NAME = newName;
+            profileData.displayName = newName;
+            allUpdates[`accounts/${accountKey}/profiles/${newName}`] = profileData;
+            allUpdates[`accounts/${accountKey}/profiles/${oldName}`] = null;
 
-        toast('Username Updated', `Profile name changed to ${newName}.`);
-        fetchAndRenderDevices();
-        closeModal('deviceModal');
+            Object.keys(allProfiles).forEach(otherProfileName => {
+                if (otherProfileName !== oldName) {
+                    const otherProfile = allProfiles[otherProfileName];
+                    const pathBase = `accounts/${accountKey}/profiles/${otherProfileName}`;
+                    if (otherProfile.syncingTo && otherProfile.syncingTo[oldName] !== undefined) {
+                        allUpdates[`${pathBase}/syncingTo/${newName}`] = otherProfile.syncingTo[oldName];
+                        allUpdates[`${pathBase}/syncingTo/${oldName}`] = null;
+                    }
+                    if (otherProfile.syncingWith && otherProfile.syncingWith[oldName] !== undefined) {
+                        allUpdates[`${pathBase}/syncingWith/${newName}`] = otherProfile.syncingWith[oldName];
+                        allUpdates[`${pathBase}/syncingWith/${oldName}`] = null;
+                    }
+                }
+            });
 
-    } catch(error) {
-        console.error("Error updating username:", error);
-        toast('Error', 'Failed to update username.', false);
+            await db.ref().update(allUpdates);
+
+            localStorage.setItem(USERNAME_STORAGE, newName);
+            CURRENT_PROFILE_NAME = newName;
+
+            toast('Username Updated', `Profile name changed to ${newName}.`);
+            fetchAndRenderDevices();
+            closeModal('deviceModal');
+
+        } catch(error) {
+            console.error("Error updating username:", error);
+            toast('Error', 'Failed to update username.', false);
+        }
     }
-}
 
     function closeModal(modalId) {
         document.getElementById(modalId).classList.remove("active");
@@ -762,7 +756,7 @@ async function updateUsername(oldName, newName, accountKey) {
         }
     }
 
-    // --- AUTHENTICATION / SECURITY (unchanged) ---
+    // --- AUTHENTICATION / SECURITY ---
     function promptForAuth(title, message, mode = 'security', targetProfile = '') {
         const modal = document.getElementById('authModal');
         const titleEl = document.getElementById('auth-modal-title');
@@ -974,6 +968,7 @@ async function updateUsername(oldName, newName, accountKey) {
         localStorage.removeItem(USERNAME_STORAGE);
         localStorage.removeItem(AUTH_STATUS_STORAGE);
         localStorage.removeItem(ACCOUNT_EMAIL_STORAGE);
+        localStorage.removeItem(PROFILES_CACHE_KEY);
         window.location.href = "index.html";
     }
 
@@ -983,6 +978,7 @@ async function updateUsername(oldName, newName, accountKey) {
         localStorage.removeItem(USERNAME_STORAGE);
         localStorage.removeItem(AUTH_STATUS_STORAGE);
         localStorage.removeItem(ACCOUNT_EMAIL_STORAGE);
+        localStorage.removeItem(PROFILES_CACHE_KEY);
         window.location.href = "index.html";
     }
 
@@ -1016,38 +1012,34 @@ async function updateUsername(oldName, newName, accountKey) {
 
             const itemHtml = `
                <div class="item device-btn" 
-     data-profile-name="${profileName}" 
-     data-auth-status="${authStatusLower}"
-     data-device-name="${profile.deviceName || 'N/A'}"
-     data-created-at="${profile.createdAt || ''}"
-     data-is-current-user="${isCurrentUser}">
-    
-    <div class="left" style="display: flex; align-items: center; gap: 12px;">
-     
+                    data-profile-name="${profileName}" 
+                    data-auth-status="${authStatusLower}"
+                    data-device-name="${profile.deviceName || 'N/A'}"
+                    data-created-at="${profile.createdAt || ''}"
+                    data-is-current-user="${isCurrentUser}">
+                    
+                    <div class="left" style="display: flex; align-items: center; gap: 12px;">
+                        <div class="details">
+                            <div class="user-name" style="font-weight: 600; display: flex; align-items: center; gap: 8px;">
+                                <span data-profile="${profileName}">  
+                                    <i class="fas fa-user-circle" style="font-size: 1rem; color: #3f72af;"></i>
+                                    ${profileName}
+                                </span>
+                                ${isCurrentUser ? '<span class="badge"><i class="fas fa-check-circle"></i> This Device</span>' : ''}
+                            </div>
+                            
+                            <div class="authStatus" style="font-size: 0.85rem; opacity: 0.8; display: flex; align-items: center; gap: 5px;">
+                                <i class="fas fa-shield-alt"></i> ${statusText} 
+                                <span class="separator">•</span>
+                                <i class="fas fa-laptop"></i> ${profile.deviceName || 'No Name'}
+                            </div>
+                        </div>
+                    </div>
 
-        <div class="details">
-            <div class="user-name" style="font-weight: 600; display: flex; align-items: center; gap: 8px;">
-                <span data-profile="${profileName}">  
-            <i class="fas fa-user-circle" style="font-size: 1rem; color: #3f72af;"></i>
-        
-                    ${profileName}
-                </span>
-                ${isCurrentUser ? '<span class="badge"><i class="fas fa-check-circle"></i> This Device</span>' : ''}
-            </div>
-            
-            <div class="authStatus" style="font-size: 0.85rem; opacity: 0.8; display: flex; align-items: center; gap: 5px;">
-                <i class="fas fa-shield-alt"></i> ${statusText} 
-                <span class="separator">•</span>
-                <i class="fas fa-laptop"></i> ${profile.deviceName || 'No Name'}
-            </div>
-        </div>
-    </div>
-
-    <div class="chevron">
-        <i class="fas fa-chevron-right"></i>
-    </div>
-</div>
- `;
+                    <div class="chevron">
+                        <i class="fas fa-chevron-right"></i>
+                    </div>
+                </div>`;
             listToAppend.insertAdjacentHTML('beforeend', itemHtml);
         });
 
@@ -1057,16 +1049,9 @@ async function updateUsername(oldName, newName, accountKey) {
             addDeviceBtn.style.display = 'none';
         }
 
-     
-
         attachEventListeners();
     }
 
-    /**
-     * Fetches device data and sets up realtime listeners.
-     * IMPORTANT: we refresh the device modal if it is open whenever profiles change,
-     * so modal content (including the sync switch) stays realtime.
-     */
     function fetchAndRenderDevices() {
         CURRENT_ACCOUNT_KEY = localStorage.getItem(ACCOUNT_KEY_STORAGE);
         CURRENT_PROFILE_NAME = localStorage.getItem(USERNAME_STORAGE);
@@ -1078,7 +1063,6 @@ async function updateUsername(oldName, newName, accountKey) {
         const accountRef = db.ref(`accounts/${CURRENT_ACCOUNT_KEY}`);
         const profilesRef = accountRef.child('profiles');
 
-        // Fetch account email once (keep local copy)
         accountRef.once('value').then(snapshot => {
             const accountData = snapshot.val();
             if (accountData && accountData.email) {
@@ -1090,86 +1074,73 @@ async function updateUsername(oldName, newName, accountKey) {
             }
         }).catch(e => console.error("Error fetching account email:", e));
 
-// Realtime listener for all profiles
-profilesRef.on('value', (snapshot) => {
-    const profilesData = snapshot.val();
-    
-    if (profilesData) {
-        allProfiles = profilesData;
+        // Realtime listener for all profiles
+        profilesRef.on('value', (snapshot) => {
+            const profilesData = snapshot.val();
+            
+            if (profilesData) {
+                allProfiles = profilesData;
 
-        // --- 1. IDENTITY MIGRATION CHECK ---
-        const localName = localStorage.getItem(USERNAME_STORAGE);
-        
-        // If our current local username is missing from the active profiles list
-        if (localName && !profilesData[localName]) {
-            let migrationFound = false;
+                // Dynamically commit to local storage on live updates
+                localStorage.setItem(PROFILES_CACHE_KEY, JSON.stringify(profilesData));
 
-            // Scan active profiles to see if they list our localName as an 'oldName'
-            for (const [activeName, data] of Object.entries(profilesData)) {
-                if (data.oldNames && Array.isArray(data.oldNames) && data.oldNames.includes(localName)) {
-                    console.log(`Identity migration detected: ${localName} -> ${activeName}`);
-                    
-                    // Update Local Storage for this device
-                    localStorage.setItem(USERNAME_STORAGE, activeName);
-                    
-                    // Update the auth status in case it changed during migration
-                    localStorage.setItem(AUTH_STATUS_STORAGE, data.authStatus || 'Standard');
-                    
-                    migrationFound = true;
-                    
-                    // Force a reload to re-initialize the entire app state with the new name
-                    window.location.reload();
-                    break; 
-                }
-            }
+                // --- 1. IDENTITY MIGRATION CHECK ---
+                const localName = localStorage.getItem(USERNAME_STORAGE);
+                
+                if (localName && !profilesData[localName]) {
+                    let migrationFound = false;
 
-            // Optional: If the name is gone and NO migration is found, the profile was deleted.
-            if (!migrationFound) {
-                console.warn("Profile no longer exists. Logging out.");
-                handleLogout();
-                return;
-            }
-        }
-
-        // --- 2. RENDER MAIN UI ---
-        renderDevices(profilesData);
-
-        // --- 3. LIVE MODAL UPDATE ---
-        // Keeps the device modal updated in real-time if it is currently open
-        if (deviceModal && deviceModal.classList.contains('active')) {
-            const shownName = modalName.textContent && modalName.textContent.trim();
-            if (shownName) {
-                // Find the device button in the DOM to simulate an "open" event
-                const modalBtn = document.querySelector(`.device-btn[data-profile-name="${shownName}"]`);
-                if (modalBtn) {
-                    try {
-                        // Refresh the modal content with fresh data from Firebase
-                        openModal({ currentTarget: modalBtn });
-                    } catch (err) {
-                        console.error("Error refreshing open modal:", err);
+                    for (const [activeName, data] of Object.entries(profilesData)) {
+                        if (data.oldNames && Array.isArray(data.oldNames) && data.oldNames.includes(localName)) {
+                            console.log(`Identity migration detected: ${localName} -> ${activeName}`);
+                            localStorage.setItem(USERNAME_STORAGE, activeName);
+                            localStorage.setItem(AUTH_STATUS_STORAGE, data.authStatus || 'Standard');
+                            migrationFound = true;
+                            window.location.reload();
+                            break; 
+                        }
                     }
-                } else {
-                    // If the specific profile being viewed was deleted, close the modal
-                    closeModal('deviceModal');
+
+                    if (!migrationFound) {
+                        console.warn("Profile no longer exists. Logging out.");
+                        handleLogout();
+                        return;
+                    }
+                }
+
+                // --- 2. RENDER MAIN UI ---
+                renderDevices(profilesData);
+
+                // --- 3. LIVE MODAL UPDATE ---
+                if (deviceModal && deviceModal.classList.contains('active')) {
+                    const shownName = modalName.textContent && modalName.textContent.trim();
+                    if (shownName) {
+                        const modalBtn = document.querySelector(`.device-btn[data-profile-name="${shownName}"]`);
+                        if (modalBtn) {
+                            try {
+                                openModal({ currentTarget: modalBtn });
+                            } catch (err) {
+                                console.error("Error refreshing open modal:", err);
+                            }
+                        } else {
+                            closeModal('deviceModal');
+                        }
+                    }
+                }
+
+            } else {
+                primaryList.innerHTML = '';
+                connectedList.innerHTML = '<p class="p-4 text-center text-gray-500">No connected devices found.</p>';
+                
+                if (CURRENT_ACCOUNT_KEY) {
+                    handleLogout();
+                    toast('Error', 'Account data was cleared. Logging out.', false);
                 }
             }
-        }
-
-    } else {
-        // Handle case where all profiles are deleted or the account node is missing
-        primaryList.innerHTML = '';
-        connectedList.innerHTML = '<p class="p-4 text-center text-gray-500">No connected devices found.</p>';
-        
-        if (CURRENT_ACCOUNT_KEY) {
-            handleLogout();
-            toast('Error', 'Account data was cleared. Logging out.', false);
-        }
-    }
-}, (error) => {
-    console.error("Firebase fetch error:", error);
-    toast('Error', 'Failed to load device data.', false);
-});
-
+        }, (error) => {
+            console.error("Firebase fetch error:", error);
+            toast('Error', 'Failed to load device data.', false);
+        });
     }
 
     function attachEventListeners() {
@@ -1215,291 +1186,271 @@ profilesRef.on('value', (snapshot) => {
     }
 
     function openModal(e, forceSecurity = false) {
-    const btn = e.currentTarget;
-    const targetProfileName = btn.dataset.profileName;
-    const targetProfile = allProfiles[targetProfileName];
+        const btn = e.currentTarget;
+        const targetProfileName = btn.dataset.profileName;
+        const targetProfile = allProfiles[targetProfileName];
 
-    if (!targetProfile || !currentUserProfile) return;
+        if (!targetProfile || !currentUserProfile) return;
 
-    const isCurrentUserAdmin = CURRENT_AUTH_STATUS.toLowerCase() === 'admin';
-    const isTargetAdmin = (targetProfile.authStatus || 'Standard').toLowerCase() === 'admin';
-    const isTargetCurrentUser = btn.dataset.isCurrentUser === 'true';
+        const isCurrentUserAdmin = CURRENT_AUTH_STATUS.toLowerCase() === 'admin';
+        const isTargetAdmin = (targetProfile.authStatus || 'Standard').toLowerCase() === 'admin';
+        const isTargetCurrentUser = btn.dataset.isCurrentUser === 'true';
 
-    // --- SYNC STATE ---
-    const amISendingToThem = currentUserProfile.syncingTo && currentUserProfile.syncingTo[targetProfileName] === true;
-    const amIReceivingFromThem = currentUserProfile.syncingWith && currentUserProfile.syncingWith[targetProfileName] === true;
+        const amISendingToThem = currentUserProfile.syncingTo && currentUserProfile.syncingTo[targetProfileName] === true;
+        const amIReceivingFromThem = currentUserProfile.syncingWith && currentUserProfile.syncingWith[targetProfileName] === true;
 
-    // --- DIRECTIONAL DISPLAY ---
-    let syncingDisplay = 'None';
-    if (targetProfile.syncingTo) {
-        const receivers = Object.keys(targetProfile.syncingTo).filter(k => targetProfile.syncingTo[k] === true);
-        if (receivers.length > 0) syncingDisplay = `Broadcasting to: ${receivers.join(', ')}`;
-    } else if (targetProfile.syncingWith) {
-        const source = Object.keys(targetProfile.syncingWith).find(k => targetProfile.syncingWith[k] === true);
-        if (source) syncingDisplay = `Receiving from: ${source}`;
-    }
-
-    // --- SYNC LOGIC: BROADCAST TO THEM ---
-    let broadcastDisabled = isTargetCurrentUser;
-    let broadcastReason = "";
-    if (!amISendingToThem && !isTargetCurrentUser) {
-        if (currentUserProfile.syncingWith) {
-            broadcastDisabled = true;
-            broadcastReason = "You are receiving; cannot broadcast.";
-        } else if (targetProfile.syncingWith || targetProfile.syncingTo) {
-            broadcastDisabled = true;
-            broadcastReason = "Target device is busy.";
-        }
-    }
-
-    // --- SYNC LOGIC: RECEIVE FROM THEM ---
-    let receiveDisabled = isTargetCurrentUser;
-    let receiveReason = "";
-    if (!amIReceivingFromThem && !isTargetCurrentUser) {
-        if (currentUserProfile.syncingTo || currentUserProfile.syncingWith) {
-            receiveDisabled = true;
-            receiveReason = "You are already in a sync session.";
+        let syncingDisplay = 'None';
+        if (targetProfile.syncingTo) {
+            const receivers = Object.keys(targetProfile.syncingTo).filter(k => targetProfile.syncingTo[k] === true);
+            if (receivers.length > 0) syncingDisplay = `Broadcasting to: ${receivers.join(', ')}`;
         } else if (targetProfile.syncingWith) {
-            receiveDisabled = true;
-            receiveReason = "Target is a receiver; cannot broadcast.";
+            const source = Object.keys(targetProfile.syncingWith).find(k => targetProfile.syncingWith[k] === true);
+            if (source) syncingDisplay = `Receiving from: ${source}`;
         }
-    }
 
-    modalName.textContent = targetProfileName;
+        let broadcastDisabled = isTargetCurrentUser;
+        let broadcastReason = "";
+        if (!amISendingToThem && !isTargetCurrentUser) {
+            if (currentUserProfile.syncingWith) {
+                broadcastDisabled = true;
+                broadcastReason = "You are receiving; cannot broadcast.";
+            } else if (targetProfile.syncingWith || targetProfile.syncingTo) {
+                broadcastDisabled = true;
+                broadcastReason = "Target device is busy.";
+            }
+        }
 
-    // --- RENDER INFO SECTION ---
-    let modalHtml = `
-        <div class="section-title">DEVICE INFO</div>
-        <div class="list">
-            <div class="item profile-name-item">
-                <div class="left">
-                    <div class="info-wrapper">
-                        <div class="user-name"> 
-                            <span data-profile="${targetProfileName}" ${isTargetCurrentUser ? 'contenteditable="false" class="editable-name"' : ''}>
-                                ${targetProfileName}
-                            </span>
+        let receiveDisabled = isTargetCurrentUser;
+        let receiveReason = "";
+        if (!amIReceivingFromThem && !isTargetCurrentUser) {
+            if (currentUserProfile.syncingTo || currentUserProfile.syncingWith) {
+                receiveDisabled = true;
+                receiveReason = "You are already in a sync session.";
+            } else if (targetProfile.syncingWith) {
+                receiveDisabled = true;
+                receiveReason = "Target is a receiver; cannot broadcast.";
+            }
+        }
+
+        modalName.textContent = targetProfileName;
+
+        let modalHtml = `
+            <div class="section-title">DEVICE INFO</div>
+            <div class="list">
+                <div class="item profile-name-item">
+                    <div class="left">
+                        <div class="info-wrapper">
+                            <div class="user-name"> 
+                                <span data-profile="${targetProfileName}" ${isTargetCurrentUser ? 'contenteditable="false" class="editable-name"' : ''}>
+                                    ${targetProfileName}
+                                </span>
+                            </div>
+                            <div class="authStatus"><i class="fas fa-user-circle" style="color: #4a90e2;"></i> Username</div>
                         </div>
-                        <div class="authStatus"><i class="fas fa-user-circle" style="color: #4a90e2;"></i> Username</div>
-                    </div>
-                </div> 
-                ${isTargetCurrentUser ? '<i class="fas fa-pen" style="color: #999; font-size: 0.8rem;"></i>' : ''}
-            </div>
+                    </div> 
+                    ${isTargetCurrentUser ? '<i class="fas fa-pen" style="color: #999; font-size: 0.8rem;"></i>' : ''}
+                </div>
 
-            <div class="item">
-                <div class="left">
-                    <div class="info-wrapper">
-                        <div class="user-name">${targetProfile.deviceName || 'No Name'}</div>
-                        <div class="authStatus"> <i class="fas fa-laptop-code" style="color: #6772e5;"></i> Device Name</div>
+                <div class="item">
+                    <div class="left">
+                        <div class="info-wrapper">
+                            <div class="user-name">${targetProfile.deviceName || 'No Name'}</div>
+                            <div class="authStatus"> <i class="fas fa-laptop-code" style="color: #6772e5;"></i> Device Name</div>
+                        </div>
                     </div>
                 </div>
-            </div>
 
-            <div class="item">
-                <div class="left">
-                    <div class="info-wrapper">
-                        <div class="user-name">${formatTimestamp(targetProfile.createdAt)}</div>
-                        <div class="authStatus"> <i class="fas fa-history" style="color: #24b47e;"></i> Created On</div>
+                <div class="item">
+                    <div class="left">
+                        <div class="info-wrapper">
+                            <div class="user-name">${formatTimestamp(targetProfile.createdAt)}</div>
+                            <div class="authStatus"> <i class="fas fa-history" style="color: #24b47e;"></i> Created On</div>
+                        </div>
                     </div>
                 </div>
-            </div>
 
-            <div class="item">
-                <div class="left">
-                    <div class="info-wrapper">
-                         <div class="user-name" style="font-size: 13px; color: #3f72af;">${syncingDisplay}</div>
-                        <div class="authStatus"> <i class="fas fa-exchange-alt" style="color: #f6a000;"></i> Current Sync Status</div>
+                <div class="item">
+                    <div class="left">
+                        <div class="info-wrapper">
+                             <div class="user-name" style="font-size: 13px; color: #3f72af;">${syncingDisplay}</div>
+                            <div class="authStatus"> <i class="fas fa-exchange-alt" style="color: #f6a000;"></i> Current Sync Status</div>
+                        </div>
                     </div>
                 </div>
-            </div>
-        </div>
-    `;
+            </div>`;
 
-    // --- RENDER SECURITY SECTION ---
-    let securityOptionsVisible = isCurrentUserAdmin || isTargetCurrentUser || forceSecurity;
+        let securityOptionsVisible = isCurrentUserAdmin || isTargetCurrentUser || forceSecurity;
 
-    modalHtml += `
-        <div class="section-title">SECURITY</div>
-        <div class="list">
-            <div class="item ${!securityOptionsVisible ? 'disabled-item' : ''}">
-                <div class="left">
-                    <div class="info-container">
-                        <div class="user-name">${isTargetAdmin ? 'Admin Device' : 'Standard Device'}</div>
-                        <div class="authStatus"><i class="fas fa-user-shield" style="color: #6772e5; width: 20px; text-align: center;"></i> Authorization Status</div>
+        modalHtml += `
+            <div class="section-title">SECURITY</div>
+            <div class="list">
+                <div class="item ${!securityOptionsVisible ? 'disabled-item' : ''}">
+                    <div class="left">
+                        <div class="info-container">
+                            <div class="user-name">${isTargetAdmin ? 'Admin Device' : 'Standard Device'}</div>
+                            <div class="authStatus"><i class="fas fa-user-shield" style="color: #6772e5; width: 20px; text-align: center;"></i> Authorization Status</div>
+                        </div>
                     </div>
-                </div>
-            </div>
-    `;
-
-    if (securityOptionsVisible) {
-        if (!isTargetCurrentUser) {
-            modalHtml += `
-                <div class="item safe-action" data-action="log-in-as" data-profile="${targetProfileName}">
-                    <div class="safe"><i class="fas fa-sign-in-alt" style="margin-right: 10px;"></i> Log into this profile</div>
                 </div>`;
-        }
 
-        // NEW: Clear Stats Button (Only for the active device)
-        if (isTargetCurrentUser) {
-            modalHtml += `
-                <div class="item danger-action" onclick="handleClearMyStats()">
-                    <div class="danger"><i class="fas fa-eraser" style="margin-right: 10px;"></i> Clear My Statistics</div>
-                </div>`;
-        }
-
-        if (isTargetAdmin) {
-            if (!isTargetCurrentUser && isCurrentUserAdmin) {
+        if (securityOptionsVisible) {
+            if (!isTargetCurrentUser) {
                 modalHtml += `
-                    <div class="item danger-action" data-action="demote" data-profile="${targetProfileName}">
-                        <div class="danger"><i class="fas fa-user-minus" style="margin-right: 10px;"></i> Remove Admin Status</div>
+                    <div class="item safe-action" data-action="log-in-as" data-profile="${targetProfileName}">
+                        <div class="safe"><i class="fas fa-sign-in-alt" style="margin-right: 10px;"></i> Log into this profile</div>
                     </div>`;
             }
-            if (!isTargetCurrentUser) {
+
+            if (isTargetCurrentUser) {
+                modalHtml += `
+                    <div class="item danger-action" onclick="handleClearMyStats()">
+                        <div class="danger"><i class="fas fa-eraser" style="margin-right: 10px;"></i> Clear My Statistics</div>
+                    </div>`;
+            }
+
+            if (isTargetAdmin) {
+                if (!isTargetCurrentUser && isCurrentUserAdmin) {
+                    modalHtml += `
+                        <div class="item danger-action" data-action="demote" data-profile="${targetProfileName}">
+                            <div class="danger"><i class="fas fa-user-minus" style="margin-right: 10px;"></i> Remove Admin Status</div>
+                        </div>`;
+                }
+                if (!isTargetCurrentUser) {
+                    modalHtml += `
+                        <div class="item danger-action" data-action="remove-device" data-profile="${targetProfileName}" data-is-current="${isTargetCurrentUser}" data-is-admin="${isTargetAdmin}">
+                            <div class="danger"><i class="fas fa-trash-alt" style="margin-right: 10px;"></i> Remove Device</div>
+                        </div>`;
+                }
+            } else {
+                if (isCurrentUserAdmin) {
+                    modalHtml += `
+                        <div class="item safe-action" data-action="promote" data-profile="${targetProfileName}">
+                            <div class="safe"><i class="fas fa-user-plus" style="margin-right: 10px;"></i> Make Admin Device</div>
+                        </div>`;
+                }
                 modalHtml += `
                     <div class="item danger-action" data-action="remove-device" data-profile="${targetProfileName}" data-is-current="${isTargetCurrentUser}" data-is-admin="${isTargetAdmin}">
                         <div class="danger"><i class="fas fa-trash-alt" style="margin-right: 10px;"></i> Remove Device</div>
                     </div>`;
             }
-        } else {
-            if (isCurrentUserAdmin) {
-                modalHtml += `
-                    <div class="item safe-action" data-action="promote" data-profile="${targetProfileName}">
-                        <div class="safe"><i class="fas fa-user-plus" style="margin-right: 10px;"></i> Make Admin Device</div>
-                    </div>`;
-            }
+        } else if (CURRENT_AUTH_STATUS.toLowerCase() === 'standard' && !isCurrentUserAdmin && !isTargetCurrentUser) {
             modalHtml += `
-                <div class="item danger-action" data-action="remove-device" data-profile="${targetProfileName}" data-is-current="${isTargetCurrentUser}" data-is-admin="${isTargetAdmin}">
-                    <div class="danger"><i class="fas fa-trash-alt" style="margin-right: 10px;"></i> Remove Device</div>
-                </div>
-            `;
+                <div class="item safe-action" id="unlock-security-btn">
+                    <div class="safe"><i class="fas fa-lock-open" style="margin-right: 10px;"></i> Unlock Security Options</div>
+                    <div class="chevron">›</div>
+                </div>`;
         }
-    } else if (CURRENT_AUTH_STATUS.toLowerCase() === 'standard' && !isCurrentUserAdmin && !isTargetCurrentUser) {
+
+        modalHtml += `</div>`;
+
+        const targetPendingReqs = targetProfile.pendingRequests || {};
+        const myRequestToThem = targetPendingReqs[CURRENT_PROFILE_NAME];
+        
+        modalHtml += `<div class="section-title">ACTIONS</div><div class="list">`;
+
+        if (myRequestToThem && myRequestToThem.type === 'download') {
+            modalHtml += `
+                <div class="item" onclick="cancelRequest('${targetProfileName}')">
+                    <div class="left">
+                        <div class="user-name" style="color: #f6a000;"><i class="fas fa-clock mr-2"></i> Awaiting Approval...</div>
+                        <div class="authStatus">Tap to cancel download request</div>
+                    </div>
+                    <div class="danger" style="font-size: 12px;">Cancel</div>
+                </div>`;
+        } else if (!isTargetCurrentUser) {
+            modalHtml += `
+                <div class="item" onclick="requestDownload('${targetProfileName}')">
+                    <div class="left">
+                        <div class="safe"><i class="fas fa-file-download mr-2"></i> Request Download</div>
+                        <div class="authStatus">Copy statistics from this device</div>
+                    </div>
+                    <div class="chevron">›</div>
+                </div>`;
+        }
+
         modalHtml += `
-            <div class="item safe-action" id="unlock-security-btn">
-                <div class="safe"><i class="fas fa-lock-open" style="margin-right: 10px;"></i> Unlock Security Options</div>
-                <div class="chevron">›</div>
-            </div>
-        `;
-    }
-
-    modalHtml += `</div>`;
-
-    // --- RENDER DUAL ACTION SECTION ---
-    const targetPendingReqs = targetProfile.pendingRequests || {};
-    const myRequestToThem = targetPendingReqs[CURRENT_PROFILE_NAME];
-    
-    modalHtml += `<div class="section-title">ACTIONS</div><div class="list">`;
-
-    if (myRequestToThem && myRequestToThem.type === 'download') {
-        modalHtml += `
-            <div class="item" onclick="cancelRequest('${targetProfileName}')">
+            <div class="item ${broadcastDisabled ? 'disabled-item' : ''}">
                 <div class="left">
-                    <div class="user-name" style="color: #f6a000;"><i class="fas fa-clock mr-2"></i> Awaiting Approval...</div>
-                    <div class="authStatus">Tap to cancel download request</div>
+                    <div class="safe">
+                        <i class="fas fa-cloud-upload-alt" style="color: #4a90e2; margin-right: 12px; width: 20px; text-align: center;"></i> 
+                        Broadcast to ${targetProfileName}
+                    </div>
+                    ${broadcastDisabled && broadcastReason ? `<div style="font-size: 10px; color: #ff3b30; margin-left: 32px;">${broadcastReason}</div>` : ''}
                 </div>
-                <div class="danger" style="font-size: 12px;">Cancel</div>
+                <label class="ios-toggle">
+                    <input type="checkbox" id="broadcast-switch" ${amISendingToThem ? 'checked' : ''} ${broadcastDisabled ? 'disabled' : ''}>
+                    <span class="slider"></span>
+                </label>
             </div>`;
-    } else if (!isTargetCurrentUser) {
-        modalHtml += `
-            <div class="item" onclick="requestDownload('${targetProfileName}')">
-                <div class="left">
-                    <div class="safe"><i class="fas fa-file-download mr-2"></i> Request Download</div>
-                    <div class="authStatus">Copy statistics from this device</div>
-                </div>
-                <div class="chevron">›</div>
-            </div>`;
-    }
 
-    modalHtml += `
-        <div class="item ${broadcastDisabled ? 'disabled-item' : ''}">
-            <div class="left">
-                <div class="safe">
-                    <i class="fas fa-cloud-upload-alt" style="color: #4a90e2; margin-right: 12px; width: 20px; text-align: center;"></i> 
-                    Broadcast to ${targetProfileName}
+        modalHtml += `
+            <div class="item ${receiveDisabled ? 'disabled-item' : ''}">
+                <div class="left">
+                    <div class="safe">
+                        <i class="fas fa-cloud-download-alt" style="color: #24b47e; margin-right: 12px; width: 20px; text-align: center;"></i> 
+                        Receive from ${targetProfileName}
+                    </div>
+                    ${receiveDisabled && receiveReason ? `<div style="font-size: 10px; color: #ff3b30; margin-left: 32px;">${receiveReason}</div>` : ''}
                 </div>
-                ${broadcastDisabled && broadcastReason ? `<div style="font-size: 10px; color: #ff3b30; margin-left: 32px;">${broadcastReason}</div>` : ''}
+                <label class="ios-toggle">
+                    <input type="checkbox" id="receive-switch" ${amIReceivingFromThem ? 'checked' : ''} ${receiveDisabled ? 'disabled' : ''}>
+                    <span class="slider"></span>
+                </label>
             </div>
-            <label class="ios-toggle">
-                <input type="checkbox" id="broadcast-switch" ${amISendingToThem ? 'checked' : ''} ${broadcastDisabled ? 'disabled' : ''}>
-                <span class="slider"></span>
-            </label>
         </div>`;
 
-    modalHtml += `
-        <div class="item ${receiveDisabled ? 'disabled-item' : ''}">
-            <div class="left">
-                <div class="safe">
-                    <i class="fas fa-cloud-download-alt" style="color: #24b47e; margin-right: 12px; width: 20px; text-align: center;"></i> 
-                    Receive from ${targetProfileName}
-                </div>
-                ${receiveDisabled && receiveReason ? `<div style="font-size: 10px; color: #ff3b30; margin-left: 32px;">${receiveReason}</div>` : ''}
-            </div>
-            <label class="ios-toggle">
-                <input type="checkbox" id="receive-switch" ${amIReceivingFromThem ? 'checked' : ''} ${receiveDisabled ? 'disabled' : ''}>
-                <span class="slider"></span>
-            </label>
-        </div>
-    </div>`;
+        modalContent.innerHTML = modalHtml;
 
-    modalContent.innerHTML = modalHtml;
-
-    // --- EVENT LISTENERS ---
-    const broadcastSwitch = document.getElementById('broadcast-switch');
-    if (broadcastSwitch && !broadcastDisabled) {
-        broadcastSwitch.onchange = (e) => toggleSync(targetProfileName, e.target.checked, 'broadcast');
-    }
-
-    const receiveSwitch = document.getElementById('receive-switch');
-    if (receiveSwitch && !receiveDisabled) {
-        receiveSwitch.onchange = (e) => toggleSync(targetProfileName, e.target.checked, 'receive');
-    }
-
-    const editableNameSpan = document.querySelector(".modal .user-name span.editable-name");
-    if (editableNameSpan) {
-        editableNameSpan.setAttribute('contenteditable', 'false');
-        editableNameSpan.onclick = handleNameEdit;
-    }
-
-    document.querySelectorAll(".modal .danger-action, .modal .safe-action").forEach(item => {
-        // Skip the Clear Stats button if it's already handled by its own onclick
-        if (!item.hasAttribute('onclick')) {
-            item.onclick = (e) => handleModalSecurityAction(e.currentTarget);
+        const broadcastSwitch = document.getElementById('broadcast-switch');
+        if (broadcastSwitch && !broadcastDisabled) {
+            broadcastSwitch.onchange = (e) => toggleSync(targetProfileName, e.target.checked, 'broadcast');
         }
-    });
 
-    const unlockBtn = document.getElementById('unlock-security-btn');
-    if (unlockBtn) unlockBtn.onclick = unlockModalSecurity;
-
-    deviceModal.classList.add("active");
-}
-
-async function handleClearMyStats() {
-    const confirmed = confirm("Are you sure you want to delete all statistics for this profile? This action is permanent and cannot be undone.");
-    
-    if (!confirmed) return;
-
-    // Security check: Verify password before wiping data
-    const action = async () => {
-        try {
-            const statsPath = `accounts/${CURRENT_ACCOUNT_KEY}/profiles/${CURRENT_PROFILE_NAME}/avanti_stats`;
-            await db.ref(statsPath).remove();
-            
-            // --- CORRECTED: Wipe the true sandbox key from the interceptor ---
-            const scopeCacheKey = `AV_ledger_cache_${CURRENT_ACCOUNT_KEY}_${CURRENT_PROFILE_NAME}`;
-            localStorage.removeItem(scopeCacheKey);
-            // -----------------------------------------------------------------
-            
-            toast('Stats Cleared', 'All statistics for this profile have been deleted.', true);
-            closeModal('deviceModal');
-        } catch (error) {
-            console.error("Error clearing stats:", error);
-            toast('Error', 'Failed to delete statistics.', false);
+        const receiveSwitch = document.getElementById('receive-switch');
+        if (receiveSwitch && !receiveDisabled) {
+            receiveSwitch.onchange = (e) => toggleSync(targetProfileName, e.target.checked, 'receive');
         }
-    };
 
-    performSecurityAction(action, 'Clear Statistics', 'Please confirm your password to wipe all statistics from this profile.');
-}
+        const editableNameSpan = document.querySelector(".modal .user-name span.editable-name");
+        if (editableNameSpan) {
+            editableNameSpan.setAttribute('contenteditable', 'false');
+            editableNameSpan.onclick = handleNameEdit;
+        }
 
+        document.querySelectorAll(".modal .danger-action, .modal .safe-action").forEach(item => {
+            if (!item.hasAttribute('onclick')) {
+                item.onclick = (e) => handleModalSecurityAction(e.currentTarget);
+            }
+        });
 
+        const unlockBtn = document.getElementById('unlock-security-btn');
+        if (unlockBtn) unlockBtn.onclick = unlockModalSecurity;
+
+        deviceModal.classList.add("active");
+    }
+
+    async function handleClearMyStats() {
+        const confirmed = confirm("Are you sure you want to delete all statistics for this profile? This action is permanent and cannot be undone.");
+        if (!confirmed) return;
+
+        const action = async () => {
+            try {
+                const statsPath = `accounts/${CURRENT_ACCOUNT_KEY}/profiles/${CURRENT_PROFILE_NAME}/avanti_stats`;
+                await db.ref(statsPath).remove();
+                
+                const scopeCacheKey = `AV_ledger_cache_${CURRENT_ACCOUNT_KEY}_${CURRENT_PROFILE_NAME}`;
+                localStorage.removeItem(scopeCacheKey);
+                
+                toast('Stats Cleared', 'All statistics for this profile have been deleted.', true);
+                closeModal('deviceModal');
+            } catch (error) {
+                console.error("Error clearing stats:", error);
+                toast('Error', 'Failed to delete statistics.', false);
+            }
+        };
+
+        performSecurityAction(action, 'Clear Statistics', 'Please confirm your password to wipe all statistics from this profile.');
+    }
 
     async function handleModalSecurityAction(btn) {
         const action = btn.dataset.action;
@@ -1551,7 +1502,6 @@ async function handleClearMyStats() {
         attachLinkingListeners();
     }
 
-    // Device linking functions (generateQrCode & generateCode) unchanged except minimal safety checks
     async function generateQrCode() {
         if (!CURRENT_ACCOUNT_KEY) return;
         const token = { type: 'login', account: CURRENT_ACCOUNT_KEY, createdAt: Date.now() };
@@ -1615,9 +1565,33 @@ async function handleClearMyStats() {
         }
     }
 
-    // --- INITIALIZATION ---
-    document.addEventListener('DOMContentLoaded', fetchAndRenderDevices);
+    // --- INITIALIZATION (SYNCHRONOUS COLD START HYDRATION ENGINE) ---
+    (() => {
+        // Enforce structural routing handshakes before continuing execution
+        const requiredKeys = [ACCOUNT_KEY_STORAGE, USERNAME_STORAGE, AUTH_STATUS_STORAGE];
+        if (requiredKeys.some(key => !localStorage.getItem(key))) {
+            localStorage.clear();
+            window.location.replace('index.html');
+            return;
+        }
+
+        // Tap the local data caches instantly to block layout-flashing or empty screen states
+        const initialCachedProfiles = localStorage.getItem(PROFILES_CACHE_KEY);
+        if (initialCachedProfiles) {
+            try {
+                const parsedProfiles = JSON.parse(initialCachedProfiles);
+                allProfiles = parsedProfiles;
+                renderDevices(parsedProfiles);
+            } catch(e) {
+                console.error("Local profiles buffer exception handled safely:", e);
+            }
+        }
+
+        // Initialize Firebase listeners silently in background process threads
+        fetchAndRenderDevices();
+    })();
 </script>
+
 <script>
 /* =========================================================
    LIVE DEVICE SEARCH (SCRIPT-ONLY)
