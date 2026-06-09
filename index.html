@@ -1,41 +1,47 @@
+
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=0.75, maximum-scale=0.75, user-scalable=no" />
+    <meta name="viewport" content="width=device-width, initial-scale=0.8 , maximum-scale=0.8, user-scalable=no" />
     <title>Avanti-Ledger</title>
 
     <script src="https://cdn.tailwindcss.com"></script>
+
+
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+
     <script src="https://cdn.jsdelivr.net/npm/@fingerprintjs/fingerprintjs@3/dist/fp.min.js"></script>
 
     <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-database-compat.js"></script>
-    <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#3f72af">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#3f72af">
 
-    <script>
-      if ("serviceWorker" in navigator) {
-        window.addEventListener("load", () => {
-          navigator.serviceWorker.register("/service-worker.js")
-            .then(reg => console.log("Service worker registered:", reg))
-            .catch(err => console.error("Service worker error:", err));
-        });
-      }
-    </script>
+<script>
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", () => {
+      navigator.serviceWorker.register("/service-worker.js")
+        .then(reg => console.log("Service worker registered:", reg))
+        .catch(err => console.error("Service worker error:", err));
+    });
+  }
+</script>
 
     <style>
         body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; }
         .glass-panel {
             background: rgba(255,255,255,0.95);
             backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
             border: 1px solid rgba(255,255,255,0.2);
         }
         .scan-region video { border-radius: 0.75rem; object-fit: cover; }
@@ -45,40 +51,11 @@
         ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
         .fade-in { animation: fadeIn 0.3s ease-in-out; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px);} to { opacity: 1; transform: translateY(0);} }
-        
-        /* iOS Style Loaders */
-        .ios-spinner {
-            width: 32px;
-            height: 32px;
-            border: 3px solid rgba(0, 0, 0, 0.1);
-            border-top-color: #007aff;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-        }
+        .loader { border: 3px solid #f3f3f3; border-radius: 50%; border-top: 3px solid #4f46e5; width: 24px; height: 24px; animation: spin 1s linear infinite; }
         @keyframes spin { 0%{transform:rotate(0)}100%{transform:rotate(360deg)} }
-
-        .social-btn {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            width: 100%;
-            padding: 0.625rem 1rem;
-            border-radius: 0.5rem;
-            font-weight: 500;
-            font-size: 0.875rem;
-            transition: all 0.2s ease;
-        }
     </style>
 </head>
-<body class="h-screen flex flex-col overflow-hidden">
-    
-    <div id="global-loader" class="fixed inset-0 bg-white/60 backdrop-blur-md z-[100] hidden flex-col items-center justify-center transition-opacity duration-300">
-        <div class="glass-panel p-6 rounded-2xl shadow-xl flex flex-col items-center">
-            <div class="ios-spinner mb-4"></div>
-            <p id="global-loader-text" class="text-sm font-semibold text-gray-700 tracking-wide">Processing...</p>
-        </div>
-    </div>
-
+<body class=" h-screen flex flex-col overflow-hidden">
     <div id="toast" class="fixed top-5 right-5 z-50 transform translate-x-full transition-transform duration-300 max-w-sm w-full bg-white shadow-lg rounded-lg pointer-events-auto flex ring-1 ring-black ring-opacity-5">
         <div class="flex-1 w-0 p-4">
             <div class="flex items-start">
@@ -112,6 +89,8 @@
     <main class="flex-1 relative overflow-y-auto w-full flex items-center justify-center p-4">
 
         <div id="view-auth" class="w-full max-w-md bg-white rounded-2xl shadow-xl overflow-hidden fade-in relative">
+            <div id="auth-loader" class="absolute inset-0 bg-white/80 z-10 flex items-center justify-center hidden"><div class="loader"></div></div>
+
             <div class="px-8 pt-8 pb-6 text-center">
                 <h2 class="text-2xl font-bold text-gray-900">Welcome</h2>
                 <p class="text-gray-500 mt-2 text-sm">Choose your preferred way to access your account.</p>
@@ -119,99 +98,65 @@
 
             <div class="flex border-b border-gray-100">
                 <button onclick="switchTab('signin')" id="tab-signin" class="flex-1 py-3 text-sm font-medium text-blue-900 border-b-2 border-blue-900 focus:outline-none">Sign In</button>
-                <button onclick="switchTab('signup')" id="tab-signup" class="flex-1 py-3 text-sm font-medium text-blue-900 border-b-2 border-transparent focus:outline-none">Create Account</button>
+                <button onclick="switchTab('signup')" id="tab-signup" class="flex-1 py-3 text-sm font-medium text-blue-900 border-b-2  focus:outline-none">Create Account</button>
             </div>
 
-            <div class="p-8 pt-6">
+            <div class="p-8">
 
                 <div id="section-signin">
                     <form id="form-login" class="space-y-4">
                         <div>
-                            <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Account name or Email or Cell</label>
-                            <input type="text" id="login-identifier" class="block w-full px-4 py-2 text-gray-700 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all" placeholder="Enter identifier" required>
+                            <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Account name or Email or Cell Number</label>
+                            <input type="text" id="login-identifier" class="block w-full px-4 py-2 text-gray-700 bg-gray-50 border border-gray-200 rounded-lg" placeholder="account name or Email or Cell number" required>
                         </div>
                         <div>
                             <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Password</label>
-                            <input type="password" id="login-password" class="block w-full px-4 py-2 text-gray-700 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all" placeholder="••••••••" required>
+                            <input type="password" id="login-password" class="block w-full px-4 py-2 text-gray-700 bg-gray-50 border border-gray-200 rounded-lg" placeholder="••••••••" required>
                         </div>
-                        <button type="submit" class="w-full bg-blue-900 hover:bg-blue-800 text-white font-semibold py-2.5 rounded-lg shadow-sm">
+                        <button type="submit" class="w-full bg-blue-900 hover:bg-blue-800 text-white font-semibold py-2.5 rounded-lg">
                             Sign In Securely
                         </button>
                     </form>
 
                     <div class="relative my-6">
                         <div class="absolute inset-0 flex items-center"><div class="w-full border-t border-gray-200"></div></div>
-                        <div class="relative flex justify-center text-sm"><span class="px-2 bg-white text-gray-400">Or continue with</span></div>
-                    </div>
-
-                    <div class="space-y-3 mb-6">
-                        <button onclick="handleSocialAuth('Apple')" class="social-btn bg-black text-white hover:bg-gray-800">
-                            <i class="fab fa-apple text-lg mr-2"></i> Continue with Apple
-                        </button>
-                        <button onclick="handleSocialAuth('Google')" class="social-btn bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 shadow-sm">
-                            <i class="fab fa-google text-lg mr-2 text-red-500"></i> Continue with Google
-                        </button>
-                        <button onclick="handleSocialAuth('Facebook')" class="social-btn bg-[#1877F2] text-white hover:bg-[#166fe5]">
-                            <i class="fab fa-facebook text-lg mr-2"></i> Continue with Facebook
-                        </button>
-                    </div>
-
-                    <div class="relative my-6">
-                        <div class="absolute inset-0 flex items-center"><div class="w-full border-t border-gray-200"></div></div>
-                        <div class="relative flex justify-center text-sm"><span class="px-2 bg-white text-gray-400">Device Link</span></div>
+                        <div class="relative flex justify-center text-sm"><span class="px-2 bg-white text-gray-400">Or connect via Device Link</span></div>
                     </div>
 
                     <div class="grid grid-cols-2 gap-4">
-                        <button onclick="showScanView()" class="flex flex-col items-center justify-center p-4 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors">
+                        <button onclick="showScanView()" class="flex flex-col items-center justify-center p-4 border border-gray-200 rounded-xl hover:bg-gray-50">
                             <div class="bg-blue-50 text-blue-900 p-3 rounded-full mb-2"><i class="fas fa-qrcode text-xl"></i></div>
                             <span class="text-sm font-medium text-gray-700">Scan QR</span>
                         </button>
-                        <button onclick="showCodeView()" class="flex flex-col items-center justify-center p-4 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors">
+                        <button onclick="showCodeView()" class="flex flex-col items-center justify-center p-4 border border-gray-200 rounded-xl hover:bg-gray-50">
                             <div class="bg-blue-50 text-blue-900 p-3 rounded-full mb-2"><i class="fas fa-keyboard text-xl"></i></div>
                             <span class="text-sm font-medium text-gray-700">Enter Code</span>
                         </button>
                     </div>
                 </div>
 
-                <div id="section-signup" class="hidden">
+                <div id="section-signup" class="hidden space-y-4">
                     <form id="form-signup" class="space-y-4">
                         <div>
                             <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Account Name</label>
-                            <input type="text" id="signup-name" maxlength="20" class="block w-full px-4 py-2 text-gray-700 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all" placeholder="John Doe (Max 20)" required>
+                            <input type="text" id="signup-name" class="block w-full px-4 py-2 text-gray-700 bg-gray-50 border border-gray-200 rounded-lg" placeholder="John Doe" required>
                         </div>
                         <div>
                             <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Email or Cell Number</label>
-                            <input type="text" id="signup-contact" class="block w-full px-4 py-2 text-gray-700 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all" placeholder="name@example.com or +2609..." required>
+                            <input type="text" id="signup-contact" class="block w-full px-4 py-2 text-gray-700 bg-gray-50 border border-gray-200 rounded-lg" placeholder="name@example.com or +2609..." required>
                         </div>
                         <div>
                             <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Password</label>
-                            <input type="password" id="signup-password" class="block w-full px-4 py-2 text-gray-700 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all" placeholder="Create a strong password" required>
+                            <input type="password" id="signup-password" class="block w-full px-4 py-2 text-gray-700 bg-gray-50 border border-gray-200 rounded-lg" placeholder="Create a strong password" required>
                         </div>
-                        <div class="text-xs text-gray-500 bg-blue-100 p-3 rounded border border-blue-200 flex items-center">
-                            <i class="fas fa-fingerprint mr-2 text-blue-700 text-lg"></i>
-                            <span>Registering device as: <span id="detected-device-name" class="font-bold text-gray-800">Detecting...</span></span>
+                        <div class="text-xs text-gray-500 bg-blue-100 p-3 rounded border border-blue-200">
+                            <i class="fas fa-fingerprint mr-1 text-blue-700"></i>
+                            We will register this device as: <span id="detected-device-name" class="font-bold text-gray-700">Detecting...</span>
                         </div>
-                        <button type="submit" class="w-full bg-blue-900 hover:bg-blue-800 text-white font-semibold py-2.5 rounded-lg shadow-sm">
+                        <button type="submit" class="w-full bg-blue-900 hover:bg-blue-800 text-white font-semibold py-2.5 rounded-lg">
                             Create Account
                         </button>
                     </form>
-
-                    <div class="relative my-6">
-                        <div class="absolute inset-0 flex items-center"><div class="w-full border-t border-gray-200"></div></div>
-                        <div class="relative flex justify-center text-sm"><span class="px-2 bg-white text-gray-400">Or register with</span></div>
-                    </div>
-
-                    <div class="space-y-3">
-                        <button onclick="handleSocialAuth('Apple')" class="social-btn bg-black text-white hover:bg-gray-800">
-                            <i class="fab fa-apple text-lg mr-2"></i> Sign Up with Apple
-                        </button>
-                        <button onclick="handleSocialAuth('Google')" class="social-btn bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 shadow-sm">
-                            <i class="fab fa-google text-lg mr-2 text-red-500"></i> Sign Up with Google
-                        </button>
-                        <button onclick="handleSocialAuth('Facebook')" class="social-btn bg-[#1877F2] text-white hover:bg-[#166fe5]">
-                            <i class="fab fa-facebook text-lg mr-2"></i> Sign Up with Facebook
-                        </button>
-                    </div>
                 </div>
 
                 <div id="section-scan" class="hidden">
@@ -243,96 +188,51 @@
 
         <div id="view-identify" class="hidden w-full max-w-md bg-white rounded-2xl shadow-xl overflow-hidden fade-in p-8">
             <h2 class="text-2xl font-bold text-gray-900 mb-2">Who is this?</h2>
-            <p class="text-sm text-gray-500 mb-6">Connected to <span id="connected-account-name" class="font-bold text-blue-900">Unknown Account</span>.</p>
+            <p class="text-sm text-gray-500 mb-6">You've connected to <span id="connected-account-name" class="font-bold text-blue-900">Unknown Account</span>.</p>
 
-            <div id="profiles-list" class="mb-4 max-h-48 overflow-y-auto pr-2"></div>
+            <div id="profiles-list" class="mb-4"></div>
 
             <form id="form-identify">
                 <div class="mb-4">
                     <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Your Name / Username</label>
-                    <input type="text" id="identity-username" maxlength="20" class="block w-full px-4 py-2 text-gray-700 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" placeholder="e.g. John (Max 20)" required>
+                    <input type="text" id="identity-username" class="block w-full px-4 py-2 text-gray-700 bg-gray-50 border border-gray-200 rounded-lg" placeholder="e.g. John's Profile" required>
                 </div>
                 <div class="text-xs text-gray-500 bg-blue-100 p-3 rounded border border-blue-200 mb-4">
                     Device (detected): <span id="identify-device-name" class="font-bold">Detecting...</span>
                 </div>
-                <button type="submit" class="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-2.5 rounded-lg shadow-sm">
+                <button type="submit" class="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-2.5 rounded-lg">
                     Complete Login and Continue
-                </button>
-            </form>
-        </div>
-
-        <div id="view-social-setup" class="hidden w-full max-w-md bg-white rounded-2xl shadow-xl overflow-hidden fade-in p-8 relative">
-            <h2 class="text-2xl font-bold text-gray-900 mb-2">Almost there!</h2>
-            <p class="text-sm text-gray-500 mb-6">Please define your system identity to complete the integration.</p>
-
-            <form id="form-social-setup" class="space-y-4">
-                <div>
-                    <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Ledger Account Name</label>
-                    <input type="text" id="social-account-name" maxlength="20" class="block w-full px-4 py-2 text-gray-700 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Business Name (Max 20)" required>
-                </div>
-                <div>
-                    <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Your Username</label>
-                    <input type="text" id="social-username" maxlength="20" class="block w-full px-4 py-2 text-gray-700 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Admin Profile (Max 20)" required>
-                </div>
-                <button type="submit" class="w-full bg-blue-900 hover:bg-blue-800 text-white font-semibold py-2.5 rounded-lg shadow-sm mt-4">
-                    Initialize Ledger
                 </button>
             </form>
         </div>
 
     </main>
 
-    <div id="network-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255, 255, 255, 0.4); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); z-index: 999; flex-direction: column; justify-content: center; align-items: center; font-family: sans-serif;">
-        <div class="text-center text-gray-800">
-            <div class="ios-spinner mb-4 mx-auto" style="border-top-color: #e74c3c;"></div>
-            <p class="font-medium"><i class="fa fa-exclamation-triangle mr-1 text-red-500"></i> No Internet Connection.</p>
-        </div>
-    </div>
-
  <script>
     // ---------- Firebase config ----------
     const firebaseConfig = {
         apiKey: "AIzaSyDZeQXOHRjhqijerFLyNkOLcbQUIwRLRqY",
-        authDomain: "mwelaisha-shaba.firebaseapp.com",
-        databaseURL: "https://mwelaisha-shaba-default-rtdb.firebaseio.com",
-        projectId: "mwelaisha-shaba",
-        storageBucket: "mwelaisha-shaba.firebasestorage.app",
-        messagingSenderId: "262165456072",
-        appId: "1:262165456072:web:40926b87a0eb513cc971fd",
-        measurementId: "G-LVWW6PJ0P0"
+  authDomain: "mwelaisha-shaba.firebaseapp.com",
+  databaseURL: "https://mwelaisha-shaba-default-rtdb.firebaseio.com",
+  projectId: "mwelaisha-shaba",
+  storageBucket: "mwelaisha-shaba.firebasestorage.app",
+  messagingSenderId: "262165456072",
+  appId: "1:262165456072:web:40926b87a0eb513cc971fd",
+  measurementId: "G-LVWW6PJ0P0"
+
     };
     firebase.initializeApp(firebaseConfig);
     const rdb = firebase.database();
     const auth = firebase.auth();
-
-    // Provider Setup
-    const googleProvider = new firebase.auth.GoogleAuthProvider();
-    const facebookProvider = new firebase.auth.FacebookAuthProvider();
-    const appleProvider = new firebase.auth.OAuthProvider('apple.com');
 
     // ---------- Globals ----------
     let currentDeviceName = 'unknown-device';
     let fpPromise = null;
     let scanned = false;
     let qrScanner = null;
-    let connectedAccount = null; 
-    let connectedAccountData = null; 
-    let currentUsername = null; 
-    let socialAuthTempUser = null; // Holds the user obj during intermediary social setup
-
-    // --- Loading UI ---
-    function setLoaderState(isActive, text = 'Processing...') {
-        const loader = document.getElementById('global-loader');
-        const loaderText = document.getElementById('global-loader-text');
-        if(isActive) {
-            loaderText.textContent = text;
-            loader.classList.remove('hidden');
-            loader.classList.add('flex');
-        } else {
-            loader.classList.add('hidden');
-            loader.classList.remove('flex');
-        }
-    }
+    let connectedAccount = null; // accountKey string after verification
+    let connectedAccountData = null; // account data object
+    let currentUsername = null; // holds selected/created username
 
     // --- Device Name Generator ---
     function getOSSpecificName() {
@@ -352,21 +252,33 @@
         return os;
     }
 
+    // Initialize FingerprintJS and get visitor ID (non-blocking)
     (function initFingerprint(){
         try {
             fpPromise = FingerprintJS.load();
             fpPromise.then(fp => fp.get()).then(result => {
                 const osName = getOSSpecificName();
+                const fpShort = (result && result.visitorId) ? result.visitorId.slice(0, 8) : '';
                 currentDeviceName = `${osName}`;
                 const el = document.getElementById('detected-device-name');
                 if(el) el.textContent = currentDeviceName;
                 const el2 = document.getElementById('identify-device-name');
                 if(el2) el2.textContent = currentDeviceName;
             }).catch(err=>{
+                console.warn('Fingerprint init error', err);
                 currentDeviceName = 'Unknown Device';
+                const el = document.getElementById('detected-device-name');
+                if(el) el.textContent = currentDeviceName;
+                const el2 = document.getElementById('identify-device-name');
+                if(el2) el2.textContent = currentDeviceName;
             });
         } catch (e) {
+            console.warn('Fingerprint not available', e);
             currentDeviceName = 'Unknown Device';
+            const el = document.getElementById('detected-device-name');
+            if(el) el.textContent = currentDeviceName;
+            const el2 = document.getElementById('identify-device-name');
+            if(el2) el2.textContent = currentDeviceName;
         }
     })();
 
@@ -382,6 +294,20 @@
         window.location.href = '/Avanti_ledger/dashboard.html';
     }
 
+    // --- Auto-Login check ---
+    (function checkAutoLogin() {
+        const accountKey = localStorage.getItem('AV_ledger_account_key');
+        const username = localStorage.getItem('AV_ledger_username');
+        if (accountKey && username) {
+            console.log(`Auto-logging in as ${username} on account ${accountKey}`);
+            setTimeout(() => {
+                const loader = document.getElementById('auth-loader');
+                if (loader) loader.classList.remove('hidden');
+                window.location.href = 'dashboard.html';
+            }, 100);
+        }
+    })();
+
     // ---------- UI helpers ----------
     function toast(title, message, ok=true){
         const t = document.getElementById('toast');
@@ -396,119 +322,50 @@
     function switchTab(tab){
         document.getElementById('section-signup').classList.toggle('hidden', tab !== 'signup');
         document.getElementById('section-signin').classList.toggle('hidden', tab !== 'signin');
-        document.getElementById('tab-signin').classList.toggle('border-transparent', tab!=='signin');
-        document.getElementById('tab-signup').classList.toggle('border-transparent', tab!=='signup');
+        document.getElementById('tab-signin').classList.toggle('text-indigo-600', tab==='signin');
+        document.getElementById('tab-signup').classList.toggle('text-indigo-600', tab==='signup');
+        document.getElementById('tab-signin').classList.toggle('border-b-2', tab==='signin');
+        document.getElementById('tab-signup').classList.toggle('border-b-2', tab==='signup');
     }
 
-    function showScanView(){ hideAllSubViews(); document.getElementById('section-scan').classList.remove('hidden'); startScanner(); }
-    function showCodeView(){ hideAllSubViews(); document.getElementById('section-code').classList.remove('hidden'); stopScanner(); }
-    
+    function showScanView(){
+        hideAllSubViews();
+        document.getElementById('section-scan').classList.remove('hidden');
+        startScanner();
+    }
+    function showCodeView(){
+        hideAllSubViews();
+        document.getElementById('section-code').classList.remove('hidden');
+        stopScanner();
+    }
     function backToAuth(){
         hideAllSubViews();
         stopScanner();
         document.getElementById('section-signin').classList.remove('hidden');
         document.getElementById('view-auth').classList.remove('hidden');
+        document.getElementById('view-identify').classList.add('hidden');
         connectedAccount = null;
         connectedAccountData = null;
-        socialAuthTempUser = null;
     }
 
     function hideAllSubViews(){
-        ['section-scan','section-code','section-signin','section-signup','view-identify','view-social-setup'].forEach(id => { 
-            const el = document.getElementById(id); if(el) el.classList.add('hidden'); 
-        });
+        const ids = ['section-scan','section-code','section-signin','section-signup'];
+        ids.forEach(id => { const el = document.getElementById(id); if(el) el.classList.add('hidden'); });
         document.getElementById('view-auth').classList.remove('hidden');
+        document.getElementById('view-identify').classList.add('hidden');
     }
 
+    // ---------- Utility: sanitize account key ----------
     function sanitizeAccountKey(name){
-        return String(name || '').trim().toLowerCase().replace(/\s+/g,'_').replace(/[^a-z0-9_\-]/g,'').slice(0,60) || 'account_' + Math.random().toString(36).slice(2,8);
+        return String(name || '')
+            .trim()
+            .toLowerCase()
+            .replace(/\s+/g,'_')
+            .replace(/[^a-z0-9_\-]/g,'')
+            .slice(0,60) || 'account_' + Math.random().toString(36).slice(2,8);
     }
 
-    // ---------- Social Auth Flow ----------
-    async function handleSocialAuth(providerName) {
-        setLoaderState(true, `Connecting to ${providerName}...`);
-        let provider;
-        if(providerName === 'Google') provider = googleProvider;
-        else if(providerName === 'Facebook') provider = facebookProvider;
-        else if(providerName === 'Apple') provider = appleProvider;
-
-        try {
-            const result = await auth.signInWithPopup(provider);
-            const user = result.user;
-            
-            // Check if user already exists in RTDB via their verified email
-            const emailQuery = user.email ? user.email : user.uid + "@social.avanti";
-            const accountsSnap = await rdb.ref("accounts").orderByChild("email").equalTo(emailQuery).once('value');
-
-            if(accountsSnap.exists()) {
-                // Existing Account -> Proceed to identify view
-                const accountKey = Object.keys(accountsSnap.val())[0];
-                connectedAccount = accountKey;
-                connectedAccountData = accountsSnap.val()[accountKey];
-                
-                document.getElementById('connected-account-name').textContent = connectedAccountData.displayName || connectedAccount;
-                
-                setLoaderState(false);
-                document.getElementById("view-auth").classList.add("hidden");
-                document.getElementById("view-identify").classList.remove("hidden");
-                await renderProfilesList();
-                toast("Account Verified", "Select your profile");
-            } else {
-                // New Account -> Trigger mandatory setup
-                socialAuthTempUser = user;
-                setLoaderState(false);
-                document.getElementById("view-auth").classList.add("hidden");
-                document.getElementById("view-social-setup").classList.remove("hidden");
-                
-                // Pre-fill Name if available from provider
-                if(user.displayName) {
-                     document.getElementById("social-account-name").value = user.displayName.substring(0, 20);
-                }
-            }
-        } catch (err) {
-            setLoaderState(false);
-            if(err.code !== 'auth/popup-closed-by-user') {
-                toast("Authentication Failed", err.message, false);
-            }
-        }
-    }
-
-    // Finalize Account Setup for Social Users
-    document.getElementById("form-social-setup").addEventListener("submit", async (e) => {
-        e.preventDefault();
-        const accName = document.getElementById("social-account-name").value.trim();
-        const username = document.getElementById("social-username").value.trim();
-        if(!accName || !username) return;
-
-        setLoaderState(true, "Configuring System Architecture...");
-        
-        try {
-            const accountKey = sanitizeAccountKey(accName);
-            const fallbackEmail = socialAuthTempUser.email || socialAuthTempUser.uid + "@social.avanti";
-            
-            await rdb.ref("accounts/" + accountKey).set({
-                displayName: accName,
-                email: fallbackEmail,
-                uid: socialAuthTempUser.uid,
-                createdAt: Date.now()
-            });
-
-            await rdb.ref("accounts/" + accountKey + "/profiles/" + username).set({
-                deviceName: currentDeviceName,
-                authStatus: 'Admin',
-                createdAt: Date.now()
-            });
-
-            setLoaderState(false);
-            toast('Initialization Complete', 'Welcome to Avanti Ledger');
-            completeLogin(accountKey, username, 'Admin');
-        } catch(err) {
-            setLoaderState(false);
-            toast('Setup Error', err.message, false);
-        }
-    });
-
-    // ---------- Email Signup flow ----------
+    // ---------- Signup flow ----------
     document.getElementById("form-signup").addEventListener("submit", async (e) => {
         e.preventDefault();
         const accountName = document.getElementById("signup-name").value.trim();
@@ -516,10 +373,14 @@
         const password = document.getElementById("signup-password").value;
         if (!accountName || !contact || !password) { toast("Missing fields", "Fill all fields", false); return; }
 
-        setLoaderState(true, "Provisioning Account...");
-
-        let emailToUse = contact.includes("@") ? contact : contact.replace(/\D/g, "") + "@phone.avanti";
-        let phoneNumber = contact.includes("@") ? "" : contact.replace(/\D/g, "");
+        let emailToUse = "";
+        let phoneNumber = "";
+        if (contact.includes("@")) {
+            emailToUse = contact;
+        } else {
+            phoneNumber = contact.replace(/\D/g, "");
+            emailToUse = phoneNumber + "@phone.avanti";
+        }
 
         try {
             const cred = await auth.createUserWithEmailAndPassword(emailToUse, password);
@@ -532,13 +393,13 @@
                 createdAt: Date.now()
             });
             connectedAccount = accountKey;
-            connectedAccountData = { displayName: accountName, email: emailToUse };
-            
-            setLoaderState(false);
+            connectedAccountData = {
+                displayName: accountName,
+                email: emailToUse
+            };
             openIdentifyForNewAccount(true);
             toast("Account Created", "Create your first profile");
         } catch (err) {
-            setLoaderState(false);
             toast("Sign Up Error", err.message || String(err), false);
         }
     });
@@ -548,7 +409,9 @@
         document.getElementById('view-auth').classList.add('hidden');
         document.getElementById('view-identify').classList.remove('hidden');
         renderProfilesList();
-        document.getElementById('identity-username').value = connectedAccountData?.displayName?.substring(0, 20) || '';
+        document.getElementById('identity-username').value = connectedAccountData?.displayName || '';
+        const el = document.getElementById('identify-device-name');
+        if(el) el.textContent = currentDeviceName;
     }
 
     async function renderProfilesList(){
@@ -556,85 +419,111 @@
         if(!listDiv) return;
         listDiv.innerHTML = '';
         if(!connectedAccount) return;
-        
         const snap = await rdb.ref('accounts/' + connectedAccount + '/profiles').get();
         if(!snap.exists()){
-            listDiv.innerHTML = '<div class="text-xs text-gray-400 mb-3 text-center">No profiles initialized.</div>';
+            listDiv.innerHTML = '<div class="text-xs text-gray-400 mb-3">No profiles yet for this account. Create one below.</div>';
             return;
         }
-        
         const profiles = snap.val();
         const container = document.createElement('div');
         container.className = 'space-y-2';
         Object.keys(profiles).forEach(username => {
             const p = profiles[username];
             const btn = document.createElement('button');
-            btn.className = 'w-full text-left px-4 py-3 bg-gray-50 rounded-lg flex justify-between items-center hover:bg-gray-100 transition-colors border border-transparent hover:border-gray-200';
-            btn.innerHTML = `<div><div class="font-semibold text-gray-800">${username}</div><div class="text-xs text-gray-500 mt-0.5">${p.authStatus || 'Standard'} • ${p.deviceName || 'Linked Device'}</div></div><div><i class="fas fa-chevron-right text-gray-400 text-sm"></i></div>`;
+            btn.className = 'w-full text-left px-4 py-2 bg-gray-50 rounded-lg flex justify-between items-center hover:bg-indigo-50 transition-colors';
+            btn.innerHTML = `<div><div class="font-medium">${username}</div><div class="text-xs text-gray-500">${p.authStatus || 'Standard'} • ${p.deviceName || ''}</div></div><div><i class="fas fa-sign-in-alt text-indigo-600"></i></div>`;
             btn.onclick = () => onSelectExistingProfile(username, p);
             container.appendChild(btn);
         });
         listDiv.appendChild(container);
     }
 
+    // ---------- FIXED: Profile selection & admin reauth ----------
     async function onSelectExistingProfile(username, profileObj){
+        // set current selection context
         currentUsername = username;
         const finalAuthStatus = profileObj?.authStatus || 'Standard';
 
+        // If Admin, require password re-entry (reauthenticate current Firebase user)
         if (finalAuthStatus === 'Admin') {
-            const pw = prompt('Security Verification: Enter password to access Admin profile.');
-            if (!pw) return toast('Verification Required','Password is required for Admin access', false);
+            const pw = prompt('Admin profile selected. Enter account password to continue:');
+            if (!pw) {
+                toast('Cancelled','Password required for Admin', false);
+                return;
+            }
 
-            setLoaderState(true, "Authenticating...");
             try {
+                // Prefer reauthenticating the existing signed-in user
                 const user = auth.currentUser;
-                const emailForReauth = (user && user.email) ? user.email : connectedAccountData?.email;
-                
-                if (!emailForReauth) throw new Error("No linked email");
+                // Determine email to use for credential: prefer user.email, fallback to connectedAccountData.email
+                const emailForReauth = (user && user.email) ? user.email : (connectedAccountData && connectedAccountData.email) ? connectedAccountData.email : null;
+                if (!emailForReauth) {
+                    toast('Auth Error','No email available to verify admin password', false);
+                    return;
+                }
 
                 const credential = firebase.auth.EmailAuthProvider.credential(emailForReauth, pw);
-                if (user) await user.reauthenticateWithCredential(credential);
-                else await auth.signInWithEmailAndPassword(emailForReauth, pw);
 
-                setLoaderState(false);
-                toast('Verified','Initializing Environment...');
+                // If a user is signed in, reauthenticate that user. If not, fall back to signInWithEmailAndPassword (rare).
+                if (user) {
+                    await user.reauthenticateWithCredential(credential);
+                } else {
+                    // fallback: sign in with the provided email/password (may be necessary in some edge cases)
+                    await auth.signInWithEmailAndPassword(emailForReauth, pw);
+                }
+
+                toast('Admin Login Successful','Redirecting to Home...');
                 completeLogin(connectedAccount, username, finalAuthStatus);
                 return;
             } catch (err) {
-                setLoaderState(false);
-                return toast('Access Denied','Invalid security credentials.', false);
+                console.error('Admin reauth failed', err);
+                toast('Wrong password','Admin password did not match', false);
+                return;
             }
         }
-        setLoaderState(true, "Signing in...");
+
+        // Standard profile: just sign in (no password prompt)
+        toast('Signed in','Signed in as ' + username + '. Redirecting...');
         completeLogin(connectedAccount, username, finalAuthStatus);
     }
 
+    // ---------- Identify form submit (create or use profile) ----------
     document.getElementById('form-identify').addEventListener('submit', async (e) => {
         e.preventDefault();
         const username = document.getElementById('identity-username').value.trim();
-        if(!username) return;
+        if(!username) { toast('Missing name','Enter a name for this profile', false); return; }
+        if(!connectedAccount){
+            toast('No account','Internal error: no connected account', false); return;
+        }
 
-        setLoaderState(true, "Syncing Profile...");
         const profileRef = rdb.ref('accounts/' + connectedAccount + '/profiles/' + username);
         const snap = await profileRef.get();
         let authStatus = 'Standard';
 
         if(snap.exists()){
+            // Existing profile: update device and proceed to redirect
             const p = snap.val();
             authStatus = p.authStatus || 'Standard';
-            const parts = p.deviceName ? p.deviceName.split('&').map(s=>s.trim()).filter(Boolean) : [];
+            const existingDevice = p.deviceName || '';
+            const parts = existingDevice ? existingDevice.split('&').map(s=>s.trim()).filter(Boolean) : [];
             if(!parts.includes(currentDeviceName)) parts.push(currentDeviceName);
-            await profileRef.update({ deviceName: parts.join(' & ') });
-            
-            setLoaderState(false);
+            const newDeviceName = parts.join(' & ');
+            await profileRef.update({ deviceName: newDeviceName });
+            toast('Signed in','Welcome back, '+username + '. Redirecting...');
             completeLogin(connectedAccount, username, authStatus);
+            return;
         } else {
+            // Create new profile; first profile becomes Admin
             const profilesSnap = await rdb.ref('accounts/' + connectedAccount + '/profiles').get();
             authStatus = (profilesSnap.exists() && Object.keys(profilesSnap.val()).length > 0) ? 'Standard' : 'Admin';
-            await profileRef.set({ deviceName: currentDeviceName, authStatus: authStatus, createdAt: Date.now() });
-            
-            setLoaderState(false);
+            await profileRef.set({
+                deviceName: currentDeviceName,
+                authStatus: authStatus,
+                createdAt: Date.now()
+            });
+            toast('Profile created', username + ' ('+authStatus+')' + '. Redirecting...');
             completeLogin(connectedAccount, username, authStatus);
+            return;
         }
     });
 
@@ -643,92 +532,313 @@
         e.preventDefault();
         const identifier = document.getElementById("login-identifier").value.trim();
         const password = document.getElementById("login-password").value;
-        if (!identifier || !password) return;
+        if (!identifier || !password) { toast("Missing fields", "Fill all fields", false); return; }
 
-        setLoaderState(true, "Validating Credentials...");
         let emailToUse = "";
 
         if (identifier.includes("@")) {
             emailToUse = identifier;
         } else if (/^\+?\d+$/.test(identifier)) {
-            emailToUse = identifier.replace(/\D/g, "") + "@phone.avanti";
+            const phoneDigits = identifier.replace(/\D/g, "");
+            emailToUse = phoneDigits + "@phone.avanti";
         } else {
+            // Lookup by account/display name
             const usersSnap = await rdb.ref("accounts").once("value");
             let found = false;
             usersSnap.forEach((child) => {
-                if (child.val().displayName && child.val().displayName.toLowerCase() === identifier.toLowerCase()) {
-                    emailToUse = child.val().email;
+                const data = child.val();
+                if (data.displayName && data.displayName.toLowerCase() === identifier.toLowerCase()) {
+                    emailToUse = data.email;
                     found = true;
                 }
             });
-            if (!found) { setLoaderState(false); return toast("Not Found", "Account name does not exist", false); }
+            if (!found) { toast("Not Found", "Account name does not exist", false); return; }
         }
 
         try {
+            // Sign in the user
             await auth.signInWithEmailAndPassword(emailToUse, password);
+
+            // Find accountKey in DB
             const accountsSnap = await rdb.ref("accounts").orderByChild("email").equalTo(emailToUse).get();
-            if (!accountsSnap.exists()) throw new Error("Database mismatch");
-            
+            if (!accountsSnap.exists()) { toast("Login Failed", "Associated account not found", false); return; }
             const accountKey = Object.keys(accountsSnap.val())[0];
             connectedAccount = accountKey;
             connectedAccountData = accountsSnap.val()[accountKey];
 
-            document.getElementById("connected-account-name").textContent = connectedAccountData.displayName || accountKey;
+            const el = document.getElementById("connected-account-name");
+            if (el) el.textContent = connectedAccountData.displayName || accountKey;
+
             document.getElementById("view-auth").classList.add("hidden");
             document.getElementById("view-identify").classList.remove("hidden");
 
             await renderProfilesList();
-            setLoaderState(false);
-            toast("Identity Verified", "Select your profile workspace");
+            toast("Account Verified", "Select a profile to finish login");
         } catch (err) {
-            setLoaderState(false);
-            toast("Access Denied", err.message || String(err), false);
+            toast("Login Failed", err.message || String(err), false);
         }
     });
 
-    // ---------- Network Monitor ----------
-    const overlay = document.getElementById('network-overlay');
-    function checkNetwork() {
-        const isOnline = navigator.onLine;
-        let isSlow = navigator.connection && (navigator.connection.effectiveType === 'slow-2g' || navigator.connection.effectiveType === '2g');
-        overlay.style.display = (!isOnline || isSlow) ? 'flex' : 'none';
+    // ---------- QR scanner (html5-qrcode) ----------
+    function startScanner(){
+        if(qrScanner) return;
+        const html5QrCode = new Html5Qrcode("reader");
+        qrScanner = html5QrCode;
+        const config = { fps: 10, qrbox: {width: 300, height: 200} };
+        html5QrCode.start(
+            { facingMode: "environment" },
+            config,
+            qrCodeMessage => {
+                if(scanned) return;
+                scanned = true;
+                handleScannedQr(qrCodeMessage);
+            },
+            errorMessage => { /* ignore scan errors */ }
+        ).then(()=> {
+            const s = document.getElementById('scan-status');
+            if(s) s.textContent = 'Scanning...';
+        }).catch(err=>{
+            const s = document.getElementById('scan-status');
+            if(s) s.textContent = 'Camera permission denied or not available.';
+            console.warn('QR start error', err);
+        });
     }
-    window.addEventListener('online', checkNetwork);
-    window.addEventListener('offline', checkNetwork);
-    if (navigator.connection) navigator.connection.addEventListener('change', checkNetwork);
-    checkNetwork();
+    function stopScanner(){
+        scanned = false;
+        if(!qrScanner) return;
+        qrScanner.stop().then(()=> { qrScanner.clear(); qrScanner = null; const s = document.getElementById('scan-status'); if(s) s.textContent = 'Stopped'; }).catch(()=>{ qrScanner = null; });
+    }
 
-    // ---------- Migration/Auth Safety Checks ----------
-    (function () {
-        if (['AV_ledger_account_key','AV_ledger_username','AV_ledger_auth_status'].every(k => localStorage.getItem(k))) {
-            window.location.replace('dashboard.html');
+    async function handleScannedQr(payload){
+        let data = null;
+        try { data = JSON.parse(payload); } catch(e){}
+        if(!data || !data.type){
+            toast('Invalid QR','Scanned QR is not valid', false);
+            stopScanner();
+            backToAuth();
+            return;
         }
-    })();
+        if(data.type === 'login' && data.account){
+            const accSnap = await rdb.ref('accounts/' + data.account).get();
+            if(!accSnap.exists()){ toast('Account not found','QR refers to unknown account', false); stopScanner(); backToAuth(); return; }
+            connectedAccount = data.account;
+            connectedAccountData = accSnap.val();
+            const nameEl = document.getElementById('connected-account-name');
+            if(nameEl) nameEl.textContent = connectedAccountData.displayName || connectedAccount;
+            document.getElementById('view-auth').classList.add('hidden');
+            document.getElementById('view-identify').classList.remove('hidden');
+            await renderProfilesList();
+            toast('QR accepted','Choose or create a profile to complete login');
+            stopScanner();
+        } else {
+            toast('Unsupported QR','Scanned QR does not contain login info', false);
+            stopScanner();
+            backToAuth();
+        }
+    }
 
-    (function() {
-        const currentLocalKey = localStorage.getItem('AV_ledger_account_key');
-        if (!currentLocalKey) return;
+    // ---------- Code input ----------
+    document.getElementById('form-code').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const code = document.getElementById('access-code').value.trim().toUpperCase();
+        if(!code || code.length !== 6){ toast('Invalid code','Enter a 6-character code', false); return; }
 
-        firebase.database().ref('accounts').on('value', (snapshot) => {
-            const allAccounts = snapshot.val();
-            if (!allAccounts || allAccounts[currentLocalKey]) return;
-
-            let migrationFound = false;
-            for (const [newSlug, data] of Object.entries(allAccounts)) {
-                if (data.oldAccountKeys && data.oldAccountKeys.includes(currentLocalKey)) {
-                    localStorage.setItem('AV_ledger_account_key', newSlug);
-                    migrationFound = true;
-                    window.location.reload();
-                    break;
-                }
-            }
-            if (!migrationFound) {
-                localStorage.clear();
-                window.location.href = "index.html";
+        const accountsSnap = await rdb.ref('accounts').get();
+        if(!accountsSnap.exists()){ toast('Invalid code','No account codes found', false); return; }
+        let found = null;
+        accountsSnap.forEach(accSnap=>{
+            const acc = accSnap.val();
+            if(acc.codes && acc.codes[code]){
+                found = { key: accSnap.key, data: acc, meta: acc.codes[code] };
             }
         });
-    })();
+        if(!found){ toast('Code not found','Invalid or expired code', false); return; }
+        if(found.meta.expiresAt && Date.now() > found.meta.expiresAt){
+            toast('Code expired','This code has expired', false);
+            return;
+        }
 
+        connectedAccount = found.key;
+        connectedAccountData = found.data;
+        const nameEl = document.getElementById('connected-account-name');
+        if(nameEl) nameEl.textContent = connectedAccountData.displayName || connectedAccount;
+        document.getElementById('view-auth').classList.add('hidden');
+        document.getElementById('view-identify').classList.remove('hidden');
+        await renderProfilesList();
+        toast('Code accepted', 'Select or create profile to complete login');
+    });
+
+    // ---------- Cleanup ----------
+    window.addEventListener('beforeunload', () => {
+        if(qrScanner) try { qrScanner.stop(); } catch(e){}
+    });
+
+    console.log('Avanti-Ledger login script loaded. Local Storage auto-login enabled.');
 </script>
+<div id="network-overlay" style="display: none;">
+    <div class="loader-content">
+        <div class="spinner"></div>
+        <p><i class="fa fa-exclamation-triangle"></i>
+ This page is not available. Check your internet connection.</p>
+    </div>
+</div>
+
+<style>
+    /* Full frosted background */
+    #network-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(255, 255, 255, 0.4);
+        backdrop-filter: blur(8px); /* The "frosted" effect */
+        -webkit-backdrop-filter: blur(8px);
+        z-index: 9;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        font-family: sans-serif;
+    }
+
+    .loader-content {
+        text-align: center;
+        color: #333;
+    }
+
+    /* Simple CSS Spinner */
+    .spinner {
+        width: 50px;
+        height: 50px;
+        border: 5px solid #f3f3f3;
+        border-top: 5px solid #3498db;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        margin: 0 auto 20px;
+    }
+
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+</style>
+
+<script>
+    const overlay = document.getElementById('network-overlay');
+
+    function checkNetwork() {
+        const isOnline = navigator.onLine;
+        let isSlow = false;
+
+        // Check for slow connection types using the Network Information API
+        if (navigator.connection) {
+            const type = navigator.connection.effectiveType; // 'slow-2g', '2g', '3g', or '4g'
+            if (type === 'slow-2g' || type === '2g') {
+                isSlow = true;
+            }
+        }
+
+        // Show overlay if offline OR if the connection is very slow
+        if (!isOnline || isSlow) {
+            overlay.style.display = 'flex';
+        } else {
+            overlay.style.display = 'none';
+        }
+    }
+
+    // 1. Listen for immediate online/offline changes
+    window.addEventListener('online', checkNetwork);
+    window.addEventListener('offline', checkNetwork);
+
+    // 2. Listen for connection quality changes (speed drops)
+    if (navigator.connection) {
+        navigator.connection.addEventListener('change', checkNetwork);
+    }
+
+    // 3. Run on initial page load
+    checkNetwork();
+</script>
+ 
+<script>
+(function () {
+    const requiredKeys = [
+        'AV_ledger_account_key',
+        'AV_ledger_username',
+        'AV_ledger_auth_status'
+    ];
+
+    const allExist = requiredKeys.every(key => {
+        const value = localStorage.getItem(key);
+        return value !== null && value !== '';
+    });
+
+    if (allExist) {
+        // Prevent going back to login page
+        window.location.replace('dashboard.html');
+    }
+})();
+</script>
+<script>
+(function() {
+    const ACCOUNT_KEY_STORAGE = 'AV_ledger_account_key';
+    const currentLocalKey = localStorage.getItem(ACCOUNT_KEY_STORAGE);
+
+    // Only run if we are actually logged into an account
+    if (!currentLocalKey) return;
+
+    // Listen to the top-level accounts node
+    const accountsRef = firebase.database().ref('accounts');
+
+    accountsRef.on('value', (snapshot) => {
+        const allAccounts = snapshot.val();
+        if (!allAccounts) return;
+
+        // 1. If our current account key still exists, we are fine.
+        if (allAccounts[currentLocalKey]) {
+            // Optional: You could sync the Account Name to local storage here if needed
+            return;
+        }
+
+        // 2. If our key is MISSING, look for it in the history of other accounts
+        console.warn("Current Account Key not found. Searching for migration...");
+        let migrationFound = false;
+
+        for (const [newSlug, data] of Object.entries(allAccounts)) {
+            // Check if this account has a list of 'oldAccountKeys' 
+            // and if our missing key is one of them.
+            if (data.oldAccountKeys && Array.isArray(data.oldAccountKeys) && data.oldAccountKeys.includes(currentLocalKey)) {
+                
+                console.log(`Account Migration Detected! ${currentLocalKey} -> ${newSlug}`);
+                
+                // 3. Update the local storage with the new Slug
+                localStorage.setItem(ACCOUNT_KEY_STORAGE, newSlug);
+                
+                migrationFound = true;
+                
+                // 4. Force a reload so the entire app points to the new Firebase path
+                window.location.reload();
+                break;
+            }
+        }
+
+        // 5. If it's truly gone (no migration found), the account was likely deleted.
+        if (!migrationFound) {
+            console.error("Account has been deleted or access revoked.");
+            localStorage.clear();
+            window.location.href = "index.html";
+        }
+    }, (error) => {
+        // If we get a permission error, it usually means our key was deleted 
+        // and we no longer have access to the accounts node.
+        if (error.code === 'PERMISSION_DENIED') {
+            console.warn("Access denied. Attempting global account search...");
+            // In a strict security setup, you might need a dedicated 'migrations' node 
+            // that is publicly readable to find where your account moved to.
+        }
+    });
+})();
+</script>
+
+
 </body>
 </html>
