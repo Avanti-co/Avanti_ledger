@@ -3188,21 +3188,35 @@ function selectAllItems(){
     const dateObj = state.dates[state.currentDate] || makeEmptyDate();
     const itemIds = Object.keys(dateObj.items || {});
     
-    // Add all IDs to our selection tracking state
-    itemIds.forEach(id => state.selectedForDelete.add(id));
-    
-    // Fast UI Sync: Update all visible checkboxes instantly without hitting renderTable()
-    const tbody = document.getElementById('statsTableBody');
-    if (tbody) {
-        tbody.querySelectorAll('.select-col input[type="checkbox"]').forEach(cb => {
-            cb.checked = true;
-        });
-    }
+    // Determine if all items are already selected
+    const allSelected = itemIds.length > 0 && itemIds.every(id => state.selectedForDelete.has(id));
 
-    // Direct override for the pill subtitle label text
+    const tbody = document.getElementById('statsTableBody');
     const disp = document.getElementById('dateDisplaySmall');
-    if (disp) {
-        disp.textContent = itemIds.length > 0 ? `All ${itemIds.length} selected` : '0 selected';
+
+    if (allSelected) {
+        // --- UNSELECT ALL ---
+        state.selectedForDelete.clear();
+        
+        if (tbody) {
+            tbody.querySelectorAll('.select-col input[type="checkbox"]').forEach(cb => {
+                cb.checked = false;
+            });
+        }
+        if (disp) disp.textContent = 'Select items';
+
+    } else {
+        // --- SELECT ALL ---
+        itemIds.forEach(id => state.selectedForDelete.add(id));
+        
+        if (tbody) {
+            tbody.querySelectorAll('.select-col input[type="checkbox"]').forEach(cb => {
+                cb.checked = true;
+            });
+        }
+        if (disp) {
+            disp.textContent = itemIds.length > 0 ? `All ${itemIds.length} selected` : '0 selected';
+        }
     }
 }
 
