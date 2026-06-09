@@ -3477,10 +3477,7 @@ function sendToWhatsApp() {
 
 
 async function init(){
-    // Load state and settings (which updates AV_LEDGER_ACCOUNT_KEY/USERNAME and REMOTE_DB_PATH)
-    await loadState(); 
-
-    // Setup UI event listeners
+    // 1. Setup UI event listeners IMMEDIATELY so navigation/buttons work offline right away
     const prevBtn = document.getElementById('prevDateBtn'); if(prevBtn) prevBtn.onclick = prevDate;
     const nextBtn = document.getElementById('nextDateBtn'); if(nextBtn) nextBtn.onclick = nextDate;
     const moreBtn = document.getElementById('ledgerDropdownBtn');
@@ -3492,12 +3489,12 @@ async function init(){
     const searchItemInput = document.getElementById('searchItemInput'); if(searchItemInput) searchItemInput.oninput = searchTable;
     const enterSelectModeBtn = document.getElementById('enterSelectModeBtn'); if(enterSelectModeBtn) enterSelectModeBtn.onclick = enterSelectMode;
 
+    // 2. Load remote state and settings asynchronously without blocking UI interactivity
+    await loadState(); 
 
-    // Setup sync status listeners and initial display update
+    // 3. Setup sync status listeners and initial display update once network/Firebase handles resolve
     setupSyncListeners(); 
-    updateSyncDisplay(); // Initial load for sync status
-
-    // renderAll() is now called by the real-time listener (setupDataListener)
+    updateSyncDisplay(); 
 }
 
 function setupModalCloseOnBackdropClick() {
