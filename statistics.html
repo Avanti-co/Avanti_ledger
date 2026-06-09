@@ -856,6 +856,34 @@ padding-bottom: env(safe-area-inset-bottom, 50px);
     </div>
 </div>
 
+<div id="bottomSheetModal1" class="bottom-sheet">
+    <div class="bottom-sheet-overlay" onclick="closeBottomSheet()"></div>
+    <div class="bottom-sheet-content">
+        <div class="bottom-sheet-handle"></div>
+        
+        <header class="bottom-sheet-header">
+            <i id="bottomSheetIcon1" class="fas"></i>
+            <h3 id="bottomSheetTitle1">Action</h3>
+        </header>
+        
+        <p id="bottomSheetDescription1"></p>
+        
+        <div id="bottomSheetDateInputWrapper1" class="bottom-sheet-form-group">
+            <label for="bottomSheetTargetDate1">Select Destination Date</label>
+            <input type="date" id="bottomSheetTargetDate1">
+        </div>
+        
+        <div class="bottom-sheet-buttons">
+            <button id="bottomSheetConfirmBtn1" class="btn btn-primary">
+                <i class="fas fa-check"></i> Confirm
+            </button>
+            <button type="button" onclick="closeBottomSheet()" class="btn btn-secondary">
+                <i class="fas fa-times"></i> Cancel
+            </button>
+        </div>
+    </div>
+</div>
+
 
 <style>
 /* Custom Dropdown Styling */
@@ -933,7 +961,7 @@ padding-bottom: env(safe-area-inset-bottom, 50px);
     background-color: #ffffff;
     border-top-left-radius: 24px;
     border-top-right-radius: 24px;
-    padding: 20px 30px 40px 30px;
+    padding: 20px 30px 150px 30px;
     box-sizing: border-box;
     box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.2);
     transform: translateY(100%);
@@ -1038,18 +1066,39 @@ padding-bottom: env(safe-area-inset-bottom, 50px);
 
 #bottomSheetTitle {
     margin: 0;
-    font-size: 22px;
+    font-size: 23px;
     font-weight: 700;
     color: var(--bs-text-main);
     letter-spacing: -0.5px;
 }
 
 #bottomSheetDescription {
-    font-size: 15px;
+    font-size: 17px;
     color: var(--bs-text-muted);
     margin: 0 0 24px 0;
     line-height: 1.5;
 }
+
+#bottomSheetIcon1 {
+    font-size: 24px;
+    color: var(--bs-accent);
+}
+
+#bottomSheetTitle1 {
+    margin: 0;
+    font-size: 23px;
+    font-weight: 700;
+    color: var(--bs-text-main);
+    letter-spacing: -0.5px;
+}
+
+#bottomSheetDescription1 {
+    font-size: 17px;
+    color: var(--bs-text-muted);
+    margin: 0 0 24px 0;
+    line-height: 1.5;
+}
+
 
 /* Forms Framework */
 .bottom-sheet-form-group {
@@ -1058,7 +1107,7 @@ padding-bottom: env(safe-area-inset-bottom, 50px);
 
 .bottom-sheet-form-group label {
     display: block;
-    font-size: 14px;
+    font-size: 17px;
     font-weight: 600;
     margin-bottom: 8px;
     color: var(--bs-text-main);
@@ -1069,7 +1118,7 @@ padding-bottom: env(safe-area-inset-bottom, 50px);
     padding: 14px 16px;
     border-radius: var(--bs-radius-md);
     border: 1px solid var(--bs-border);
-    font-size: 16px;
+    font-size: 17px;
     font-family: inherit;
     box-sizing: border-box;
     background-color: var(--bs-bg-input);
@@ -1261,6 +1310,7 @@ function openBottomSheet(action) {
 
 function closeBottomSheet() {
     document.getElementById('bottomSheetModal').classList.remove('show');
+document.getElementById('bottomSheetModal1').classList.remove('show');
     activeActionType = null;
 }
 
@@ -1477,12 +1527,12 @@ Expenses</span>
     align-items: center;
     margin-bottom: 12px;
     font-weight: 600;
-    font-size: 17px;
+    font-size: 18px;
     color: var(--av-blue);
 }
 
 .ai-insight-body { 
-    font-size: 15px; 
+    font-size: 16px; 
     line-height: 1.4; 
     color: var(--av-text-secondary);
 }
@@ -3021,11 +3071,11 @@ function openDuplicateSheet() {
         return;
     }
 
-    const iconEl = document.getElementById('bottomSheetIcon');
-    const titleEl = document.getElementById('bottomSheetTitle');
-    const descEl = document.getElementById('bottomSheetDescription');
-    const confirmBtn = document.getElementById('bottomSheetConfirmBtn');
-    const dateInput = document.getElementById('bottomSheetTargetDate');
+    const iconEl = document.getElementById('bottomSheetIcon1');
+    const titleEl = document.getElementById('bottomSheetTitle1');
+    const descEl = document.getElementById('bottomSheetDescription1');
+    const confirmBtn = document.getElementById('bottomSheetConfirmBtn1');
+    const dateInput = document.getElementById('bottomSheetTargetDate1');
 
     if (iconEl) iconEl.className = "fas fa-clone";
     if (titleEl) titleEl.textContent = "Duplicate Items";
@@ -3037,7 +3087,7 @@ function openDuplicateSheet() {
         confirmBtn.onclick = confirmDuplicateAction;
     }
 
-    const modal = document.getElementById('bottomSheetModal');
+    const modal = document.getElementById('bottomSheetModal1');
     if (modal) modal.classList.add('show');
 }
 
@@ -3045,7 +3095,7 @@ function openDuplicateSheet() {
  * Process duplication modifications across memory states and sync to Firebase.
  */
 function confirmDuplicateAction() {
-    const targetDate = document.getElementById('bottomSheetTargetDate').value;
+    const targetDate = document.getElementById('bottomSheetTargetDate1').value;
     if (!targetDate) {
         alert("Please pick a valid destination date.");
         return;
