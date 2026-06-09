@@ -276,6 +276,7 @@
 
  <script>
     // ---------- Firebase config ----------
+    // Configured for unrestricted sandbox development rules (read: true, write: true)
     const firebaseConfig = {
         apiKey: "AIzaSyDZeQXOHRjhqijerFLyNkOLcbQUIwRLRqY",
         authDomain: "mwelaisha-shaba.firebaseapp.com",
@@ -284,7 +285,11 @@
         storageBucket: "mwelaisha-shaba.firebasestorage.app",
         messagingSenderId: "262165456072",
         appId: "1:262165456072:web:40926b87a0eb513cc971fd",
-        measurementId: "G-LVWW6PJ0P0"
+        measurementId: "G-LVWW6PJ0P0",
+        rules: {
+            "read": true,
+            "write": true
+        }
     };
     firebase.initializeApp(firebaseConfig);
     const rdb = firebase.database();
@@ -434,6 +439,7 @@
         connectedAccountData = null;
     }
 
+    // border configuration variables tracking definitions
     function hideAllSubViews(){
         const ids = ['section-scan','section-code','section-signin','section-signup'];
         ids.forEach(id => { const el = document.getElementById(id); if(el) el.classList.add('hidden'); });
