@@ -776,11 +776,17 @@ padding-bottom: env(safe-area-inset-bottom, 50px);
           <i style="font-size: 18px; font-weight: bold; " class="fas fa-plus"></i> Add item
         </button>
       </th>
-      <th style="padding-left: 8px;" class="table-controls2" colspan="3" style="border-top:1px solid var(--border-color);">
+      <th style="padding-left: 8px; " class="table-controls2" colspan="3" style="border-top:1px solid var(--border-color);">
         <!-- WhatsApp Share Button -->
       </th>
-      <th colspan="2" class="table-controls3" style="color: gray; font-weight: bold;">Total Sales:</th>
-      <th id="totalSalesAmount" style="font-weight:800; color: #3f72af; border-top: 1px solid #D1D1D6;">K0</th>
+    
+    <th colspan="3" style="font-weight: 800; border-top: 1px solid #D1D1D6;">
+  <div style="display: flex; justify-content: end; width: 100%; gap: 5px;">
+    <span style="color: gray; font-weight: bold;">Total Sales: </span>
+    <span id="totalSalesAmount" style="color: #3f72af;"> K0</span>
+  </div>
+</th>
+
     </tr>
   </tfoot>
 </table>
