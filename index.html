@@ -2,12 +2,13 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=0.8 , maximum-scale=0.8, user-scalable=no" />
+    <meta name="viewport" content="width=device-width, initial-scale=0.75, maximum-scale=0.75, user-scalable=no" />
     <title>Avanti-Ledger</title>
 
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     <script src="https://cdn.jsdelivr.net/npm/@fingerprintjs/fingerprintjs@3/dist/fp.min.js"></script>
@@ -16,7 +17,6 @@
     <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-database-compat.js"></script>
-    
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#3f72af">
 
@@ -35,6 +35,7 @@
         .glass-panel {
             background: rgba(255,255,255,0.95);
             backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
             border: 1px solid rgba(255,255,255,0.2);
         }
         .scan-region video { border-radius: 0.75rem; object-fit: cover; }
@@ -44,15 +45,38 @@
         ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
         .fade-in { animation: fadeIn 0.3s ease-in-out; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px);} to { opacity: 1; transform: translateY(0);} }
-        .loader { border: 3px solid #f3f3f3; border-radius: 50%; border-top: 3px solid #4f46e5; width: 24px; height: 24px; animation: spin 1s linear infinite; }
+        
+        /* iOS Style Loaders */
+        .ios-spinner {
+            width: 32px;
+            height: 32px;
+            border: 3px solid rgba(0, 0, 0, 0.1);
+            border-top-color: #007aff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
         @keyframes spin { 0%{transform:rotate(0)}100%{transform:rotate(360deg)} }
+
+        .social-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            padding: 0.625rem 1rem;
+            border-radius: 0.5rem;
+            font-weight: 500;
+            font-size: 0.875rem;
+            transition: all 0.2s ease;
+        }
     </style>
 </head>
-<body class=" h-screen flex flex-col overflow-hidden">
-
-    <div id="global-process-loader" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex flex-col items-center justify-center gap-4 hidden">
-        <div class="w-12 h-12 border-4 border-t-indigo-600 border-slate-200/40 rounded-full animate-spin"></div>
-        <p id="loader-text" class="text-white font-medium tracking-wide text-sm">Processing security handshake...</p>
+<body class="h-screen flex flex-col overflow-hidden">
+    
+    <div id="global-loader" class="fixed inset-0 bg-white/60 backdrop-blur-md z-[100] hidden flex-col items-center justify-center transition-opacity duration-300">
+        <div class="glass-panel p-6 rounded-2xl shadow-xl flex flex-col items-center">
+            <div class="ios-spinner mb-4"></div>
+            <p id="global-loader-text" class="text-sm font-semibold text-gray-700 tracking-wide">Processing...</p>
+        </div>
     </div>
 
     <div id="toast" class="fixed top-5 right-5 z-50 transform translate-x-full transition-transform duration-300 max-w-sm w-full bg-white shadow-lg rounded-lg pointer-events-auto flex ring-1 ring-black ring-opacity-5">
@@ -88,8 +112,6 @@
     <main class="flex-1 relative overflow-y-auto w-full flex items-center justify-center p-4">
 
         <div id="view-auth" class="w-full max-w-md bg-white rounded-2xl shadow-xl overflow-hidden fade-in relative">
-            <div id="auth-loader" class="absolute inset-0 bg-white/80 z-10 flex items-center justify-center hidden"><div class="loader"></div></div>
-
             <div class="px-8 pt-8 pb-6 text-center">
                 <h2 class="text-2xl font-bold text-gray-900">Welcome</h2>
                 <p class="text-gray-500 mt-2 text-sm">Choose your preferred way to access your account.</p>
@@ -97,104 +119,99 @@
 
             <div class="flex border-b border-gray-100">
                 <button onclick="switchTab('signin')" id="tab-signin" class="flex-1 py-3 text-sm font-medium text-blue-900 border-b-2 border-blue-900 focus:outline-none">Sign In</button>
-                <button onclick="switchTab('signup')" id="tab-signup" class="flex-1 py-3 text-sm font-medium text-blue-900 border-b-2  focus:outline-none">Create Account</button>
+                <button onclick="switchTab('signup')" id="tab-signup" class="flex-1 py-3 text-sm font-medium text-blue-900 border-b-2 border-transparent focus:outline-none">Create Account</button>
             </div>
 
-            <div class="p-8">
+            <div class="p-8 pt-6">
 
                 <div id="section-signin">
-                    <div class="grid grid-cols-3 gap-3 mb-5">
-                        <button type="button" onclick="handleSocialAuth('google')" class="flex items-center justify-center py-2.5 border border-gray-200 rounded-lg shadow-sm hover:bg-gray-50 transition-colors bg-white">
-                            <i class="fab fa-google text-red-500 text-lg"></i>
-                        </button>
-                        <button type="button" onclick="handleSocialAuth('apple')" class="flex items-center justify-center py-2.5 border border-gray-200 rounded-lg shadow-sm hover:bg-gray-50 transition-colors bg-white">
-                            <i class="fab fa-apple text-black text-lg"></i>
-                        </button>
-                        <button type="button" onclick="handleSocialAuth('facebook')" class="flex items-center justify-center py-2.5 border border-gray-200 rounded-lg shadow-sm hover:bg-gray-50 transition-colors bg-white">
-                            <i class="fab fa-facebook text-blue-600 text-lg"></i>
-                        </button>
-                    </div>
-
-                    <div class="relative flex py-2 items-center">
-                        <div class="flex-grow border-t border-gray-100"></div>
-                        <span class="flex-shrink mx-3 text-xs text-gray-400 uppercase tracking-widest font-medium">Or email security</span>
-                        <div class="flex-grow border-t border-gray-100"></div>
-                    </div>
-
-                    <form id="form-login" class="space-y-4 mt-2">
+                    <form id="form-login" class="space-y-4">
                         <div>
-                            <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Account name or Email or Cell Number</label>
-                            <input type="text" id="login-identifier" class="block w-full px-4 py-2 text-gray-700 bg-gray-50 border border-gray-200 rounded-lg" placeholder="account name or Email or Cell number" required>
+                            <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Account name or Email or Cell</label>
+                            <input type="text" id="login-identifier" class="block w-full px-4 py-2 text-gray-700 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all" placeholder="Enter identifier" required>
                         </div>
                         <div>
                             <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Password</label>
-                            <input type="password" id="login-password" class="block w-full px-4 py-2 text-gray-700 bg-gray-50 border border-gray-200 rounded-lg" placeholder="••••••••" required>
+                            <input type="password" id="login-password" class="block w-full px-4 py-2 text-gray-700 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all" placeholder="••••••••" required>
                         </div>
-                        <button type="submit" class="w-full bg-blue-900 hover:bg-blue-800 text-white font-semibold py-2.5 rounded-lg">
+                        <button type="submit" class="w-full bg-blue-900 hover:bg-blue-800 text-white font-semibold py-2.5 rounded-lg shadow-sm">
                             Sign In Securely
                         </button>
                     </form>
 
                     <div class="relative my-6">
                         <div class="absolute inset-0 flex items-center"><div class="w-full border-t border-gray-200"></div></div>
-                        <div class="relative flex justify-center text-sm"><span class="px-2 bg-white text-gray-400">Or connect via Device Link</span></div>
+                        <div class="relative flex justify-center text-sm"><span class="px-2 bg-white text-gray-400">Or continue with</span></div>
+                    </div>
+
+                    <div class="space-y-3 mb-6">
+                        <button onclick="handleSocialAuth('Apple')" class="social-btn bg-black text-white hover:bg-gray-800">
+                            <i class="fab fa-apple text-lg mr-2"></i> Continue with Apple
+                        </button>
+                        <button onclick="handleSocialAuth('Google')" class="social-btn bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 shadow-sm">
+                            <i class="fab fa-google text-lg mr-2 text-red-500"></i> Continue with Google
+                        </button>
+                        <button onclick="handleSocialAuth('Facebook')" class="social-btn bg-[#1877F2] text-white hover:bg-[#166fe5]">
+                            <i class="fab fa-facebook text-lg mr-2"></i> Continue with Facebook
+                        </button>
+                    </div>
+
+                    <div class="relative my-6">
+                        <div class="absolute inset-0 flex items-center"><div class="w-full border-t border-gray-200"></div></div>
+                        <div class="relative flex justify-center text-sm"><span class="px-2 bg-white text-gray-400">Device Link</span></div>
                     </div>
 
                     <div class="grid grid-cols-2 gap-4">
-                        <button onclick="showScanView()" class="flex flex-col items-center justify-center p-4 border border-gray-200 rounded-xl hover:bg-gray-50">
+                        <button onclick="showScanView()" class="flex flex-col items-center justify-center p-4 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors">
                             <div class="bg-blue-50 text-blue-900 p-3 rounded-full mb-2"><i class="fas fa-qrcode text-xl"></i></div>
                             <span class="text-sm font-medium text-gray-700">Scan QR</span>
                         </button>
-                        <button onclick="showCodeView()" class="flex flex-col items-center justify-center p-4 border border-gray-200 rounded-xl hover:bg-gray-50">
+                        <button onclick="showCodeView()" class="flex flex-col items-center justify-center p-4 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors">
                             <div class="bg-blue-50 text-blue-900 p-3 rounded-full mb-2"><i class="fas fa-keyboard text-xl"></i></div>
                             <span class="text-sm font-medium text-gray-700">Enter Code</span>
                         </button>
                     </div>
                 </div>
 
-                <div id="section-signup" class="hidden space-y-4">
-                    <div class="grid grid-cols-3 gap-3 mb-2">
-                        <button type="button" onclick="handleSocialAuth('google')" class="flex items-center justify-center py-2.5 border border-gray-200 rounded-lg shadow-sm hover:bg-gray-50 transition-colors bg-white">
-                            <i class="fab fa-google text-red-500 text-lg mr-2"></i> <span class="text-xs text-gray-600 font-medium">Google</span>
-                        </button>
-                        <button type="button" onclick="handleSocialAuth('apple')" class="flex items-center justify-center py-2.5 border border-gray-200 rounded-lg shadow-sm hover:bg-gray-50 transition-colors bg-white">
-                            <i class="fab fa-apple text-black text-lg mr-2"></i> <span class="text-xs text-gray-600 font-medium">iCloud</span>
-                        </button>
-                        <button type="button" onclick="handleSocialAuth('facebook')" class="flex items-center justify-center py-2.5 border border-gray-200 rounded-lg shadow-sm hover:bg-gray-50 transition-colors bg-white">
-                            <i class="fab fa-facebook text-blue-600 text-lg mr-2"></i> <span class="text-xs text-gray-600 font-medium">Facebook</span>
-                        </button>
-                    </div>
-
-                    <div class="relative flex py-1 items-center">
-                        <div class="flex-grow border-t border-gray-100"></div>
-                        <span class="flex-shrink mx-3 text-xs text-gray-400 uppercase tracking-widest font-medium">Or standard manual</span>
-                        <div class="flex-grow border-t border-gray-100"></div>
-                    </div>
-
+                <div id="section-signup" class="hidden">
                     <form id="form-signup" class="space-y-4">
                         <div>
-                            <div class="flex justify-between mb-1">
-                                <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider">Account Name</label>
-                                <span id="signup-name-counter" class="text-[10px] text-gray-400 font-mono">0 / 20</span>
-                            </div>
-                            <input type="text" id="signup-name" maxlength="20" oninput="updateCharCounter('signup-name', 'signup-name-counter')" class="block w-full px-4 py-2 text-gray-700 bg-gray-50 border border-gray-200 rounded-lg" placeholder="e.g. Acme Retail" required>
+                            <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Account Name</label>
+                            <input type="text" id="signup-name" maxlength="20" class="block w-full px-4 py-2 text-gray-700 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all" placeholder="John Doe (Max 20)" required>
                         </div>
                         <div>
                             <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Email or Cell Number</label>
-                            <input type="text" id="signup-contact" class="block w-full px-4 py-2 text-gray-700 bg-gray-50 border border-gray-200 rounded-lg" placeholder="name@example.com or +2609..." required>
+                            <input type="text" id="signup-contact" class="block w-full px-4 py-2 text-gray-700 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all" placeholder="name@example.com or +2609..." required>
                         </div>
                         <div>
                             <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Password</label>
-                            <input type="password" id="signup-password" class="block w-full px-4 py-2 text-gray-700 bg-gray-50 border border-gray-200 rounded-lg" placeholder="Create a strong password" required>
+                            <input type="password" id="signup-password" class="block w-full px-4 py-2 text-gray-700 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all" placeholder="Create a strong password" required>
                         </div>
-                        <div class="text-xs text-gray-500 bg-blue-100 p-3 rounded border border-blue-200">
-                            <i class="fas fa-fingerprint mr-1 text-blue-700"></i>
-                            We will register this device as: <span id="detected-device-name" class="font-bold text-gray-700">Detecting...</span>
+                        <div class="text-xs text-gray-500 bg-blue-100 p-3 rounded border border-blue-200 flex items-center">
+                            <i class="fas fa-fingerprint mr-2 text-blue-700 text-lg"></i>
+                            <span>Registering device as: <span id="detected-device-name" class="font-bold text-gray-800">Detecting...</span></span>
                         </div>
-                        <button type="submit" class="w-full bg-blue-900 hover:bg-blue-800 text-white font-semibold py-2.5 rounded-lg">
+                        <button type="submit" class="w-full bg-blue-900 hover:bg-blue-800 text-white font-semibold py-2.5 rounded-lg shadow-sm">
                             Create Account
                         </button>
                     </form>
+
+                    <div class="relative my-6">
+                        <div class="absolute inset-0 flex items-center"><div class="w-full border-t border-gray-200"></div></div>
+                        <div class="relative flex justify-center text-sm"><span class="px-2 bg-white text-gray-400">Or register with</span></div>
+                    </div>
+
+                    <div class="space-y-3">
+                        <button onclick="handleSocialAuth('Apple')" class="social-btn bg-black text-white hover:bg-gray-800">
+                            <i class="fab fa-apple text-lg mr-2"></i> Sign Up with Apple
+                        </button>
+                        <button onclick="handleSocialAuth('Google')" class="social-btn bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 shadow-sm">
+                            <i class="fab fa-google text-lg mr-2 text-red-500"></i> Sign Up with Google
+                        </button>
+                        <button onclick="handleSocialAuth('Facebook')" class="social-btn bg-[#1877F2] text-white hover:bg-[#166fe5]">
+                            <i class="fab fa-facebook text-lg mr-2"></i> Sign Up with Facebook
+                        </button>
+                    </div>
                 </div>
 
                 <div id="section-scan" class="hidden">
@@ -224,59 +241,56 @@
             </div>
         </div>
 
-        <div id="view-social-setup" class="hidden w-full max-w-md bg-white rounded-2xl shadow-xl overflow-hidden fade-in p-8 relative">
-            <h2 class="text-2xl font-bold text-gray-900 mb-1">Account Setup</h2>
-            <p class="text-xs text-gray-400 mb-6 font-medium uppercase tracking-wider text-indigo-600">Step 1: Complete Ledger Identification</p>
-            
-            <form id="form-social-setup" class="space-y-4">
-                <div>
-                    <div class="flex justify-between mb-1">
-                        <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider">Account Workspace Name</label>
-                        <span id="social-account-counter" class="text-[10px] text-gray-400 font-mono">0 / 20</span>
-                    </div>
-                    <input type="text" id="social-setup-account-name" maxlength="20" oninput="updateCharCounter('social-setup-account-name', 'social-account-counter')" class="block w-full px-4 py-2 text-gray-700 bg-gray-50 border border-gray-200 rounded-lg" placeholder="Company or Personal Ledger Name" required>
-                </div>
-                <div>
-                    <div class="flex justify-between mb-1">
-                        <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider">Your First Profile Username</label>
-                        <span id="social-user-counter" class="text-[10px] text-gray-400 font-mono">0 / 20</span>
-                    </div>
-                    <input type="text" id="social-setup-username" maxlength="20" oninput="updateCharCounter('social-setup-username', 'social-user-counter')" class="block w-full px-4 py-2 text-gray-700 bg-gray-50 border border-gray-200 rounded-lg" placeholder="e.g., Manager_John" required>
-                </div>
-                <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2.5 rounded-lg transition-colors shadow-md">
-                    Initialize Workspace and Continue
-                </button>
-            </form>
-        </div>
-
         <div id="view-identify" class="hidden w-full max-w-md bg-white rounded-2xl shadow-xl overflow-hidden fade-in p-8">
             <h2 class="text-2xl font-bold text-gray-900 mb-2">Who is this?</h2>
-            <p class="text-sm text-gray-500 mb-6">You've connected to <span id="connected-account-name" class="font-bold text-blue-900">Unknown Account</span>.</p>
+            <p class="text-sm text-gray-500 mb-6">Connected to <span id="connected-account-name" class="font-bold text-blue-900">Unknown Account</span>.</p>
 
-            <div id="profiles-list" class="mb-4"></div>
+            <div id="profiles-list" class="mb-4 max-h-48 overflow-y-auto pr-2"></div>
 
             <form id="form-identify">
                 <div class="mb-4">
-                    <div class="flex justify-between mb-1">
-                        <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider">Your Name / Username</label>
-                        <span id="identify-user-counter" class="text-[10px] text-gray-400 font-mono">0 / 20</span>
-                    </div>
-                    <input type="text" id="identity-username" maxlength="20" oninput="updateCharCounter('identity-username', 'identify-user-counter')" class="block w-full px-4 py-2 text-gray-700 bg-gray-50 border border-gray-200 rounded-lg" placeholder="e.g. John's Profile" required>
+                    <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Your Name / Username</label>
+                    <input type="text" id="identity-username" maxlength="20" class="block w-full px-4 py-2 text-gray-700 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" placeholder="e.g. John (Max 20)" required>
                 </div>
                 <div class="text-xs text-gray-500 bg-blue-100 p-3 rounded border border-blue-200 mb-4">
                     Device (detected): <span id="identify-device-name" class="font-bold">Detecting...</span>
                 </div>
-                <button type="submit" class="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-2.5 rounded-lg">
+                <button type="submit" class="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-2.5 rounded-lg shadow-sm">
                     Complete Login and Continue
+                </button>
+            </form>
+        </div>
+
+        <div id="view-social-setup" class="hidden w-full max-w-md bg-white rounded-2xl shadow-xl overflow-hidden fade-in p-8 relative">
+            <h2 class="text-2xl font-bold text-gray-900 mb-2">Almost there!</h2>
+            <p class="text-sm text-gray-500 mb-6">Please define your system identity to complete the integration.</p>
+
+            <form id="form-social-setup" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Ledger Account Name</label>
+                    <input type="text" id="social-account-name" maxlength="20" class="block w-full px-4 py-2 text-gray-700 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Business Name (Max 20)" required>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Your Username</label>
+                    <input type="text" id="social-username" maxlength="20" class="block w-full px-4 py-2 text-gray-700 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Admin Profile (Max 20)" required>
+                </div>
+                <button type="submit" class="w-full bg-blue-900 hover:bg-blue-800 text-white font-semibold py-2.5 rounded-lg shadow-sm mt-4">
+                    Initialize Ledger
                 </button>
             </form>
         </div>
 
     </main>
 
+    <div id="network-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255, 255, 255, 0.4); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); z-index: 999; flex-direction: column; justify-content: center; align-items: center; font-family: sans-serif;">
+        <div class="text-center text-gray-800">
+            <div class="ios-spinner mb-4 mx-auto" style="border-top-color: #e74c3c;"></div>
+            <p class="font-medium"><i class="fa fa-exclamation-triangle mr-1 text-red-500"></i> No Internet Connection.</p>
+        </div>
+    </div>
+
  <script>
     // ---------- Firebase config ----------
-    // Configured for unrestricted sandbox development rules (read: true, write: true)
     const firebaseConfig = {
         apiKey: "AIzaSyDZeQXOHRjhqijerFLyNkOLcbQUIwRLRqY",
         authDomain: "mwelaisha-shaba.firebaseapp.com",
@@ -285,44 +299,38 @@
         storageBucket: "mwelaisha-shaba.firebasestorage.app",
         messagingSenderId: "262165456072",
         appId: "1:262165456072:web:40926b87a0eb513cc971fd",
-        measurementId: "G-LVWW6PJ0P0",
-        rules: {
-            "read": true,
-            "write": true
-        }
+        measurementId: "G-LVWW6PJ0P0"
     };
     firebase.initializeApp(firebaseConfig);
     const rdb = firebase.database();
     const auth = firebase.auth();
+
+    // Provider Setup
+    const googleProvider = new firebase.auth.GoogleAuthProvider();
+    const facebookProvider = new firebase.auth.FacebookAuthProvider();
+    const appleProvider = new firebase.auth.OAuthProvider('apple.com');
 
     // ---------- Globals ----------
     let currentDeviceName = 'unknown-device';
     let fpPromise = null;
     let scanned = false;
     let qrScanner = null;
-    let connectedAccount = null; // accountKey string after verification
-    let connectedAccountData = null; // account data object
-    let currentUsername = null; // holds selected/created username
+    let connectedAccount = null; 
+    let connectedAccountData = null; 
+    let currentUsername = null; 
+    let socialAuthTempUser = null; // Holds the user obj during intermediary social setup
 
-    // ---------- UI Dynamic Loading Interceptor Engine ----------
-    function toggleLoader(show, text = "Processing operations...") {
-        const loader = document.getElementById('global-process-loader');
-        const txtNode = document.getElementById('loader-text');
-        if (!loader) return;
-        if (txtNode) txtNode.textContent = text;
-        if (show) {
+    // --- Loading UI ---
+    function setLoaderState(isActive, text = 'Processing...') {
+        const loader = document.getElementById('global-loader');
+        const loaderText = document.getElementById('global-loader-text');
+        if(isActive) {
+            loaderText.textContent = text;
             loader.classList.remove('hidden');
+            loader.classList.add('flex');
         } else {
             loader.classList.add('hidden');
-        }
-    }
-
-    // Dynamic length tracking updater
-    function updateCharCounter(inputId, counterId) {
-        const field = document.getElementById(inputId);
-        const counter = document.getElementById(counterId);
-        if (field && counter) {
-            counter.textContent = `${field.value.length} / 20`;
+            loader.classList.remove('flex');
         }
     }
 
@@ -344,7 +352,6 @@
         return os;
     }
 
-    // Initialize FingerprintJS and get visitor ID (non-blocking)
     (function initFingerprint(){
         try {
             fpPromise = FingerprintJS.load();
@@ -356,20 +363,10 @@
                 const el2 = document.getElementById('identify-device-name');
                 if(el2) el2.textContent = currentDeviceName;
             }).catch(err=>{
-                console.warn('Fingerprint init error', err);
                 currentDeviceName = 'Unknown Device';
-                const el = document.getElementById('detected-device-name');
-                if(el) el.textContent = currentDeviceName;
-                const el2 = document.getElementById('identify-device-name');
-                if(el2) el2.textContent = currentDeviceName;
             });
         } catch (e) {
-            console.warn('Fingerprint not available', e);
             currentDeviceName = 'Unknown Device';
-            const el = document.getElementById('detected-device-name');
-            if(el) el.textContent = currentDeviceName;
-            const el2 = document.getElementById('identify-device-name');
-            if(el2) el2.textContent = currentDeviceName;
         }
     })();
 
@@ -385,19 +382,6 @@
         window.location.href = '/Avanti_ledger/dashboard.html';
     }
 
-    // --- Auto-Login check ---
-    (function checkAutoLogin() {
-        const accountKey = localStorage.getItem('AV_ledger_account_key');
-        const username = localStorage.getItem('AV_ledger_username');
-        if (accountKey && username) {
-            console.log(`Auto-logging in as ${username} on account ${accountKey}`);
-            setTimeout(() => {
-                toggleLoader(true, "Auto-authenticating active ledger workspace...");
-                window.location.href = 'dashboard.html';
-            }, 100);
-        }
-    })();
-
     // ---------- UI helpers ----------
     function toast(title, message, ok=true){
         const t = document.getElementById('toast');
@@ -412,177 +396,130 @@
     function switchTab(tab){
         document.getElementById('section-signup').classList.toggle('hidden', tab !== 'signup');
         document.getElementById('section-signin').classList.toggle('hidden', tab !== 'signin');
-        document.getElementById('tab-signin').classList.toggle('text-indigo-600', tab==='signin');
-        document.getElementById('tab-signup').classList.toggle('text-indigo-600', tab==='signup');
-        document.getElementById('tab-signin').classList.toggle('border-b-2', tab==='signin');
-        document.getElementById('tab-signup').classList.toggle('border-b-2', tab==='signup');
+        document.getElementById('tab-signin').classList.toggle('border-transparent', tab!=='signin');
+        document.getElementById('tab-signup').classList.toggle('border-transparent', tab!=='signup');
     }
 
-    function showScanView(){
-        hideAllSubViews();
-        document.getElementById('section-scan').classList.remove('hidden');
-        startScanner();
-    }
-    function showCodeView(){
-        hideAllSubViews();
-        document.getElementById('section-code').classList.remove('hidden');
-        stopScanner();
-    }
+    function showScanView(){ hideAllSubViews(); document.getElementById('section-scan').classList.remove('hidden'); startScanner(); }
+    function showCodeView(){ hideAllSubViews(); document.getElementById('section-code').classList.remove('hidden'); stopScanner(); }
+    
     function backToAuth(){
         hideAllSubViews();
         stopScanner();
         document.getElementById('section-signin').classList.remove('hidden');
         document.getElementById('view-auth').classList.remove('hidden');
-        document.getElementById('view-identify').classList.add('hidden');
-        document.getElementById('view-social-setup').classList.add('hidden');
         connectedAccount = null;
         connectedAccountData = null;
+        socialAuthTempUser = null;
     }
 
-    // border configuration variables tracking definitions
     function hideAllSubViews(){
-        const ids = ['section-scan','section-code','section-signin','section-signup'];
-        ids.forEach(id => { const el = document.getElementById(id); if(el) el.classList.add('hidden'); });
+        ['section-scan','section-code','section-signin','section-signup','view-identify','view-social-setup'].forEach(id => { 
+            const el = document.getElementById(id); if(el) el.classList.add('hidden'); 
+        });
         document.getElementById('view-auth').classList.remove('hidden');
-        document.getElementById('view-identify').classList.add('hidden');
-        document.getElementById('view-social-setup').classList.add('hidden');
     }
 
-    // ---------- Utility: sanitize account key ----------
     function sanitizeAccountKey(name){
-        return String(name || '')
-            .trim()
-            .toLowerCase()
-            .replace(/\s+/g,'_')
-            .replace(/[^a-z0-9_\-]/g,'')
-            .slice(0,60) || 'account_' + Math.random().toString(36).slice(2,8);
+        return String(name || '').trim().toLowerCase().replace(/\s+/g,'_').replace(/[^a-z0-9_\-]/g,'').slice(0,60) || 'account_' + Math.random().toString(36).slice(2,8);
     }
 
-    // ---------- Native OAuth Federation Routing Engine ----------
-    async function handleSocialAuth(providerType) {
+    // ---------- Social Auth Flow ----------
+    async function handleSocialAuth(providerName) {
+        setLoaderState(true, `Connecting to ${providerName}...`);
         let provider;
-        if (providerType === 'google') {
-            provider = new firebase.auth.GoogleAuthProvider();
-        } else if (providerType === 'facebook') {
-            provider = new firebase.auth.FacebookAuthProvider();
-        } else if (providerType === 'apple') {
-            provider = new firebase.auth.OAuthProvider('apple.com');
-        } else {
-            return;
-        }
+        if(providerName === 'Google') provider = googleProvider;
+        else if(providerName === 'Facebook') provider = facebookProvider;
+        else if(providerName === 'Apple') provider = appleProvider;
 
-        toggleLoader(true, `Connecting to ${providerType} secure servers...`);
-        
         try {
             const result = await auth.signInWithPopup(provider);
             const user = result.user;
             
-            // Check if this explicit social user UID is already indexed inside the database
-            const accountsSnap = await rdb.ref("accounts").orderByChild("uid").equalTo(user.uid).get();
-            
-            if (accountsSnap.exists()) {
-                // Existing account discovered; intercept profile selector interface
+            // Check if user already exists in RTDB via their verified email
+            const emailQuery = user.email ? user.email : user.uid + "@social.avanti";
+            const accountsSnap = await rdb.ref("accounts").orderByChild("email").equalTo(emailQuery).once('value');
+
+            if(accountsSnap.exists()) {
+                // Existing Account -> Proceed to identify view
                 const accountKey = Object.keys(accountsSnap.val())[0];
                 connectedAccount = accountKey;
                 connectedAccountData = accountsSnap.val()[accountKey];
-
-                const el = document.getElementById("connected-account-name");
-                if (el) el.textContent = connectedAccountData.displayName || accountKey;
-
+                
+                document.getElementById('connected-account-name').textContent = connectedAccountData.displayName || connectedAccount;
+                
+                setLoaderState(false);
                 document.getElementById("view-auth").classList.add("hidden");
                 document.getElementById("view-identify").classList.remove("hidden");
-
                 await renderProfilesList();
-                toggleLoader(false);
-                toast("Sign In Success", "Select your active ledger user profile");
+                toast("Account Verified", "Select your profile");
             } else {
-                // Brand new user registration instance: display prompt for workspace credentials
+                // New Account -> Trigger mandatory setup
+                socialAuthTempUser = user;
+                setLoaderState(false);
                 document.getElementById("view-auth").classList.add("hidden");
                 document.getElementById("view-social-setup").classList.remove("hidden");
                 
-                // Pre-populate input options with safe parameters if available
-                if (user.displayName) {
-                    const fallbackName = user.displayName.slice(0, 20);
-                    document.getElementById("social-setup-account-name").value = fallbackName;
-                    document.getElementById("social-setup-username").value = fallbackName;
-                    updateCharCounter('social-setup-account-name', 'social-account-counter');
-                    updateCharCounter('social-setup-username', 'social-user-counter');
+                // Pre-fill Name if available from provider
+                if(user.displayName) {
+                     document.getElementById("social-account-name").value = user.displayName.substring(0, 20);
                 }
-                toggleLoader(false);
-                toast("Identity Authenticated", "Define your account and profile structures.");
             }
         } catch (err) {
-            toggleLoader(false);
-            toast("Federated Auth Failure", err.message || String(err), false);
+            setLoaderState(false);
+            if(err.code !== 'auth/popup-closed-by-user') {
+                toast("Authentication Failed", err.message, false);
+            }
         }
     }
 
-    // Intercept form submission mapping metadata initialization requests
+    // Finalize Account Setup for Social Users
     document.getElementById("form-social-setup").addEventListener("submit", async (e) => {
         e.preventDefault();
-        const accountName = document.getElementById("social-setup-account-name").value.trim();
-        const username = document.getElementById("social-setup-username").value.trim();
-        const currentUser = auth.currentUser;
+        const accName = document.getElementById("social-account-name").value.trim();
+        const username = document.getElementById("social-username").value.trim();
+        if(!accName || !username) return;
 
-        if (!accountName || !username || !currentUser) {
-            toast("Configuration Error", "All registration input entries must be populated", false);
-            return;
-        }
-        if (accountName.length > 20 || username.length > 20) {
-            toast("Length Violation", "Fields must not exceed 20 characters length thresholds", false);
-            return;
-        }
-
-        toggleLoader(true, "Allocating ledger directory sandboxes...");
-
+        setLoaderState(true, "Configuring System Architecture...");
+        
         try {
-            const accountKey = sanitizeAccountKey(accountName);
+            const accountKey = sanitizeAccountKey(accName);
+            const fallbackEmail = socialAuthTempUser.email || socialAuthTempUser.uid + "@social.avanti";
             
-            // Build out top level schema node configurations
             await rdb.ref("accounts/" + accountKey).set({
-                displayName: accountName,
-                email: currentUser.email || `${currentUser.uid}@social.avanti`,
-                phone: currentUser.phoneNumber || "",
-                uid: currentUser.uid,
+                displayName: accName,
+                email: fallbackEmail,
+                uid: socialAuthTempUser.uid,
                 createdAt: Date.now()
             });
 
-            // Set up initial account admin profile context mapping directly
-            await rdb.ref(`accounts/${accountKey}/profiles/${username}`).set({
+            await rdb.ref("accounts/" + accountKey + "/profiles/" + username).set({
                 deviceName: currentDeviceName,
-                authStatus: "Admin",
+                authStatus: 'Admin',
                 createdAt: Date.now()
             });
 
-            toggleLoader(false);
-            toast("Sandbox Complete", `Initialized ${accountName} secure runtime database structure`);
-            completeLogin(accountKey, username, "Admin");
-        } catch (err) {
-            toggleLoader(false);
-            toast("Initialization Fault", err.message || String(err), false);
+            setLoaderState(false);
+            toast('Initialization Complete', 'Welcome to Avanti Ledger');
+            completeLogin(accountKey, username, 'Admin');
+        } catch(err) {
+            setLoaderState(false);
+            toast('Setup Error', err.message, false);
         }
     });
 
-    // ---------- Signup flow ----------
+    // ---------- Email Signup flow ----------
     document.getElementById("form-signup").addEventListener("submit", async (e) => {
         e.preventDefault();
         const accountName = document.getElementById("signup-name").value.trim();
         const contact = document.getElementById("signup-contact").value.trim();
         const password = document.getElementById("signup-password").value;
-        
         if (!accountName || !contact || !password) { toast("Missing fields", "Fill all fields", false); return; }
-        if (accountName.length > 20) { toast("Length Limit", "Account name cannot exceed 20 characters", false); return; }
 
-        toggleLoader(true, "Registering profile security credentials...");
+        setLoaderState(true, "Provisioning Account...");
 
-        let emailToUse = "";
-        let phoneNumber = "";
-        if (contact.includes("@")) {
-            emailToUse = contact;
-        } else {
-            phoneNumber = contact.replace(/\D/g, "");
-            emailToUse = phoneNumber + "@phone.avanti";
-        }
+        let emailToUse = contact.includes("@") ? contact : contact.replace(/\D/g, "") + "@phone.avanti";
+        let phoneNumber = contact.includes("@") ? "" : contact.replace(/\D/g, "");
 
         try {
             const cred = await auth.createUserWithEmailAndPassword(emailToUse, password);
@@ -595,15 +532,13 @@
                 createdAt: Date.now()
             });
             connectedAccount = accountKey;
-            connectedAccountData = {
-                displayName: accountName,
-                email: emailToUse
-            };
-            toggleLoader(false);
+            connectedAccountData = { displayName: accountName, email: emailToUse };
+            
+            setLoaderState(false);
             openIdentifyForNewAccount(true);
             toast("Account Created", "Create your first profile");
         } catch (err) {
-            toggleLoader(false);
+            setLoaderState(false);
             toast("Sign Up Error", err.message || String(err), false);
         }
     });
@@ -613,10 +548,7 @@
         document.getElementById('view-auth').classList.add('hidden');
         document.getElementById('view-identify').classList.remove('hidden');
         renderProfilesList();
-        document.getElementById('identity-username').value = (connectedAccountData?.displayName || '').slice(0, 20);
-        updateCharCounter('identity-username', 'identify-user-counter');
-        const el = document.getElementById('identify-device-name');
-        if(el) el.textContent = currentDeviceName;
+        document.getElementById('identity-username').value = connectedAccountData?.displayName?.substring(0, 20) || '';
     }
 
     async function renderProfilesList(){
@@ -624,84 +556,65 @@
         if(!listDiv) return;
         listDiv.innerHTML = '';
         if(!connectedAccount) return;
+        
         const snap = await rdb.ref('accounts/' + connectedAccount + '/profiles').get();
         if(!snap.exists()){
-            listDiv.innerHTML = '<div class="text-xs text-gray-400 mb-3">No profiles yet for this account. Create one below.</div>';
+            listDiv.innerHTML = '<div class="text-xs text-gray-400 mb-3 text-center">No profiles initialized.</div>';
             return;
         }
+        
         const profiles = snap.val();
         const container = document.createElement('div');
         container.className = 'space-y-2';
         Object.keys(profiles).forEach(username => {
             const p = profiles[username];
             const btn = document.createElement('button');
-            btn.className = 'w-full text-left px-4 py-2 bg-gray-50 rounded-lg flex justify-between items-center hover:bg-indigo-50 transition-colors';
-            btn.innerHTML = `<div><div class="font-medium">${username}</div><div class="text-xs text-gray-500">${p.authStatus || 'Standard'} • ${p.deviceName || ''}</div></div><div><i class="fas fa-sign-in-alt text-indigo-600"></i></div>`;
+            btn.className = 'w-full text-left px-4 py-3 bg-gray-50 rounded-lg flex justify-between items-center hover:bg-gray-100 transition-colors border border-transparent hover:border-gray-200';
+            btn.innerHTML = `<div><div class="font-semibold text-gray-800">${username}</div><div class="text-xs text-gray-500 mt-0.5">${p.authStatus || 'Standard'} • ${p.deviceName || 'Linked Device'}</div></div><div><i class="fas fa-chevron-right text-gray-400 text-sm"></i></div>`;
             btn.onclick = () => onSelectExistingProfile(username, p);
             container.appendChild(btn);
         });
         listDiv.appendChild(container);
     }
 
-    // ---------- Profile selection & admin reauth ----------
     async function onSelectExistingProfile(username, profileObj){
         currentUsername = username;
         const finalAuthStatus = profileObj?.authStatus || 'Standard';
 
         if (finalAuthStatus === 'Admin') {
-            const pw = prompt('Admin profile selected. Enter account password to continue:');
-            if (!pw) {
-                toast('Cancelled','Password required for Admin', false);
-                return;
-            }
+            const pw = prompt('Security Verification: Enter password to access Admin profile.');
+            if (!pw) return toast('Verification Required','Password is required for Admin access', false);
 
-            toggleLoader(true, "Verifying master administrative override authorization credentials...");
-
+            setLoaderState(true, "Authenticating...");
             try {
                 const user = auth.currentUser;
-                const emailForReauth = (user && user.email) ? user.email : (connectedAccountData && connectedAccountData.email) ? connectedAccountData.email : null;
-                if (!emailForReauth) {
-                    toggleLoader(false);
-                    toast('Auth Error','No email available to verify admin password', false);
-                    return;
-                }
+                const emailForReauth = (user && user.email) ? user.email : connectedAccountData?.email;
+                
+                if (!emailForReauth) throw new Error("No linked email");
 
                 const credential = firebase.auth.EmailAuthProvider.credential(emailForReauth, pw);
+                if (user) await user.reauthenticateWithCredential(credential);
+                else await auth.signInWithEmailAndPassword(emailForReauth, pw);
 
-                if (user) {
-                    await user.reauthenticateWithCredential(credential);
-                } else {
-                    await auth.signInWithEmailAndPassword(emailForReauth, pw);
-                }
-
-                toggleLoader(false);
-                toast('Admin Login Successful','Redirecting to Home...');
+                setLoaderState(false);
+                toast('Verified','Initializing Environment...');
                 completeLogin(connectedAccount, username, finalAuthStatus);
                 return;
             } catch (err) {
-                toggleLoader(false);
-                console.error('Admin reauth failed', err);
-                toast('Wrong password','Admin password did not match', false);
-                return;
+                setLoaderState(false);
+                return toast('Access Denied','Invalid security credentials.', false);
             }
         }
-
-        toast('Signed in','Signed in as ' + username + '. Redirecting...');
+        setLoaderState(true, "Signing in...");
         completeLogin(connectedAccount, username, finalAuthStatus);
     }
 
-    // ---------- Identify form submit (create or use profile) ----------
     document.getElementById('form-identify').addEventListener('submit', async (e) => {
         e.preventDefault();
         const username = document.getElementById('identity-username').value.trim();
-        if(!username) { toast('Missing name','Enter a name for this profile', false); return; }
-        if(username.length > 20) { toast('Invalid length', 'Usernames can only be up to 20 characters long', false); return; }
-        if(!connectedAccount){
-            toast('No account','Internal error: no connected account', false); return;
-        }
+        if(!username) return;
 
-        toggleLoader(true, "Configuring user profile node access keys...");
-
+        setLoaderState(true, "Syncing Profile...");
         const profileRef = rdb.ref('accounts/' + connectedAccount + '/profiles/' + username);
         const snap = await profileRef.get();
         let authStatus = 'Standard';
@@ -709,27 +622,19 @@
         if(snap.exists()){
             const p = snap.val();
             authStatus = p.authStatus || 'Standard';
-            const existingDevice = p.deviceName || '';
-            const parts = existingDevice ? existingDevice.split('&').map(s=>s.trim()).filter(Boolean) : [];
+            const parts = p.deviceName ? p.deviceName.split('&').map(s=>s.trim()).filter(Boolean) : [];
             if(!parts.includes(currentDeviceName)) parts.push(currentDeviceName);
-            const newDeviceName = parts.join(' & ');
-            await profileRef.update({ deviceName: newDeviceName });
-            toggleLoader(false);
-            toast('Signed in','Welcome back, '+username + '. Redirecting...');
+            await profileRef.update({ deviceName: parts.join(' & ') });
+            
+            setLoaderState(false);
             completeLogin(connectedAccount, username, authStatus);
-            return;
         } else {
             const profilesSnap = await rdb.ref('accounts/' + connectedAccount + '/profiles').get();
             authStatus = (profilesSnap.exists() && Object.keys(profilesSnap.val()).length > 0) ? 'Standard' : 'Admin';
-            await profileRef.set({
-                deviceName: currentDeviceName,
-                authStatus: authStatus,
-                createdAt: Date.now()
-            });
-            toggleLoader(false);
-            toast('Profile created', username + ' ('+authStatus+')' + '. Redirecting...');
+            await profileRef.set({ deviceName: currentDeviceName, authStatus: authStatus, createdAt: Date.now() });
+            
+            setLoaderState(false);
             completeLogin(connectedAccount, username, authStatus);
-            return;
         }
     });
 
@@ -738,264 +643,92 @@
         e.preventDefault();
         const identifier = document.getElementById("login-identifier").value.trim();
         const password = document.getElementById("login-password").value;
-        if (!identifier || !password) { toast("Missing fields", "Fill all fields", false); return; }
+        if (!identifier || !password) return;
 
-        toggleLoader(true, "Locating system storage database matches...");
+        setLoaderState(true, "Validating Credentials...");
         let emailToUse = "";
 
         if (identifier.includes("@")) {
             emailToUse = identifier;
         } else if (/^\+?\d+$/.test(identifier)) {
-            const phoneDigits = identifier.replace(/\D/g, "");
-            emailToUse = phoneDigits + "@phone.avanti";
+            emailToUse = identifier.replace(/\D/g, "") + "@phone.avanti";
         } else {
             const usersSnap = await rdb.ref("accounts").once("value");
             let found = false;
             usersSnap.forEach((child) => {
-                const data = child.val();
-                if (data.displayName && data.displayName.toLowerCase() === identifier.toLowerCase()) {
-                    emailToUse = data.email;
+                if (child.val().displayName && child.val().displayName.toLowerCase() === identifier.toLowerCase()) {
+                    emailToUse = child.val().email;
                     found = true;
                 }
             });
-            if (!found) { toggleLoader(false); toast("Not Found", "Account name does not exist", false); return; }
+            if (!found) { setLoaderState(false); return toast("Not Found", "Account name does not exist", false); }
         }
 
         try {
             await auth.signInWithEmailAndPassword(emailToUse, password);
             const accountsSnap = await rdb.ref("accounts").orderByChild("email").equalTo(emailToUse).get();
-            if (!accountsSnap.exists()) { toggleLoader(false); toast("Login Failed", "Associated account not found", false); return; }
+            if (!accountsSnap.exists()) throw new Error("Database mismatch");
+            
             const accountKey = Object.keys(accountsSnap.val())[0];
             connectedAccount = accountKey;
             connectedAccountData = accountsSnap.val()[accountKey];
 
-            const el = document.getElementById("connected-account-name");
-            if (el) el.textContent = connectedAccountData.displayName || accountKey;
-
+            document.getElementById("connected-account-name").textContent = connectedAccountData.displayName || accountKey;
             document.getElementById("view-auth").classList.add("hidden");
             document.getElementById("view-identify").classList.remove("hidden");
 
             await renderProfilesList();
-            toggleLoader(false);
-            toast("Account Verified", "Select a profile to finish login");
+            setLoaderState(false);
+            toast("Identity Verified", "Select your profile workspace");
         } catch (err) {
-            toggleLoader(false);
-            toast("Login Failed", err.message || String(err), false);
+            setLoaderState(false);
+            toast("Access Denied", err.message || String(err), false);
         }
     });
 
-    // ---------- QR scanner (html5-qrcode) ----------
-    function startScanner(){
-        if(qrScanner) return;
-        const html5QrCode = new Html5Qrcode("reader");
-        qrScanner = html5QrCode;
-        const config = { fps: 10, qrbox: {width: 300, height: 200} };
-        html5QrCode.start(
-            { facingMode: "environment" },
-            config,
-            qrCodeMessage => {
-                if(scanned) return;
-                scanned = true;
-                handleScannedQr(qrCodeMessage);
-            },
-            errorMessage => { /* ignore scan errors */ }
-        ).then(()=> {
-            const s = document.getElementById('scan-status');
-            if(s) s.textContent = 'Scanning...';
-        }).catch(err=>{
-            const s = document.getElementById('scan-status');
-            if(s) s.textContent = 'Camera permission denied or not available.';
-            console.warn('QR start error', err);
-        });
-    }
-    function stopScanner(){
-        scanned = false;
-        if(!qrScanner) return;
-        qrScanner.stop().then(()=> { qrScanner.clear(); qrScanner = null; const s = document.getElementById('scan-status'); if(s) s.textContent = 'Stopped'; }).catch(()=>{ qrScanner = null; });
-    }
-
-    async function handleScannedQr(payload){
-        let data = null;
-        try { data = JSON.parse(payload); } catch(e){}
-        if(!data || !data.type){
-            toast('Invalid QR','Scanned QR is not valid', false);
-            stopScanner();
-            backToAuth();
-            return;
-        }
-        if(data.type === 'login' && data.account){
-            toggleLoader(true, "Analyzing token context strings...");
-            const accSnap = await rdb.ref('accounts/' + data.account).get();
-            if(!accSnap.exists()){ toggleLoader(false); toast('Account not found','QR refers to unknown account', false); stopScanner(); backToAuth(); return; }
-            connectedAccount = data.account;
-            connectedAccountData = accSnap.val();
-            const nameEl = document.getElementById('connected-account-name');
-            if(nameEl) nameEl.textContent = connectedAccountData.displayName || connectedAccount;
-            document.getElementById('view-auth').classList.add('hidden');
-            document.getElementById('view-identify').classList.remove('hidden');
-            await renderProfilesList();
-            toggleLoader(false);
-            toast('QR accepted','Choose or create a profile to complete login');
-            stopScanner();
-        } else {
-            toast('Unsupported QR','Scanned QR does not contain login info', false);
-            stopScanner();
-            backToAuth();
-        }
-    }
-
-    // ---------- Code input ----------
-    document.getElementById('form-code').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const code = document.getElementById('access-code').value.trim().toUpperCase();
-        if(!code || code.length !== 6){ toast('Invalid code','Enter a 6-character code', false); return; }
-
-        toggleLoader(true, "Decrypting localized numeric tokens...");
-        const accountsSnap = await rdb.ref('accounts').get();
-        if(!accountsSnap.exists()){ toggleLoader(false); toast('Invalid code','No account codes found', false); return; }
-        let found = null;
-        accountsSnap.forEach(accSnap=>{
-            const acc = accSnap.val();
-            if(acc.codes && acc.codes[code]){
-                found = { key: accSnap.key, data: acc, meta: acc.codes[code] };
-            }
-        });
-        if(!found){ toggleLoader(false); toast('Code not found','Invalid or expired code', false); return; }
-        if(found.meta.expiresAt && Date.now() > found.meta.expiresAt){
-            toggleLoader(false);
-            toast('Code expired','This code has expired', false);
-            return;
-        }
-
-        connectedAccount = found.key;
-        connectedAccountData = found.data;
-        const nameEl = document.getElementById('connected-account-name');
-        if(nameEl) nameEl.textContent = connectedAccountData.displayName || connectedAccount;
-        document.getElementById('view-auth').classList.add('hidden');
-        document.getElementById('view-identify').classList.remove('hidden');
-        await renderProfilesList();
-        toggleLoader(false);
-        toast('Code accepted', 'Select or create profile to complete login');
-    });
-
-    // ---------- Cleanup ----------
-    window.addEventListener('beforeunload', () => {
-        if(qrScanner) try { qrScanner.stop(); } catch(e){}
-    });
-
-    console.log('Avanti-Ledger login script loaded. Local Storage auto-login enabled.');
-</script>
-
-<div id="network-overlay" style="display: none;">
-    <div class="loader-content">
-        <div class="spinner"></div>
-        <p><i class="fa fa-exclamation-triangle"></i> This page is not available. Check your internet connection.</p>
-    </div>
-</div>
-
-<style>
-    #network-overlay {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(255, 255, 255, 0.4);
-        backdrop-filter: blur(8px);
-        -webkit-backdrop-filter: blur(8px);
-        z-index: 99;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        font-family: sans-serif;
-    }
-    .loader-content { text-align: center; color: #333; }
-    .spinner {
-        width: 50px;
-        height: 50px;
-        border: 5px solid #f3f3f3;
-        border-top: 5px solid #3498db;
-        border-radius: 50%;
-        animation: spin 1s linear infinite;
-        margin: 0 auto 20px;
-    }
-</style>
-
-<script>
+    // ---------- Network Monitor ----------
     const overlay = document.getElementById('network-overlay');
     function checkNetwork() {
         const isOnline = navigator.onLine;
-        let isSlow = false;
-        if (navigator.connection) {
-            const type = navigator.connection.effectiveType;
-            if (type === 'slow-2g' || type === '2g') {
-                isSlow = true;
-            }
-        }
-        if (!isOnline || isSlow) {
-            overlay.style.display = 'flex';
-        } else {
-            overlay.style.display = 'none';
-        }
+        let isSlow = navigator.connection && (navigator.connection.effectiveType === 'slow-2g' || navigator.connection.effectiveType === '2g');
+        overlay.style.display = (!isOnline || isSlow) ? 'flex' : 'none';
     }
     window.addEventListener('online', checkNetwork);
     window.addEventListener('offline', checkNetwork);
-    if (navigator.connection) {
-        navigator.connection.addEventListener('change', checkNetwork);
-    }
+    if (navigator.connection) navigator.connection.addEventListener('change', checkNetwork);
     checkNetwork();
-</script>
- 
-<script>
-(function () {
-    const requiredKeys = ['AV_ledger_account_key', 'AV_ledger_username', 'AV_ledger_auth_status'];
-    const allExist = requiredKeys.every(key => {
-        const value = localStorage.getItem(key);
-        return value !== null && value !== '';
-    });
-    if (allExist) {
-        window.location.replace('dashboard.html');
-    }
-})();
-</script>
 
-<script>
-(function() {
-    const ACCOUNT_KEY_STORAGE = 'AV_ledger_account_key';
-    const currentLocalKey = localStorage.getItem(ACCOUNT_KEY_STORAGE);
-    if (!currentLocalKey) return;
+    // ---------- Migration/Auth Safety Checks ----------
+    (function () {
+        if (['AV_ledger_account_key','AV_ledger_username','AV_ledger_auth_status'].every(k => localStorage.getItem(k))) {
+            window.location.replace('dashboard.html');
+        }
+    })();
 
-    const accountsRef = firebase.database().ref('accounts');
-    accountsRef.on('value', (snapshot) => {
-        const allAccounts = snapshot.val();
-        if (!allAccounts) return;
-        if (allAccounts[currentLocalKey]) return;
+    (function() {
+        const currentLocalKey = localStorage.getItem('AV_ledger_account_key');
+        if (!currentLocalKey) return;
 
-        console.warn("Current Account Key not found. Searching for migration...");
-        let migrationFound = false;
+        firebase.database().ref('accounts').on('value', (snapshot) => {
+            const allAccounts = snapshot.val();
+            if (!allAccounts || allAccounts[currentLocalKey]) return;
 
-        for (const [newSlug, data] of Object.entries(allAccounts)) {
-            if (data.oldAccountKeys && Array.isArray(data.oldAccountKeys) && data.oldAccountKeys.includes(currentLocalKey)) {
-                console.log(`Account Migration Detected! ${currentLocalKey} -> ${newSlug}`);
-                localStorage.setItem(ACCOUNT_KEY_STORAGE, newSlug);
-                migrationFound = true;
-                window.location.reload();
-                break;
+            let migrationFound = false;
+            for (const [newSlug, data] of Object.entries(allAccounts)) {
+                if (data.oldAccountKeys && data.oldAccountKeys.includes(currentLocalKey)) {
+                    localStorage.setItem('AV_ledger_account_key', newSlug);
+                    migrationFound = true;
+                    window.location.reload();
+                    break;
+                }
             }
-        }
+            if (!migrationFound) {
+                localStorage.clear();
+                window.location.href = "index.html";
+            }
+        });
+    })();
 
-        if (!migrationFound) {
-            console.error("Account has been deleted or access revoked.");
-            localStorage.clear();
-            window.location.href = "index.html";
-        }
-    }, (error) => {
-        if (error.code === 'PERMISSION_DENIED') {
-            console.warn("Access denied globally.");
-        }
-    });
-})();
 </script>
-
 </body>
 </html>
