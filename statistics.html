@@ -1721,7 +1721,7 @@ Expenses</span>
         <div style="border-bottom:1px solid var(--av-border); padding: 0 60px 16px 24px; background: transparent;">
             <div style="display:flex; align-items:center; gap: 10px;">
                 <i class="fas fa-file-contract" style="color:var(--av-blue); font-size: 20px;"></i>
-                <h2 style="margin:0; font-family:-apple-system, BlinkMacSystemFont, sans-serif; font-size: 19px; font-weight: 700; color: var(--av-text-primary);">Bookkeeping Integrity Audit </h2>
+                <h2 style="margin:0; font-family:-apple-system, BlinkMacSystemFont, sans-serif; font-size: 24px; font-weight: 700; color: var(--av-text-primary);">Bookkeeping Integrity Audit </h2>
             </div>
         </div>
         
@@ -4340,8 +4340,8 @@ const AvantiInsights = {
         stockMismatch: (data) => `
             <div style="background:var(--av-surface); padding:16px; border-radius:12px; margin-bottom:12px; border-left: 4px solid var(--av-orange);">
                 <h4 style="margin:0 0 8px 0; color:var(--av-orange);"><i class="fas fa-boxes"></i> Stock Reconciliation Error</h4>
-                <p style="margin:0; font-size:14px;">${data.message}</p>
-                <div style="display:flex; justify-content:space-between; margin-top:12px; font-size:14px; color:var(--av-text-secondary);">
+                <p style="margin:0; font-size:16px;">${data.message}</p>
+                <div style="display:flex; justify-content:space-between; margin-top:12px; font-size:16px; color:var(--av-text-secondary);">
                     <div>Yesterday Close: <strong style="color:#fff;">${data.prevClosing}</strong></div>
                     <div><i class="fas fa-arrow-right"></i></div>
                     <div>Today Open: <strong style="color:var(--av-red);">${data.currentOpening}</strong></div>
@@ -4351,8 +4351,8 @@ const AvantiInsights = {
         pricingAnomaly: (data) => `
             <div style="background:var(--av-surface); padding:16px; border-radius:12px; margin-bottom:12px; border-left: 4px solid var(--av-red);">
                 <h4 style="margin:0 0 8px 0; color:var(--av-red);"><i class="fas fa-tag"></i> Profit Margin Violation</h4>
-                <p style="margin:0; font-size:14px;">${data.message}</p>
-                <div style="margin-top:12px; font-size:14px; color:var(--av-text-secondary); background: rgba(255,69,58,0.1); padding:8px; border-radius:6px;">
+                <p style="margin:0; font-size:16px;">${data.message}</p>
+                <div style="margin-top:12px; font-size:16px; color:var(--av-text-secondary); background: rgba(255,69,58,0.1); padding:8px; border-radius:6px;">
                     <strong>Advisory:</strong> Adjust selling price to <strong>K${data.targetPrice.toFixed(2)}</strong> (+30% of cost).
                 </div>
             </div>`,
@@ -4361,7 +4361,7 @@ const AvantiInsights = {
             <div style="text-align:center; padding: 20px;">
                 <i class="fas fa-check-circle" style="font-size:48px; color:#32D74B; margin-bottom:12px;"></i>
                 <h4 style="margin:0; color:var(--av-text-primary);">Integrity Verified</h4>
-                <p style="font-size:13px; color:var(--av-text-secondary); margin-top:8px;">No discrepancies detected in pricing algorithms or stock continuity.</p>
+                <p style="font-size:16px; color:var(--av-text-secondary); margin-top:8px;">No discrepancies detected in pricing algorithms or stock continuity.</p>
             </div>`,
             
         expenseWarning: (revenue, expenses) => `
@@ -4507,10 +4507,58 @@ const AvantiInsights = {
             else if (analysis.status === 'high') minorErrors++;
 
             if (analysis.threats.length > 0) {
-                itemReports += `<div style="border-bottom:1px solid rgba(255,255,255,0.1); padding:10px 0;">
-                    <strong style="color:var(--av-text-primary);">${item.name}</strong><br>
-                    <span style="color:#FF453A; font-size:14px;">${analysis.threats.map(t=>t.message).join('<br>')}</span>
-                </div>`;
+                itemReports += `<div style="
+    display: flex; 
+    flex-direction: column; 
+    gap: 10px; 
+    padding: 20px 24px; 
+    margin-bottom: 12px;
+    border: 1px solid rgba(255, 59, 48, 0.15);
+    border-left: 4px solid #FF3B30;
+    border-radius: 0 16px 16px 0; 
+    background: linear-gradient(90deg, rgba(255, 59, 48, 0.04) 0%, rgba(255, 59, 48, 0.005) 100%);
+    box-shadow: 0 4px 12px rgba(255, 59, 48, 0.03), 0 1px 2px rgba(0, 0, 0, 0.02);
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+" onmouseover="this.style.background='linear-gradient(90deg, rgba(255, 59, 48, 0.07) 0%, rgba(255, 59, 48, 0.02) 100%)'; this.style.transform='translateX(6px)'; this.style.boxShadow='0 6px 16px rgba(255, 59, 48, 0.06), 0 2px 4px rgba(0, 0, 0, 0.03)';" onmouseout="this.style.background='linear-gradient(90deg, rgba(255, 59, 48, 0.04) 0%, rgba(255, 59, 48, 0.005) 100%)'; this.style.transform='translateX(0px)'; this.style.boxShadow='0 4px 12px rgba(255, 59, 48, 0.03), 0 1px 2px rgba(0, 0, 0, 0.02)';">
+    
+    <!-- Header: Title & High-Contrast Tag -->
+    <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px;">
+        <strong style="
+            color: #1C1C1E; 
+            font-size: 19px; 
+            font-weight: 600; 
+            letter-spacing: -0.01em;
+            line-height: 1.3;
+        ">
+            ${item.name}
+        </strong>
+        
+        <!-- Light-Mode Optimized Status Tag -->
+        <div style="display: flex; align-items: center; gap: 6px; background: rgba(255, 59, 48, 0.1); padding: 4px 10px; border-radius: 6px; border: 1px solid rgba(255, 59, 48, 0.15); flex-shrink: 0;">
+            <span style="width: 6px; height: 6px; background: #FF3B30; border-radius: 50%;"></span>
+            <span style="font-size: 10px; font-weight: 700; color: #D7261E; text-transform: uppercase; letter-spacing: 0.5px;">CRITICAL</span>
+        </div>
+    </div>
+    
+    <!-- Threat Insights: Dark text with high-contrast indicator arrows -->
+    <div style="
+        font-size: 15px; 
+        line-height: 1.6; 
+        font-weight: 400;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    ">
+        ${analysis.threats.map(t => `
+            <div style="display: flex; align-items: flex-start; gap: 8px;">
+                <span style="color: #FF3B30; font-weight: 700; font-size: 14px; line-height: 1.5;">→</span>
+                <span style="color: #3A3A3C; font-weight: 400;">${t.message}</span>
+            </div>
+        `).join('')}
+    </div>
+</div>
+
+`;
             }
         });
 
@@ -4518,25 +4566,37 @@ const AvantiInsights = {
         const healthScore = Math.max(0, 100 - (criticalErrors * 15) - (minorErrors * 5));
 
         reportHtml += `
-            <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px;">
-                <div style="background:var(--av-surface); padding:16px; border-radius:12px; text-align:center;">
-                    <div style="font-size:32px; font-weight:800; color:${healthScore > 80 ? '#32D74B' : (healthScore > 50 ? '#FF9F0A' : '#FF453A')};">${healthScore}%</div>
-                    <div style="font-size:14px; color:var(--av-text-secondary); text-transform:uppercase;">System Health</div>
-                </div>
-                <div style="background:var(--av-surface); padding:16px; border-radius:12px; text-align:center;">
-                    <div style="font-size:32px; font-weight:800; color:#FF453A;">${criticalErrors}</div>
-                    <div style="font-size:14px; color:var(--av-text-secondary); text-transform:uppercase;">Errors</div>
-                </div>
-                <div style="background:var(--av-surface); padding:16px; border-radius:12px; text-align:center;">
-                    <div style="font-size:32px; font-weight:800; color:#0A84FF;">${Object.keys(dateData.items||{}).length}</div>
-                    <div style="font-size:12px; color:var(--av-text-secondary); text-transform:uppercase;">Tracked Assets</div>
-                </div>
-            </div>
+          <div style="display: flex; align-items: center; justify-content: space-between; background: var(--av-surface); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 100px; padding: 12px 32px; gap: 24px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);">
+    <!-- System Health -->
+    <div style="flex: 1; text-align: center;">
+        <div style="font-size:32px; font-weight:800; color:${healthScore > 80 ? '#32D74B' : (healthScore > 50 ? '#FF9F0A' : '#FF453A')}; line-height: 1.2;">${healthScore}%</div>
+        <div style="font-size:14px; color:var(--av-text-secondary); text-transform:uppercase; letter-spacing: 0.5px; margin-top: 2px;">System Health</div>
+    </div>
+
+    <!-- Divider -->
+    <div style="width: 1px; height: 32px; background: rgba(255, 255, 255, 0.15); flex-shrink: 0;"></div>
+
+    <!-- Errors -->
+    <div style="flex: 1; text-align: center;">
+        <div style="font-size:32px; font-weight:800; color:#FF453A; line-height: 1.2;">${criticalErrors}</div>
+        <div style="font-size:14px; color:var(--av-text-secondary); text-transform:uppercase; letter-spacing: 0.5px; margin-top: 2px;">Errors</div>
+    </div>
+
+    <!-- Divider -->
+    <div style="width: 1px; height: 32px; background: rgba(255, 255, 255, 0.15); flex-shrink: 0;"></div>
+
+    <!-- Tracked Assets -->
+    <div style="flex: 1; text-align: center;">
+        <div style="font-size:32px; font-weight:800; color:#0A84FF; line-height: 1.2;">${Object.keys(dateData.items||{}).length}</div>
+        <div style="font-size:14px; color:var(--av-text-secondary); text-transform:uppercase; letter-spacing: 0.5px; margin-top: 2px;">Tracked Assets</div>
+    </div>
+</div>
+
         `;
 
         if (totalExp > totalRev) reportHtml += this.Templates.expenseWarning(totalRev, totalExp);
 
-        reportHtml += `<h3 style="margin:20px 0 10px 0; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:8px;">Ledger Discrepancies</h3>`;
+        reportHtml += `<h1 style="margin:20px 0 10px 0; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:8px; font-size: 20px; font-weight: bold;">Ledger Discrepancies</h1>`;
         reportHtml += itemReports || `<p style="color:#32D74B;"><i class="fas fa-check-circle"></i> No discrepancies found in inventory lines.</p>`;
 
         document.getElementById('auditModalBody').innerHTML = reportHtml;
