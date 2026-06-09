@@ -508,7 +508,7 @@ overflow-wrap: break-word;
                     <i class="fas fa-chevron-left"></i> </a>Avanti<span class="text-blue-300">.ledger</span>
                 
             </h1>
-<div style="display: flex !important; justify-content: center !important; padding: 0px !important;">
+<div style="display: flex !important; justify-content: end !important; padding: 0px !important;">
     <span id="sync" style="
         background: rgba(255, 255, 255, 0.15);
         backdrop-filter: blur(12px) !important;
@@ -2060,7 +2060,7 @@ function updateSyncDisplay() {
             } 
             else if (sendTarget) {
                 newSource = `send:${sendTarget.status}`;
-                if (syncSpan) syncSpan.textContent = `Syncing to: ${sendTarget.status}`;
+                if (syncSpan) syncSpan.textContent = `Broadcasting to: ${sendTarget.status}`;
             } 
             else {
                 newSource = "none";
@@ -2750,7 +2750,6 @@ function renderExpensesIncomes(){
     updateTotalsNumbers();
 }
 
-/* ---------- Selection / Select Mode ---------- */
 function enterSelectMode() {
     const currentDateData = state.dates[state.currentDate];
     const isActuallyBalanced = currentDateData && (currentDateData.balanced === true || String(currentDateData.balanced).toLowerCase() === 'true');
@@ -2770,7 +2769,7 @@ function enterSelectMode() {
 
     const prevBtn = document.getElementById('prevDateBtn');
     if (prevBtn) {
-        prevBtn.innerHTML = '<i class="fas fa-check-double"></i>';
+        prevBtn.innerHTML = '<i style="font-size: 1.1em;" class="fas fa-check-double"></i>';
         prevBtn.onclick = selectAllItems;
         prevBtn.title = "Select All";
     }
@@ -2780,6 +2779,36 @@ function enterSelectMode() {
         nextBtn.innerHTML = '<i class="fas fa-trash"></i>';
         nextBtn.onclick = deleteSelectedItems;
         nextBtn.title = "Delete Selected";
+
+        // === INJECT DUPLICATE BUTTON WITH OFFLINE CHECK ===
+        let dupBtn = document.getElementById('duplicateSelectedBtn');
+        if (!dupBtn) {
+            dupBtn = document.createElement('button');
+            dupBtn.id = 'duplicateSelectedBtn';
+            dupBtn.className = nextBtn.className; 
+            if (nextBtn.getAttribute('style')) {
+                dupBtn.setAttribute('style', nextBtn.getAttribute('style'));
+            }
+            dupBtn.style.marginLeft = '15px'; 
+            dupBtn.innerHTML = '<i style="font-size: 1.1em;"class="fas fa-clone"></i>'; 
+            
+            // Handle offline restriction state safely at initialization
+            if (typeof isOnline !== 'undefined' && !isOnline) {
+                dupBtn.disabled = true;
+                dupBtn.style.opacity = '0.4';
+                dupBtn.style.cursor = 'not-allowed';
+                dupBtn.title = "Duplication requires an internet connection";
+                dupBtn.onclick = null;
+            } else {
+                dupBtn.disabled = false;
+                dupBtn.style.opacity = '1';
+                dupBtn.style.cursor = 'pointer';
+                dupBtn.title = "Duplicate Selected";
+                dupBtn.onclick = openDuplicateSheet;
+            }
+            
+            nextBtn.parentNode.insertBefore(dupBtn, nextBtn.nextSibling);
+        }
     }
 
     const pill = document.getElementById('dateNavPill');
@@ -2790,17 +2819,15 @@ function enterSelectMode() {
         `;
     }
 
-    // --- REPLACING THE BUTTON FOR SELECT MODE ---
     const oldBtn = document.getElementById('ledgerDropdownBtn');
     if (oldBtn) {
-        // Create an exact string copy, but with the disabled ID and the 'fa-times' (X) icon
         const editModeButtonHTML = `
             <button id="ledgerDropdownBtn_disabled" onclick="exitSelectMode()" style="padding: 12px; width: 48px; height: 48px; justify-content: center; border-radius: 12px; border: none; background-color: rgba(255, 255, 255, 0.15); color: #ffffff; font-size: 18px; cursor: pointer; display: flex; align-items: center; position: relative; backdrop-filter: blur(5px); transition: background-color 0.2s;" onmouseover="this.style.backgroundColor='rgba(255, 255, 255, 0.25)'" onmouseout="this.style.backgroundColor='rgba(255, 255, 255, 0.15)'">
                 <i id="moreIcon" class="fas fa-times"></i> 
             </button>
         `;
         oldBtn.insertAdjacentHTML('afterend', editModeButtonHTML);
-        oldBtn.remove(); // Completely deletes the old element and its listeners from memory
+        oldBtn.remove(); 
     }
 
     const tableControls = document.querySelector('.table-controls');
@@ -2815,11 +2842,17 @@ function enterSelectMode() {
     renderTable();
 }
 
+
 function exitSelectMode() {
     state.selectMode = false;
     state.selectedForDelete.clear();
 
-    // 1. Restore the Left Arrow (<)
+    // === CLEANUP DUPLICATE BUTTON ===
+    const dupBtn = document.getElementById('duplicateSelectedBtn');
+    if (dupBtn) {
+        dupBtn.remove();
+    }
+
     const prevBtn = document.getElementById('prevDateBtn');
     if (prevBtn) {
         prevBtn.innerHTML = '<i class="fas fa-chevron-left"></i>';
@@ -2827,7 +2860,6 @@ function exitSelectMode() {
         prevBtn.title = "Previous date";
     }
 
-    // 2. Restore the Right Arrow (>)
     const nextBtn = document.getElementById('nextDateBtn');
     if (nextBtn) {
         nextBtn.innerHTML = '<i class="fas fa-chevron-right"></i>';
@@ -2835,7 +2867,6 @@ function exitSelectMode() {
         nextBtn.title = "Next date";
     }
 
-    // 3. Restore the Center Display (Reporting Period)
     const pill = document.getElementById('dateNavPill');
     if (pill) {
         pill.innerHTML = `
@@ -2844,20 +2875,17 @@ function exitSelectMode() {
         `;
     }
 
-    // --- REPLACING THE BUTTON BACK TO ORIGINAL ---
     const disabledBtn = document.getElementById('ledgerDropdownBtn_disabled');
     if (disabledBtn) {
-        // Create an exact string copy of your original button layout
         const originalButtonHTML = `
             <button id="ledgerDropdownBtn" onclick="toggleLedgerDropdown(event)" style="padding: 12px; width: 48px; height: 48px; justify-content: center; border-radius: 12px; border: none; background-color: rgba(255, 255, 255, 0.15); color: #ffffff; font-size: 18px; cursor: pointer; display: flex; align-items: center; position: relative; backdrop-filter: blur(5px); transition: background-color 0.2s;" onmouseover="this.style.backgroundColor='rgba(255, 255, 255, 0.25)'" onmouseout="this.style.backgroundColor='rgba(255, 255, 255, 0.15)'">
                 <i id="moreIcon" class="fas fa-sliders-h"></i> 
             </button>
         `;
         disabledBtn.insertAdjacentHTML('afterend', originalButtonHTML);
-        disabledBtn.remove(); // Completely deletes the temporary edit button
+        disabledBtn.remove(); 
     }
 
-    // 5. Hide the selection column and reset footer
     document.querySelectorAll('.select-col').forEach(td => td.classList.add('hidden'));
     
     const tableControls = document.querySelector('.table-controls');
@@ -2870,6 +2898,105 @@ function exitSelectMode() {
         tableControls.hidden = false;
     }
 
+    renderAll();
+}
+
+/* =======================================================
+    AVANTI LEDGER - NATIVE BOTTOM SHEET CONTROLLER ENGINE
+   ======================================================= */
+
+/**
+ * Maps duplication context metadata and slides the sheet modal upward.
+ */
+function openDuplicateSheet() {
+    // Fail-safe protection: Block execution immediately if app flipped offline
+    if (typeof isOnline !== 'undefined' && !isOnline) {
+        alert("You are currently offline. Item duplication requires an active connection to sync data.");
+        return;
+    }
+
+    const selectedCount = state.selectedForDelete.size;
+    if (selectedCount === 0) {
+        alert("Please select at least one item to duplicate.");
+        return;
+    }
+
+    const iconEl = document.getElementById('bottomSheetIcon');
+    const titleEl = document.getElementById('bottomSheetTitle');
+    const descEl = document.getElementById('bottomSheetDescription');
+    const confirmBtn = document.getElementById('bottomSheetConfirmBtn');
+    const dateInput = document.getElementById('bottomSheetTargetDate');
+
+    if (iconEl) iconEl.className = "fas fa-clone";
+    if (titleEl) titleEl.textContent = "Duplicate Items";
+    if (descEl) descEl.textContent = `You have selected ${selectedCount} item(s). Choose a target date timeline where these entries should be saved.`;
+    
+    if (dateInput) dateInput.value = state.currentDate;
+
+    if (confirmBtn) {
+        confirmBtn.onclick = confirmDuplicateAction;
+    }
+
+    const modal = document.getElementById('bottomSheetModal');
+    if (modal) modal.classList.add('show');
+}
+
+/**
+ * Process duplication modifications across memory states and sync to Firebase.
+ */
+function confirmDuplicateAction() {
+    const targetDate = document.getElementById('bottomSheetTargetDate').value;
+    if (!targetDate) {
+        alert("Please pick a valid destination date.");
+        return;
+    }
+
+    ensureDateExists(targetDate);
+    const targetDateData = state.dates[targetDate];
+
+    // Safety Verification Rule: Terminate workflows if destination date is balanced
+    if (targetDateData && (targetDateData.balanced === true || String(targetDateData.balanced).toLowerCase() === 'true')) {
+        alert("Cannot duplicate items to a balanced day. Please uncheck 'balanced' on the destination day first.");
+        return;
+    }
+
+    const selectedIds = Array.from(state.selectedForDelete);
+    const currentDayItems = state.dates[state.currentDate]?.items || {};
+    const updates = {};
+
+    selectedIds.forEach(id => {
+        const sourceItem = currentDayItems[id];
+        if (sourceItem) {
+            // Build cloned structural snapshot conforming with data model mapping architecture
+            const copy = makeItem(
+                sourceItem.id,
+                sourceItem.name,
+                sourceItem.opening || sourceItem.closing || 0,
+                0, // Reset orders parameter on copy action
+                sourceItem.price || 0,
+                0, // Reset closing counts
+                sourceItem.position || 0
+            );
+            copy.batches = clone(sourceItem.batches || []);
+
+            // Commit record transformations directly onto local states
+            targetDateData.items[id] = copy;
+
+            // Prepare real-time network payloads
+            updates[`dates/${targetDate}/items/${id}`] = copy;
+        }
+    });
+
+    // Fire network batch payload execution request up to Remote Firebase Server
+    if (firebaseDB && isOnline && Object.keys(updates).length > 0) {
+        firebaseDB.ref(REMOTE_DB_PATH).update(updates)
+            .then(() => console.log(`Data Pipeline: Duplicated ${selectedIds.length} items to ${targetDate}`))
+            .catch(err => console.error("Firebase batch duplication push error:", err));
+    }
+
+    // Exit workflows and reset operational parameters
+    closeBottomSheet();
+    exitSelectMode();
     renderAll();
 }
 
