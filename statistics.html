@@ -49,7 +49,7 @@
     color:var(--text-color);
     margin-top: 50px;
     padding-bottom: 10px;
-    padding-top: 108px;
+    padding-top: 110px;
     margin-bottom: 180px;
   -webkit-user-select: none; /* Safari */
   -ms-user-select: none;     /* IE 10+ */
@@ -2572,13 +2572,42 @@ function renderTable() {
         const cb = document.createElement('input'); 
         cb.type = 'checkbox';
         cb.checked = state.selectedForDelete.has(item.id);
+        
         cb.onchange = (e) => { 
             if (e.target.checked) state.selectedForDelete.add(item.id); 
             else state.selectedForDelete.delete(item.id); 
             updateSelectionUI(); 
         };
 
-        
+        // --- NEW: ROW CLICK LOGIC FOR SELECT MODE ---
+        tr.addEventListener('click', (e) => {
+            // Only apply this behavior when we are actually in select mode
+            if (!state.selectMode) return;
+
+            // Prevent double-firing if the user clicks the exact checkbox itself
+            if (e.target === cb) return; 
+
+            // Toggle the selection state and visually update the checkbox
+            if (state.selectedForDelete.has(item.id)) {
+                state.selectedForDelete.delete(item.id);
+                cb.checked = false;
+            } else {
+                state.selectedForDelete.add(item.id);
+                cb.checked = true;
+            }
+
+            // Update the selection counter pill
+            updateSelectionUI(); 
+        });
+
+        // Add a pointer cursor to the whole row in select mode for better UX
+        if (state.selectMode) {
+            tr.style.cursor = 'pointer';
+        } else {
+            tr.style.cursor = 'default';
+        }
+        // ---------------------------------------------
+
         controlWrapper.appendChild(cb);
         tdSelect.appendChild(controlWrapper);
         tr.appendChild(tdSelect);
@@ -2680,12 +2709,11 @@ function renderTable() {
     const totEl = document.getElementById('totalSalesAmount');
     if (totEl) totEl.textContent = "K" + totalSales.toLocaleString();
 
-const totEl2 = document.getElementById('totalSalesAmount2');
+    const totEl2 = document.getElementById('totalSalesAmount2');
     if (totEl2) totEl2.textContent = "K" + totalSales.toLocaleString();
     
     updateTotalsNumbers();
 }
-
 
 
 /* ---------- Utility render helpers ---------- */
@@ -2767,57 +2795,48 @@ function enterSelectMode() {
 
     document.querySelectorAll('.select-col').forEach(td => td.classList.remove('hidden'));
 
-    const prevBtn = document.getElementById('prevDateBtn');
-    if (prevBtn) {
-        prevBtn.innerHTML = '<i style="font-size: 1.1em;" class="fas fa-check-double"></i>';
-        prevBtn.onclick = selectAllItems;
-        prevBtn.title = "Select All";
-    }
-
-    const nextBtn = document.getElementById('nextDateBtn');
-    if (nextBtn) {
-        nextBtn.innerHTML = '<i class="fas fa-trash"></i>';
-        nextBtn.onclick = deleteSelectedItems;
-        nextBtn.title = "Delete Selected";
-
-        // === INJECT DUPLICATE BUTTON WITH OFFLINE CHECK ===
-        let dupBtn = document.getElementById('duplicateSelectedBtn');
-        if (!dupBtn) {
-            dupBtn = document.createElement('button');
-            dupBtn.id = 'duplicateSelectedBtn';
-            dupBtn.className = nextBtn.className; 
-            if (nextBtn.getAttribute('style')) {
-                dupBtn.setAttribute('style', nextBtn.getAttribute('style'));
-            }
-            dupBtn.style.marginLeft = '15px'; 
-            dupBtn.innerHTML = '<i style="font-size: 1.1em;"class="fas fa-clone"></i>'; 
-            
-            // Handle offline restriction state safely at initialization
-            if (typeof isOnline !== 'undefined' && !isOnline) {
-                dupBtn.disabled = true;
-                dupBtn.style.opacity = '0.4';
-                dupBtn.style.cursor = 'not-allowed';
-                dupBtn.title = "Duplication requires an internet connection";
-                dupBtn.onclick = null;
-            } else {
-                dupBtn.disabled = false;
-                dupBtn.style.opacity = '1';
-                dupBtn.style.cursor = 'pointer';
-                dupBtn.title = "Duplicate Selected";
-                dupBtn.onclick = openDuplicateSheet;
-            }
-            
-            nextBtn.parentNode.insertBefore(dupBtn, nextBtn.nextSibling);
-        }
-    }
-
+    // --- RESTORE LABELS & INJECT PILL ACTIONS SIDE-BY-SIDE ---
     const pill = document.getElementById('dateNavPill');
     if (pill) {
+        // Override any conflicting background properties cleanly
+        pill.style.background = 'rgba(255, 255, 255, 0.15)';
+        pill.style.backdropFilter = 'blur(10px)';
+        pill.style.border = '1px solid rgba(255, 255, 255, 0.2)';
+        pill.style.padding = '6px 14px';
+        pill.style.borderRadius = '16px';
+        pill.style.display = 'flex';
+        pill.style.alignItems = 'center';
+        pill.style.justifyContent = 'space-between';
+        pill.style.gap = '20px';
+        pill.style.width = 'auto';
+
         pill.innerHTML = `
-            <div class="date-display" id="dateDisplaySmall" style="font-size: 16px; font-weight: 600; color: #ffffff;">Select Items</div>
-            <div style="font-size: 11px; color: rgba(255,255,255,0.5); text-transform: uppercase; font-weight: 700; margin-top: 3px;">Editing Mode</div>
+            <div style="display: flex; flex-direction: column; align-items: flex-start;">
+                <div id="dateDisplaySmall" style="font-size: 15px; font-weight: 600; color: #ffffff;">Select items</div>
+                <div style="font-size: 10px; color: rgba(255,255,255,0.6); text-transform: uppercase; font-weight: 700; margin-top: 2px; letter-spacing: 0.5px;">Editing Mode</div>
+            </div>
+            
+            <div style="display: flex; background: rgba(0, 0, 0, 0.2); padding: 3px; border-radius: 30px; gap: 2px; align-items: center;">
+                <button id="selectAllBtn" onclick="selectAllItems()" title="Select All" style="background: transparent; border: none; color: #ffffff; padding: 6px 12px; font-size: 12px; font-weight: 600; cursor: pointer; border-radius: 20px; transition: background 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.1)'" onmouseout="this.style.background='transparent'"><i class="fa-solid fa-check-double"></i>
+                    All
+                </button>
+                
+<button id="duplicateBtn" onclick="openDuplicateSheet()" title="Duplicate Selected" style="background: transparent; border: none; color: #30b0ff; padding: 6px 12px; font-size: 12px; font-weight: 600; cursor: pointer; border-radius: 20px; transition: background 0.2s;" onmouseover="this.style.background='rgba(48,176,255,0.15)'" onmouseout="this.style.background='transparent'"><i class="fa-regular fa-copy"></i> 
+    Duplicate
+</button>
+
+                <button id="deleteBtn" onclick="deleteSelectedItems()" title="Delete Selected" style="background: transparent; border: none; color: #ff453a; padding: 6px 12px; font-size: 12px; font-weight: 600; cursor: pointer; border-radius: 20px; transition: background 0.2s;" onmouseover="this.style.background='rgba(255,69,58,0.2)'" onmouseout="this.style.background='transparent'"><i class="fa-regular fa-trash"></i> 
+                    Delete
+                </button>
+            </div>
         `;
     }
+
+    const prevBtn = document.getElementById('prevDateBtn');
+    if (prevBtn) prevBtn.style.visibility = 'hidden';
+
+    const nextBtn = document.getElementById('nextDateBtn');
+    if (nextBtn) nextBtn.style.visibility = 'hidden';
 
     const oldBtn = document.getElementById('ledgerDropdownBtn');
     if (oldBtn) {
@@ -2827,7 +2846,7 @@ function enterSelectMode() {
             </button>
         `;
         oldBtn.insertAdjacentHTML('afterend', editModeButtonHTML);
-        oldBtn.remove(); 
+        oldBtn.remove();
     }
 
     const tableControls = document.querySelector('.table-controls');
@@ -2842,33 +2861,37 @@ function enterSelectMode() {
     renderTable();
 }
 
-
 function exitSelectMode() {
     state.selectMode = false;
     state.selectedForDelete.clear();
 
-    // === CLEANUP DUPLICATE BUTTON ===
-    const dupBtn = document.getElementById('duplicateSelectedBtn');
-    if (dupBtn) {
-        dupBtn.remove();
-    }
-
     const prevBtn = document.getElementById('prevDateBtn');
     if (prevBtn) {
+        prevBtn.style.visibility = 'visible';
         prevBtn.innerHTML = '<i class="fas fa-chevron-left"></i>';
         prevBtn.onclick = prevDate;
-        prevBtn.title = "Previous date";
     }
 
     const nextBtn = document.getElementById('nextDateBtn');
     if (nextBtn) {
+        nextBtn.style.visibility = 'visible';
         nextBtn.innerHTML = '<i class="fas fa-chevron-right"></i>';
         nextBtn.onclick = nextDate;
-        nextBtn.title = "Next date";
     }
 
+    // Completely strip select-mode styling rules back to default setup
     const pill = document.getElementById('dateNavPill');
     if (pill) {
+        pill.style.background = '';
+        pill.style.backdropFilter = '';
+        pill.style.border = '';
+        pill.style.padding = '';
+        pill.style.borderRadius = '';
+        pill.style.display = '';
+        pill.style.justifyContent = '';
+        pill.style.gap = '';
+        pill.style.width = '';
+
         pill.innerHTML = `
             <div class="date-display" id="dateDisplay" style="font-size: 16px !important; font-weight: 600 !important; color: #ffffff !important; letter-spacing: 0.2px !important;"></div>
             <div style="font-size: 11px !important; color: rgba(255,255,255,0.5) !important; text-transform: uppercase !important; font-weight: 700 !important; letter-spacing: 0.8px !important; margin-top: 3px !important;">Reporting Period</div>
@@ -2883,7 +2906,84 @@ function exitSelectMode() {
             </button>
         `;
         disabledBtn.insertAdjacentHTML('afterend', originalButtonHTML);
-        disabledBtn.remove(); 
+        disabledBtn.remove();
+    }
+
+    document.querySelectorAll('.select-col').forEach(td => td.classList.add('hidden'));
+    
+    const tableControls = document.querySelector('.table-controls');
+    const tableControls2 = document.querySelector('.table-controls2');
+    const tableControls3 = document.querySelector('.table-controls3');
+   
+    if (tableControls) {
+        if (tableControls2) tableControls2.setAttribute('colspan', '3');
+        if (tableControls3) tableControls3.setAttribute('colspan', '2');
+        tableControls.hidden = false;
+    }
+
+    renderAll();
+}
+
+// Ensure the counter targets the correct string element safely
+function updateSelectionUI() {
+    const count = state.selectedForDelete.size;
+    const disp = document.getElementById('dateDisplaySmall');
+    if (disp) {
+        disp.textContent = count > 0 ? `${count} selected` : 'Select items';
+    }
+}
+
+
+
+function exitSelectMode() {
+    state.selectMode = false;
+    state.selectedForDelete.clear();
+
+    // 1. Restore Left Arrow visibility and actions
+    const prevBtn = document.getElementById('prevDateBtn');
+    if (prevBtn) {
+        prevBtn.style.visibility = 'visible';
+        prevBtn.innerHTML = '<i class="fas fa-chevron-left"></i>';
+        prevBtn.onclick = prevDate;
+        prevBtn.title = "Previous date";
+    }
+
+    // 2. Restore Right Arrow visibility and actions
+    const nextBtn = document.getElementById('nextDateBtn');
+    if (nextBtn) {
+        nextBtn.style.visibility = 'visible';
+        nextBtn.innerHTML = '<i class="fas fa-chevron-right"></i>';
+        nextBtn.onclick = nextDate;
+        nextBtn.title = "Next date";
+    }
+
+    // 3. Reset the Central Reporting Period Pill
+    const pill = document.getElementById('dateNavPill');
+    if (pill) {
+        pill.style.background = '';
+        pill.style.backdropFilter = '';
+        pill.style.border = '';
+        pill.style.padding = '';
+        pill.style.borderRadius = '';
+        pill.style.display = '';
+        pill.style.gap = '';
+
+        pill.innerHTML = `
+            <div class="date-display" id="dateDisplay" style="font-size: 16px !important; font-weight: 600 !important; color: #ffffff !important; letter-spacing: 0.2px !important;"></div>
+            <div style="font-size: 11px !important; color: rgba(255,255,255,0.5) !important; text-transform: uppercase !important; font-weight: 700 !important; letter-spacing: 0.8px !important; margin-top: 3px !important;">Reporting Period</div>
+        `;
+    }
+
+    // 4. Restore the Configuration Dropdown Sliders icon
+    const disabledBtn = document.getElementById('ledgerDropdownBtn_disabled');
+    if (disabledBtn) {
+        const originalButtonHTML = `
+            <button id="ledgerDropdownBtn" onclick="toggleLedgerDropdown(event)" style="padding: 12px; width: 48px; height: 48px; justify-content: center; border-radius: 12px; border: none; background-color: rgba(255, 255, 255, 0.15); color: #ffffff; font-size: 18px; cursor: pointer; display: flex; align-items: center; position: relative; backdrop-filter: blur(5px); transition: background-color 0.2s;" onmouseover="this.style.backgroundColor='rgba(255, 255, 255, 0.25)'" onmouseout="this.style.backgroundColor='rgba(255, 255, 255, 0.15)'">
+                <i id="moreIcon" class="fas fa-sliders-h"></i> 
+            </button>
+        `;
+        disabledBtn.insertAdjacentHTML('afterend', originalButtonHTML);
+        disabledBtn.remove();
     }
 
     document.querySelectorAll('.select-col').forEach(td => td.classList.add('hidden'));
@@ -3086,9 +3186,26 @@ function addRow() {
 
 function selectAllItems(){
     const dateObj = state.dates[state.currentDate] || makeEmptyDate();
-    Object.keys(dateObj.items || {}).forEach(id=>state.selectedForDelete.add(id));
-    renderTable();
+    const itemIds = Object.keys(dateObj.items || {});
+    
+    // Add all IDs to our selection tracking state
+    itemIds.forEach(id => state.selectedForDelete.add(id));
+    
+    // Fast UI Sync: Update all visible checkboxes instantly without hitting renderTable()
+    const tbody = document.getElementById('statsTableBody');
+    if (tbody) {
+        tbody.querySelectorAll('.select-col input[type="checkbox"]').forEach(cb => {
+            cb.checked = true;
+        });
+    }
+
+    // Direct override for the pill subtitle label text
+    const disp = document.getElementById('dateDisplaySmall');
+    if (disp) {
+        disp.textContent = itemIds.length > 0 ? `All ${itemIds.length} selected` : '0 selected';
+    }
 }
+
 
 
 function updateSelectionUI(){
