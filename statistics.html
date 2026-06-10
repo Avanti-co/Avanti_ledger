@@ -2185,11 +2185,7 @@ function formatDateLabel(dateKey) {
 
     return `${weekdays[d.getDay()]}, ${day}${daySuffix} ${months[d.getMonth()]}, ${d.getFullYear()}`;
 }
-function todayKey(){ 
-    const d = new Date(); 
-    return d.toISOString().slice(0, 10); 
-}
-
+function todayKey(){ const d=new Date(); return  }
 function addDays(yyyy_mm_dd, n) {
     const d = new Date(yyyy_mm_dd);
     d.setDate(d.getDate() + n);
@@ -2312,40 +2308,41 @@ async function checkProfileAndSyncSettings() {
         TARGET_PROFILE_USERNAME = AV_LEDGER_USERNAME;
     }
 }
-let lastAttachedPath = null; // Track database pathway adjustments dynamically
+/* ---------- Persistence: Firebase Real-time Listener ---------- */
 
+/**
+ * Sets up Firebase listeners for the Avanti ledger data.
+ * Ensures that if no current date is set in the DB, it defaults to today.
+ */
 function setupDataListener() {
-    // Guard clause for initialization safety
-    if (!firebaseDB || REMOTE_DB_PATH === DEFAULT_FALLBACK_PATH) {
-        return;
-    }
-    // Avoid setting duplicate listeners if the path hasn't changed
-    if (lastAttachedPath === REMOTE_DB_PATH) {
+    // 1. Guard clauses for initialization safety
+    if (!firebaseDB || REMOTE_DB_PATH === DEFAULT_FALLBACK_PATH || dataListenerActive) {
         return;
     }
 
-    // Cleanup existing listeners to prevent memory leaks/duplicate triggers
+    // 2. Cleanup existing listeners to prevent memory leaks/duplicate triggers
     if (currentDataRef) {
         currentDataRef.off();
-        currentDataRef.child('dates').off();
     }
 
     currentDataRef = firebaseDB.ref(REMOTE_DB_PATH);
-    lastAttachedPath = REMOTE_DB_PATH;
     dataListenerActive = true;
 
-    // Listen to the 'dates' collection for real-time ledger updates
+    // 3. Listen to the 'dates' collection for real-time ledger updates
     const datesRef = currentDataRef.child('dates');
 
+    // Handle new date entries added to the database
     datesRef.on('child_added', snap => {
         const dateKey = snap.key;
         state.dates[dateKey] = snap.val();
     });
 
+    // Handle updates to existing ledger entries
     datesRef.on('child_changed', snap => {
         const dateKey = snap.key;
         state.dates[dateKey] = snap.val();
         
+        // Only re-render the UI if the modified date is the one currently being viewed
         if (dateKey === state.currentDate) {
             renderTable();
             renderExpensesIncomes();
@@ -2353,6 +2350,7 @@ function setupDataListener() {
         }
     });
 
+    // Handle deletion of date entries
     datesRef.on('child_removed', snap => {
         delete state.dates[snap.key];
         if (snap.key === state.currentDate) {
@@ -2360,24 +2358,22 @@ function setupDataListener() {
         }
     });
 
-    // Isolated Current Selected Date Listener
-    const accountName = localStorage.getItem('AV_ledger_account_key');
-    const username = localStorage.getItem('AV_ledger_username');
-    
-    // Always trace dates against individual users to prevent view disruptions 
-    const dateStorageRef = (TARGET_PROFILE_USERNAME === 'GLOBAL_LEDGER')
-        ? firebaseDB.ref(`accounts/${accountName}/profiles/${username}/avanti_stats/currentDate`)
-        : currentDataRef.child('currentDate');
-
-    dateStorageRef.on('value', snap => {
+    // 4. Current Selected Date Listener with Auto-Initialization
+    currentDataRef.child('currentDate').on('value', snap => {
         let newDate = snap.val();
 
+        // LOGIC: If current date doesn’t exist in DB, set it as today's date (YYYY-MM-DD)
         if (!newDate) {
             newDate = new Date().toISOString().split('T')[0];
-            dateStorageRef.set(newDate);
+            
+            // Persist this default to the remote database immediately
+            currentDataRef.child('currentDate').set(newDate);
+            
+            // Ensure the data structure for this specific date exists in the 'dates' node
             ensureDateExists(newDate);
         }
 
+        // Trigger UI update only if the date has changed or was just initialized
         if (newDate !== state.currentDate) {
             state.currentDate = newDate;
             ensureDateExists(state.currentDate);
@@ -2418,26 +2414,14 @@ function saveState(){
 function saveToDatabase(data){
     if(!firebaseDB || !isOnline || REMOTE_DB_PATH === DEFAULT_FALLBACK_PATH) return;
 
-    // 1. Save rows/items to the collaborative path (Global Ledger or Profile Ledger)
+    // Only save current date and NOT the entire table
     const updates = {};
+    updates[`currentDate`] = state.currentDate;
     updates[`dates/${state.currentDate}`] = state.dates[state.currentDate];
 
     firebaseDB.ref(REMOTE_DB_PATH).update(updates)
-        .catch(err => console.error('Firebase ledger items update failed', err));
-
-    // 2. Isolate active date views to personal profile namespaces to avoid collisions
-    const accountName = localStorage.getItem('AV_ledger_account_key');
-    const username = localStorage.getItem('AV_ledger_username');
-
-    if (TARGET_PROFILE_USERNAME === 'GLOBAL_LEDGER') {
-        firebaseDB.ref(`accounts/${accountName}/profiles/${username}/avanti_stats/currentDate`).set(state.currentDate)
-            .catch(err => console.error('Firebase isolated currentDate update failed', err));
-    } else {
-        firebaseDB.ref(REMOTE_DB_PATH).update({ currentDate: state.currentDate })
-            .catch(err => console.error('Firebase currentDate update failed', err));
-    }
+        .catch(err => console.error('Firebase update failed', err));
 }
-
 /* ---------- Initialize Default (No Hardcoded Items) ---------- */
 function initializeDefault(){
     const start = todayKey();
@@ -6292,9 +6276,6 @@ window.saveState = function(){
 /* =========================================================
    FIREBASE SYNC → ALSO RESPECTS CACHE KEY
 ========================================================= */
-/* =========================================================
-   FIREBASE SYNC → ALSO RESPECTS CACHE KEY
-========================================================= */
 const originalSetupDataListener = window.setupDataListener;
 
 window.setupDataListener = function(){
@@ -6305,18 +6286,14 @@ window.setupDataListener = function(){
 
     if(!firebaseDB || !REMOTE_DB_PATH) return;
 
-    // Clear structural parent reference listeners before re-binding to eliminate duplicates
-    if (window._globalValueRef) {
-        window._globalValueRef.off("value");
-    }
-    window._globalValueRef = firebaseDB.ref(REMOTE_DB_PATH);
-
-    window._globalValueRef.on("value", snap => {
+    firebaseDB.ref(REMOTE_DB_PATH).on("value", snap => {
         const data = snap.val();
         if(!data) return;
 
         const CACHE_KEY = getCacheKey();
+
         localStorage.setItem(CACHE_KEY, JSON.stringify(data));
+
         console.log("Mirror updated from Firebase:", CACHE_KEY);
     });
 };
