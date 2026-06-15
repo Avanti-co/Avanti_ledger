@@ -6186,8 +6186,8 @@ document.addEventListener('DOMContentLoaded', () => {
 (function(){
 
 /* =========================================================
-   DYNAMIC CACHE KEY
-   - Prevents cross-profile data leakage
+   DYNAMIC CACHE KEY (CRITICAL FIX)
+   - prevents cross-profile data leakage
 ========================================================= */
 function getCacheKey(){
     const accountKey =
@@ -6203,208 +6203,48 @@ function getCacheKey(){
 }
 
 /* =========================================================
-   TIMESTAMP MUTATION HELPERS
-   - Mimics the interceptor's payload logic natively on state objects
-========================================================= */
-function applyTimestampsToObject(target) {
-    if (!target || typeof target !== 'object') return target;
-    
-    // Process top-level properties of the target object
-    Object.keys(target).forEach(key => {
-        if (key.endsWith('Timestamp')) return; // Skip timestamp keys themselves
-        
-        const value = target[key];
-        if (value !== null && typeof value === 'object') {
-            value.timestamp = Date.now();
-        } else if (value !== undefined) {
-            target[key + 'Timestamp'] = Date.now();
-        }
-    });
-    return target;
-}
-
-/* =========================================================
-   DEEP TIMESTAMP COMPARISON & RECONCILIATION ENGINE
-   - Recursively compares local vs remote datasets
-   - Resolves updates safely per leaf node or nested object block
-   - Syncs delta back to both systems
-========================================================= */
-function reconcileData(local, remote) {
-    let localNeedsUpdate = false;
-    let remoteNeedsUpdate = false;
-    
-    const localDeltas = {};
-    const remoteDeltas = {};
-
-    const cleanLocal = (local && typeof local === 'object') ? local : {};
-    const cleanRemote = (remote && typeof remote === 'object') ? remote : {};
-
-    // Gather all unified top-level structural domains (e.g., 'currentDate', 'dates')
-    const allKeys = new Set([...Object.keys(cleanLocal), ...Object.keys(cleanRemote)]);
-
-    allKeys.forEach(key => {
-        if (key === '_meta' || key.endsWith('Timestamp')) return;
-
-        const locVal = cleanLocal[key];
-        const remVal = cleanRemote[key];
-
-        // Scenario A: Nested Tree Configurations (Objects like 'dates')
-        if ((locVal && typeof locVal === 'object') || (remVal && typeof remVal === 'object')) {
-            const lObj = locVal || {};
-            const rObj = remVal || {};
-            
-            const lTS = lObj.timestamp || 0;
-            const rTS = rObj.timestamp || 0;
-
-            if (lTS > rTS) {
-                // Local is newer: push down to remote payload
-                remoteDeltas[key] = lObj;
-                remoteNeedsUpdate = true;
-                cleanRemote[key] = JSON.parse(JSON.stringify(lObj));
-            } else if (rTS > lTS) {
-                // Remote is newer: update local state mirror
-                localDeltas[key] = rObj;
-                localNeedsUpdate = true;
-                cleanLocal[key] = JSON.parse(JSON.stringify(rObj));
-            } else {
-                // Sub-properties structural verification loop (Deep Leaf Merge)
-                const subKeys = new Set([...Object.keys(lObj), ...Object.keys(rObj)]);
-                subKeys.forEach(sKey => {
-                    if (sKey === 'timestamp' || sKey.endsWith('Timestamp')) return;
-
-                    const lSubVal = lObj[sKey];
-                    const rSubVal = rObj[sKey];
-
-                    // Process deeply nested objects (e.g., individual date collections)
-                    if ((lSubVal && typeof lSubVal === 'object') || (rSubVal && typeof rSubVal === 'object')) {
-                        const lsObj = lSubVal || {};
-                        const rsObj = rSubVal || {};
-                        const lsTS = lsObj.timestamp || 0;
-                        const rsTS = rsObj.timestamp || 0;
-
-                        if (lsTS > rsTS) {
-                            if (!remoteDeltas[key]) remoteDeltas[key] = {};
-                            remoteDeltas[key][sKey] = lsObj;
-                            remoteNeedsUpdate = true;
-                            if (!cleanRemote[key]) cleanRemote[key] = {};
-                            cleanRemote[key][sKey] = JSON.parse(JSON.stringify(lsObj));
-                        } else if (rsTS > lsTS) {
-                            if (!localDeltas[key]) localDeltas[key] = {};
-                            localDeltas[key][sKey] = rsObj;
-                            localNeedsUpdate = true;
-                            if (!cleanLocal[key]) cleanLocal[key] = {};
-                            cleanLocal[key][sKey] = JSON.parse(JSON.stringify(rsObj));
-                        }
-                    } 
-                    // Handle leaf primitives safely inside sub-structures
-                    else {
-                        const lSubTS = lObj[sKey + 'Timestamp'] || 0;
-                        const rSubTS = rObj[sKey + 'Timestamp'] || 0;
-
-                        if (lSubTS > rSubTS) {
-                            if (!remoteDeltas[key]) remoteDeltas[key] = {};
-                            remoteDeltas[key][sKey] = lSubVal;
-                            remoteDeltas[key][sKey + 'Timestamp'] = lSubTS;
-                            remoteNeedsUpdate = true;
-                            
-                            if (!cleanRemote[key]) cleanRemote[key] = {};
-                            cleanRemote[key][sKey] = lSubVal;
-                            cleanRemote[key][sKey + 'Timestamp'] = lSubTS;
-                        } else if (rSubTS > lSubTS) {
-                            if (!localDeltas[key]) localDeltas[key] = {};
-                            localDeltas[key][sKey] = rSubVal;
-                            localDeltas[key][sKey + 'Timestamp'] = rSubTS;
-                            localNeedsUpdate = true;
-
-                            if (!cleanLocal[key]) cleanLocal[key] = {};
-                            cleanLocal[key][sKey] = rSubVal;
-                            cleanLocal[key][sKey + 'Timestamp'] = rSubTS;
-                        }
-                    }
-                });
-            }
-        } 
-        // Scenario B: Direct Leaf Primitive Node Variables (e.g., 'currentDate')
-        else {
-            const locTS = cleanLocal[key + 'Timestamp'] || 0;
-            const remTS = cleanRemote[key + 'Timestamp'] || 0;
-
-            if (locTS > remTS) {
-                remoteDeltas[key] = locVal;
-                remoteDeltas[key + 'Timestamp'] = locTS;
-                remoteNeedsUpdate = true;
-                cleanRemote[key] = locVal;
-                cleanRemote[key + 'Timestamp'] = locTS;
-            } else if (remTS > locTS) {
-                localDeltas[key] = remVal;
-                localDeltas[key + 'Timestamp'] = remTS;
-                localNeedsUpdate = true;
-                cleanLocal[key] = remVal;
-                cleanLocal[key + 'Timestamp'] = remTS;
-            }
-        }
-    });
-
-    return {
-        localNeedsUpdate,
-        remoteNeedsUpdate,
-        localDeltas,
-        remoteDeltas,
-        reconciledLocal: cleanLocal
-    };
-}
-
-/* =========================================================
    LOAD LOCAL CACHE FIRST
 ========================================================= */
 function loadLocalMirror(){
     try{
         const CACHE_KEY = getCacheKey();
+
         const cached = JSON.parse(localStorage.getItem(CACHE_KEY) || "{}");
 
+        // only apply if valid structure
         if(cached && typeof cached === "object"){
+
             if(cached.currentDate){
                 state.currentDate = cached.currentDate;
-                state.currentDateTimestamp = cached.currentDateTimestamp || Date.now();
             }
+
             if(cached.dates && typeof cached.dates === "object"){
                 state.dates = cached.dates;
             }
         }
 
         if(state.currentDate){
-            if (typeof ensureDateExists === "function") {
-                ensureDateExists(state.currentDate);
-            }
+            ensureDateExists(state.currentDate);
         }
 
-        if (typeof renderAll === "function") {
-            renderAll();
-        }
+        renderAll();
 
         console.log("Rendered instantly from isolated local mirror:", CACHE_KEY);
+
     }catch(err){
-        console.error("Local mirror initialization read failure", err);
+        
     }
 }
 
 /* =========================================================
-   SAVE LOCAL CACHE WITH TIMESTAMP PROFILES
+   SAVE LOCAL CACHE (ISOLATED PER ACCOUNT + DB PATH)
 ========================================================= */
 function saveLocalMirror(){
     try{
         const CACHE_KEY = getCacheKey();
-        
-        // Mutate current app state trees natively with fresh timestamps before saving local mirror
-        if (state.dates && typeof state.dates === 'object') {
-            applyTimestampsToObject(state.dates);
-            state.dates.timestamp = Date.now();
-        }
-        state.currentDateTimestamp = Date.now();
 
         const mirror = {
             currentDate: state.currentDate,
-            currentDateTimestamp: state.currentDateTimestamp,
             dates: state.dates,
             _meta: {
                 accountKey: localStorage.getItem("AV_ledger_account_key"),
@@ -6414,6 +6254,7 @@ function saveLocalMirror(){
         };
 
         localStorage.setItem(CACHE_KEY, JSON.stringify(mirror));
+
     }catch(err){
         console.error("Mirror save failed", err);
     }
@@ -6433,7 +6274,7 @@ window.saveState = function(){
 };
 
 /* =========================================================
-   FIREBASE SYNC + BIDIRECTIONAL RECONCILIATION ENGINE
+   FIREBASE SYNC → ALSO RESPECTS CACHE KEY
 ========================================================= */
 const originalSetupDataListener = window.setupDataListener;
 
@@ -6443,86 +6284,17 @@ window.setupDataListener = function(){
         originalSetupDataListener();
     }
 
-    if(!window.firebaseDB || !window.REMOTE_DB_PATH) return;
+    if(!firebaseDB || !REMOTE_DB_PATH) return;
 
-    const dbRef = firebaseDB.ref(REMOTE_DB_PATH);
-
-    // Use .once() first to execute a secure transactional synchronization handshake during bootup
-    dbRef.once("value").then(snap => {
-        const remoteData = snap.val();
-        const CACHE_KEY = getCacheKey();
-        const localData = JSON.parse(localStorage.getItem(CACHE_KEY) || "{}");
-
-        if(!remoteData) {
-            // Fresh database scenario: Seed structural state directly up to cloud engine
-            saveLocalMirror();
-            dbRef.set(JSON.parse(localStorage.getItem(CACHE_KEY)));
-            return;
-        }
-
-        // Run data reconciliation matrix
-        const report = reconcileData(localData, remoteData);
-
-        if (report.remoteNeedsUpdate) {
-            console.log("⚠️ Remote database is outdated. Resolving cloud nodes:", report.remoteDeltas);
-            dbRef.update(report.remoteDeltas);
-        }
-
-        if (report.localNeedsUpdate) {
-            console.log("📥 Local cache is outdated. Syncing structural datasets:", report.localDeltas);
-            
-            // Map modifications cleanly back onto core working execution memory runtime
-            if (report.reconciledLocal.currentDate) {
-                state.currentDate = report.reconciledLocal.currentDate;
-                state.currentDateTimestamp = report.reconciledLocal.currentDateTimestamp;
-            }
-            if (report.reconciledLocal.dates) {
-                state.dates = report.reconciledLocal.dates;
-            }
-            
-            localStorage.setItem(CACHE_KEY, JSON.stringify(report.reconciledLocal));
-            
-            if (typeof ensureDateExists === "function" && state.currentDate) {
-                ensureDateExists(state.currentDate);
-            }
-            if (typeof renderAll === "function") {
-                renderAll();
-            }
-        }
-    }).catch(err => {
-        console.error("Bidirectional sync handshake error:", err);
-    });
-
-    // Establish live listener loop tracking real-time external remote data modifications
-    dbRef.on("value", snap => {
-        const remoteData = snap.val();
-        if(!remoteData) return;
+    firebaseDB.ref(REMOTE_DB_PATH).on("value", snap => {
+        const data = snap.val();
+        if(!data) return;
 
         const CACHE_KEY = getCacheKey();
-        const localData = JSON.parse(localStorage.getItem(CACHE_KEY) || "{}");
 
-        // Run runtime structural comparison verification evaluation matrix
-        const liveReport = reconcileData(localData, remoteData);
+        localStorage.setItem(CACHE_KEY, JSON.stringify(data));
 
-        if (liveReport.localNeedsUpdate) {
-            if (liveReport.reconciledLocal.currentDate) {
-                state.currentDate = liveReport.reconciledLocal.currentDate;
-                state.currentDateTimestamp = liveReport.reconciledLocal.currentDateTimestamp;
-            }
-            if (liveReport.reconciledLocal.dates) {
-                state.dates = liveReport.reconciledLocal.dates;
-            }
-
-            localStorage.setItem(CACHE_KEY, JSON.stringify(liveReport.reconciledLocal));
-            
-            if (typeof ensureDateExists === "function" && state.currentDate) {
-                ensureDateExists(state.currentDate);
-            }
-            if (typeof renderAll === "function") {
-                renderAll();
-            }
-            console.log("Mirror updated smoothly from live Firebase stream:", CACHE_KEY);
-        }
+        console.log("Mirror updated from Firebase:", CACHE_KEY);
     });
 };
 
