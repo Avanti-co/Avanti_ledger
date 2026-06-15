@@ -1966,14 +1966,6 @@ Expenses</span>
 
 
 <script>
-/* =======================================================
-    Avanti Ledger - FINAL CODE: REAL-TIME SYNC & ADMIN PRIORITY
-    - Uses on('value') for real-time collaborative editing.
-    - Determines sync source based on Admin status if multiple sync targets exist.
-    - Halts deletion and propagation for days marked 'balanced'.
-    ======================================================= */
-
-/* ---------- Config / Firebase ---------- */
 const FIREBASE_CONFIG = {
     apiKey: "AIzaSyDZeQXOHRjhqijerFLyNkOLcbQUIwRLRqY",
   authDomain: "mwelaisha-shaba.firebaseapp.com",
@@ -6186,8 +6178,8 @@ document.addEventListener('DOMContentLoaded', () => {
 (function(){
 
 /* =========================================================
-   DYNAMIC CACHE KEY (CRITICAL FIX)
-   - prevents cross-profile data leakage
+   DYNAMIC CACHE KEY ENGINE
+   - Prevents cross-profile data leakage
 ========================================================= */
 function getCacheKey(){
     const accountKey =
@@ -6208,14 +6200,12 @@ function getCacheKey(){
 function loadLocalMirror(){
     try{
         const CACHE_KEY = getCacheKey();
-
         const cached = JSON.parse(localStorage.getItem(CACHE_KEY) || "{}");
 
-        // only apply if valid structure
         if(cached && typeof cached === "object"){
-
             if(cached.currentDate){
                 state.currentDate = cached.currentDate;
+                state.currentDateTimestamp = cached.currentDateTimestamp || Date.now();
             }
 
             if(cached.dates && typeof cached.dates === "object"){
@@ -6227,41 +6217,51 @@ function loadLocalMirror(){
             ensureDateExists(state.currentDate);
         }
 
-        renderAll();
-
-        console.log("Rendered instantly from isolated local mirror:", CACHE_KEY);
+        if (typeof renderAll === "function") renderAll();
+        console.log("⚡ Instant initialization from isolated local mirror:", CACHE_KEY);
 
     }catch(err){
-        
+        console.error("Local mirror initialization failed:", err);
     }
 }
 
 /* =========================================================
-   SAVE LOCAL CACHE (ISOLATED PER ACCOUNT + DB PATH)
+   SAVE LOCAL CACHE WITH MATCHING TIMESTAMP STRUCTS
 ========================================================= */
 function saveLocalMirror(){
     try{
         const CACHE_KEY = getCacheKey();
+        const now = Date.now();
+
+        // Inject timestamps into the live local memory structures matching your interceptor rules
+        if(state.currentDate) {
+            state.currentDateTimestamp = now; // Primitive counterpart
+        }
+        
+        if(state.dates && state.currentDate && state.dates[state.currentDate]) {
+            state.dates[state.currentDate].timestamp = now; // Nested object internal property
+        }
 
         const mirror = {
             currentDate: state.currentDate,
+            currentDateTimestamp: state.currentDateTimestamp || now,
             dates: state.dates,
             _meta: {
                 accountKey: localStorage.getItem("AV_ledger_account_key"),
                 dbPath: window.REMOTE_DB_PATH,
-                savedAt: Date.now()
+                savedAt: now
             }
         };
 
         localStorage.setItem(CACHE_KEY, JSON.stringify(mirror));
 
     }catch(err){
-        console.error("Mirror save failed", err);
+        console.error("Mirror save writing failed:", err);
     }
 }
 
 /* =========================================================
-   OVERRIDE SAVE STATE
+   OVERRIDE SAVE STATE (INTERCEPT LOCAL COMMITS)
 ========================================================= */
 const originalSaveState = window.saveState;
 
@@ -6274,32 +6274,136 @@ window.saveState = function(){
 };
 
 /* =========================================================
-   FIREBASE SYNC → ALSO RESPECTS CACHE KEY
+   CONFLICT RESOLUTION LOGIC: DETERMINING SOURCE OF TRUTH
+========================================================= */
+function reconcileRecordsOfTruth(fbData) {
+    if (!fbData) return;
+
+    const CACHE_KEY = getCacheKey();
+    let localCache = {};
+    try {
+        localCache = JSON.parse(localStorage.getItem(CACHE_KEY) || "{}");
+    } catch(e) {
+        localCache = {};
+    }
+
+    let localStateRequiresUpdate = false;
+    let firebaseDeltasToPush = {};
+
+    // --- Part A: Evaluate Current Date Node ---
+    const fbCurrentDateTS = fbData.currentDateTimestamp || 0;
+    const localCurrentDateTS = localCache.currentDateTimestamp || 0;
+
+    if (fbCurrentDateTS > localCurrentDateTS) {
+        // Firebase is newer -> update local app environment
+        state.currentDate = fbData.currentDate;
+        state.currentDateTimestamp = fbCurrentDateTS;
+        localStateRequiresUpdate = true;
+    } else if (localCurrentDateTS > fbCurrentDateTS && localCache.currentDate) {
+        // Local storage offline session is newer -> stage update payload for Firebase
+        firebaseDeltasToPush["currentDate"] = localCache.currentDate;
+        firebaseDeltasToPush["currentDateTimestamp"] = localCurrentDateTS;
+    } else if (!fbData.currentDate && localCache.currentDate) {
+        // Remote database target is freshly initialized -> seed with local storage data
+        firebaseDeltasToPush["currentDate"] = localCache.currentDate;
+        firebaseDeltasToPush["currentDateTimestamp"] = localCurrentDateTS || Date.now();
+    }
+
+    // --- Part B: Evaluate Dates Ledger Collection Trees ---
+    const combinedReportingKeys = new Set([
+        ...Object.keys(fbData.dates || {}),
+        ...Object.keys(localCache.dates || {}),
+        ...Object.keys(state.dates || {})
+    ]);
+
+    if (!state.dates) state.dates = {};
+
+    combinedReportingKeys.forEach(dateKey => {
+        const fbDayObject = fbData.dates ? fbData.dates[dateKey] : null;
+        const localDayObject = localCache.dates ? localCache.dates[dateKey] : null;
+
+        const fbDayTS = fbDayObject ? (fbDayObject.timestamp || 0) : 0;
+        const localDayTS = localDayObject ? (localDayObject.timestamp || 0) : 0;
+
+        if (fbDayTS > localDayTS) {
+            // Cloud version wins -> update internal local memory structures
+            state.dates[dateKey] = fbDayObject;
+            localStateRequiresUpdate = true;
+        } 
+        else if (localDayTS > fbDayTS && localDayObject) {
+            // Offline local changes are newer -> stage data block to push upward
+            firebaseDeltasToPush[`dates/${dateKey}`] = localDayObject;
+        } 
+        else if (!fbDayObject && localDayObject) {
+            // Completely new local record generated entirely offline
+            firebaseDeltasToPush[`dates/${dateKey}`] = localDayObject;
+        } 
+        else if (fbDayObject && !localDayObject) {
+            // Completely new remote date created elsewhere
+            state.dates[dateKey] = fbDayObject;
+            localStateRequiresUpdate = true;
+        }
+    });
+
+    // --- Part C: Execution Optimization Matrix ---
+    // 1. If local storage won conflicts, update the cloud pipeline
+    if (Object.keys(firebaseDeltasToPush).length > 0 && navigator.onLine) {
+        console.log("🔄 Conflict Engine: Syncing newer local records up to Firebase...", firebaseDeltasToPush);
+        firebaseDB.ref(REMOTE_DB_PATH).update(firebaseDeltasToPush)
+            .catch(err => console.error("Database push fallback synchronization catch failure:", err));
+    }
+
+    // 2. If Firebase won conflicts or updates occurred, flush resolved values back down to cache mirror
+    if (localStateRequiresUpdate || Object.keys(firebaseDeltasToPush).length > 0) {
+        const synchronizedMirror = {
+            currentDate: state.currentDate,
+            currentDateTimestamp: state.currentDateTimestamp || localCurrentDateTS,
+            dates: state.dates,
+            _meta: {
+                accountKey: localStorage.getItem("AV_ledger_account_key"),
+                dbPath: window.REMOTE_DB_PATH,
+                savedAt: Date.now()
+            }
+        };
+
+        localStorage.setItem(CACHE_KEY, JSON.stringify(synchronizedMirror));
+        
+        // Refresh application interface viewport arrays dynamically
+        if (typeof renderAll === "function") {
+            renderAll();
+        }
+        console.log("✅ Conflict Engine: Local memory models aligned to the Record of Truth.");
+    }
+}
+
+/* =========================================================
+   FIREBASE REALTIME MONITOR ENGINE
 ========================================================= */
 const originalSetupDataListener = window.setupDataListener;
 
 window.setupDataListener = function(){
-
     if(typeof originalSetupDataListener === "function"){
         originalSetupDataListener();
     }
 
     if(!firebaseDB || !REMOTE_DB_PATH) return;
 
+    // Open persistent listener channel across the profile schema structure
     firebaseDB.ref(REMOTE_DB_PATH).on("value", snap => {
-        const data = snap.val();
-        if(!data) return;
+        const remoteSnapshotData = snap.val();
+        if(!remoteSnapshotData) {
+            // If database path context is currently blank, prime it with local tracking data
+            saveLocalMirror();
+            return;
+        }
 
-        const CACHE_KEY = getCacheKey();
-
-        localStorage.setItem(CACHE_KEY, JSON.stringify(data));
-
-        console.log("Mirror updated from Firebase:", CACHE_KEY);
+        // Fire synchronization resolution loop checks
+        reconcileRecordsOfTruth(remoteSnapshotData);
     });
 };
 
 /* =========================================================
-   FAST STARTUP (LOCAL ONLY)
+   FAST INITIALIZATION WORKFLOWS
 ========================================================= */
 document.addEventListener("DOMContentLoaded", () => {
     loadLocalMirror();
@@ -6307,6 +6411,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 })();
 </script>
+
 
 <script>
 document.addEventListener("DOMContentLoaded", () => {
@@ -6359,6 +6464,83 @@ document.addEventListener("DOMContentLoaded", () => {
     updateButtonStatus();
 });
 </script>
+<script>
+(function() {
+    /**
+     * Set up global event interception on Firebase Reference prototypes
+     * once the core Firebase core library is verified as loaded.
+     */
+    function initializeFirebaseInterceptor() {
+        if (typeof firebase === 'undefined' || !firebase.database) {
+            console.warn("Interceptor delayed: Firebase database SDK is not yet ready.");
+            return false;
+        }
+
+        // ---------------------------------------------------
+        // 1. INTERCEPT .set() OPERATIONS
+        // ---------------------------------------------------
+        const originalSet = firebase.database.Reference.prototype.set;
+        firebase.database.Reference.prototype.set = function(value, onComplete) {
+            // Case A: The value written is an object (has nested variables)
+            if (value !== null && typeof value === 'object') {
+                value.timestamp = Date.now();
+                return originalSet.call(this, value, onComplete);
+            } 
+            // Case B: The value written is a primitive (no nested variables under it, e.g., currentDate)
+            else if (value !== undefined) {
+                const key = this.key;
+                const parent = this.parent;
+                
+                // Convert single primitive set into a parent update to store sibling properties atomically
+                if (parent && key) {
+                    const structuralUpdates = {};
+                    structuralUpdates[key] = value;
+                    structuralUpdates[key + 'Timestamp'] = Date.now();
+                    return parent.update(structuralUpdates, onComplete);
+                }
+            }
+            return originalSet.call(this, value, onComplete);
+        };
+
+        // ---------------------------------------------------
+        // 2. INTERCEPT .update() OPERATIONS
+        // ---------------------------------------------------
+        const originalUpdate = firebase.database.Reference.prototype.update;
+        firebase.database.Reference.prototype.update = function(updates, onComplete) {
+            if (updates !== null && typeof updates === 'object') {
+                // Scan all keys contained inside the current update payload block
+                Object.keys(updates).forEach(key => {
+                    const value = updates[key];
+                    
+                    // Case A: Sub-property is an object (nested tree variables exist underneath)
+                    if (value !== null && typeof value === 'object') {
+                        value.timestamp = Date.now();
+                    } 
+                    // Case B: Sub-property is a direct primitive variable leaf node (e.g., currentDate)
+                    else if (value !== undefined) {
+                        updates[key + 'Timestamp'] = Date.now();
+                    }
+                });
+            }
+            return originalUpdate.call(this, updates, onComplete);
+        };
+
+        console.log("🚀 Avanti Core Engine: Global Firebase Write Interceptors active.");
+        return true;
+    }
+
+    // Run verification setup checks safely
+    if (!initializeFirebaseInterceptor()) {
+        // Fallback catch-all structural check loop if script load ordering varies
+        const retryHookInterval = setInterval(() => {
+            if (initializeFirebaseInterceptor()) {
+                clearInterval(retryHookInterval);
+            }
+        }, 100);
+    }
+})();
+</script>
+
 
 
 </body>
