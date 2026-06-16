@@ -6186,8 +6186,7 @@ document.addEventListener('DOMContentLoaded', () => {
 (function(){
 
 /* =========================================================
-   DYNAMIC CACHE KEY (CRITICAL FIX)
-   - prevents cross-profile data leakage
+   DYNAMIC CACHE KEY UTILITY
 ========================================================= */
 function getCacheKey(){
     const accountKey =
@@ -6203,19 +6202,128 @@ function getCacheKey(){
 }
 
 /* =========================================================
+   SMART MICRO-MUTATION TIMESTAMP TRACKER
+   - Compares active memory state to local storage cache.
+   - Refreshes timestamps ONLY for fields that were modified.
+========================================================= */
+function applySmartGranularTimestamps() {
+    const CACHE_KEY = getCacheKey();
+    let cached = {};
+    try {
+        cached = JSON.parse(localStorage.getItem(CACHE_KEY) || "{}");
+    } catch(e) {
+        cached = {};
+    }
+
+    const ts = Date.now();
+
+    // 1. Evaluate Current Date Pointer
+    if (!state.currentDateTimestamp || state.currentDate !== cached.currentDate) {
+        state.currentDateTimestamp = ts;
+    } else {
+        state.currentDateTimestamp = cached.currentDateTimestamp || ts;
+    }
+
+    if (!state.dates) state.dates = {};
+    const cachedDates = cached.dates || {};
+
+    // 2. Evaluate Nested Day Timelines
+    Object.keys(state.dates).forEach(dateKey => {
+        if (dateKey === "timestamp") return;
+        const currentDay = state.dates[dateKey];
+        const cachedDay = cachedDates[dateKey] || {};
+
+        let dayChanged = false;
+
+        // A. Balanced Status Mutation Check
+        if (!currentDay.balancedTimestamp || currentDay.balanced !== cachedDay.balanced) {
+            currentDay.balancedTimestamp = ts;
+            dayChanged = true;
+        } else {
+            currentDay.balancedTimestamp = cachedDay.balancedTimestamp || ts;
+        }
+
+        // B. Granular Item Incomes Verification
+        if (currentDay.incomes && typeof currentDay.incomes === "object") {
+            const cachedIncomes = cachedDay.incomes || {};
+            let incomesChanged = false;
+
+            Object.keys(currentDay.incomes).forEach(itemId => {
+                if (itemId === "timestamp") return;
+                const currentItem = currentDay.incomes[itemId];
+                const cachedItem = cachedIncomes[itemId];
+
+                // Deep primitive value change comparison
+                const currentStr = JSON.stringify({ ...currentItem, timestamp: null });
+                const cachedStr = JSON.stringify({ ...cachedItem, timestamp: null });
+
+                if (!currentItem.timestamp || currentStr !== cachedStr) {
+                    currentItem.timestamp = ts;
+                    incomesChanged = true;
+                } else {
+                    currentItem.timestamp = cachedItem.timestamp;
+                }
+            });
+
+            if (incomesChanged || !currentDay.incomes.timestamp) {
+                currentDay.incomes.timestamp = ts;
+                dayChanged = true;
+            } else {
+                currentDay.incomes.timestamp = cachedIncomes.timestamp || ts;
+            }
+        }
+
+        // C. Granular Item Expenses Verification
+        if (currentDay.expenses && typeof currentDay.expenses === "object") {
+            const cachedExpenses = cachedDay.expenses || {};
+            let expensesChanged = false;
+
+            Object.keys(currentDay.expenses).forEach(itemId => {
+                if (itemId === "timestamp") return;
+                const currentItem = currentDay.expenses[itemId];
+                const cachedItem = cachedExpenses[itemId];
+
+                // Deep primitive value change comparison
+                const currentStr = JSON.stringify({ ...currentItem, timestamp: null });
+                const cachedStr = JSON.stringify({ ...cachedItem, timestamp: null });
+
+                if (!currentItem.timestamp || currentStr !== cachedStr) {
+                    currentItem.timestamp = ts;
+                    expensesChanged = true;
+                } else {
+                    currentItem.timestamp = cachedItem.timestamp;
+                }
+            });
+
+            if (expensesChanged || !currentDay.expenses.timestamp) {
+                currentDay.expenses.timestamp = ts;
+                dayChanged = true;
+            } else {
+                currentDay.expenses.timestamp = cachedExpenses.timestamp || ts;
+            }
+        }
+
+        // D. Day Collection Level Finalization
+        if (dayChanged || !currentDay.timestamp) {
+            currentDay.timestamp = ts;
+        } else {
+            currentDay.timestamp = cachedDay.timestamp || ts;
+        }
+    });
+}
+
+/* =========================================================
    LOAD LOCAL CACHE FIRST
 ========================================================= */
 function loadLocalMirror(){
     try{
         const CACHE_KEY = getCacheKey();
-
         const cached = JSON.parse(localStorage.getItem(CACHE_KEY) || "{}");
 
-        // only apply if valid structure
         if(cached && typeof cached === "object"){
-
             if(cached.currentDate){
                 state.currentDate = cached.currentDate;
+                state.currentDateTimestamp = cached.currentDateTimestamp || 0;
             }
 
             if(cached.dates && typeof cached.dates === "object"){
@@ -6227,24 +6335,27 @@ function loadLocalMirror(){
             ensureDateExists(state.currentDate);
         }
 
-        renderAll();
-
-        console.log("Rendered instantly from isolated local mirror:", CACHE_KEY);
+        if (typeof renderAll === "function") renderAll();
+        console.log("Instant application view generated from local storage baseline cache.");
 
     }catch(err){
-        
+        console.error("Local mirror initialization sequence bypassed:", err);
     }
 }
 
 /* =========================================================
-   SAVE LOCAL CACHE (ISOLATED PER ACCOUNT + DB PATH)
+   SAVE LOCAL CACHE
 ========================================================= */
 function saveLocalMirror(){
     try{
         const CACHE_KEY = getCacheKey();
+        
+        // Evaluate and lock down precision timestamps before serialization
+        applySmartGranularTimestamps();
 
         const mirror = {
             currentDate: state.currentDate,
+            currentDateTimestamp: state.currentDateTimestamp,
             dates: state.dates,
             _meta: {
                 accountKey: localStorage.getItem("AV_ledger_account_key"),
@@ -6256,12 +6367,12 @@ function saveLocalMirror(){
         localStorage.setItem(CACHE_KEY, JSON.stringify(mirror));
 
     }catch(err){
-        console.error("Mirror save failed", err);
+        console.error("Mirror tracking transaction save execution failed", err);
     }
 }
 
 /* =========================================================
-   OVERRIDE SAVE STATE
+   OVERRIDE SAVE STATE INTERCEPTOR
 ========================================================= */
 const originalSaveState = window.saveState;
 
@@ -6274,12 +6385,11 @@ window.saveState = function(){
 };
 
 /* =========================================================
-   FIREBASE SYNC → ALSO RESPECTS CACHE KEY
+   FAIR FIELD-BY-FIELD CONFLICT RESOLUTION ENGINE
 ========================================================= */
 const originalSetupDataListener = window.setupDataListener;
 
 window.setupDataListener = function(){
-
     if(typeof originalSetupDataListener === "function"){
         originalSetupDataListener();
     }
@@ -6287,19 +6397,199 @@ window.setupDataListener = function(){
     if(!firebaseDB || !REMOTE_DB_PATH) return;
 
     firebaseDB.ref(REMOTE_DB_PATH).on("value", snap => {
-        const data = snap.val();
-        if(!data) return;
-
+        const remoteData = snap.val() || {};
         const CACHE_KEY = getCacheKey();
+        
+        let localData = {};
+        try {
+            localData = JSON.parse(localStorage.getItem(CACHE_KEY) || "{}");
+        } catch(e) {
+            localData = {};
+        }
 
-        localStorage.setItem(CACHE_KEY, JSON.stringify(data));
+        let localNeedsRefresh = false;
+        let pendingCloudUpdates = {};
 
-        console.log("Mirror updated from Firebase:", CACHE_KEY);
+        if (!state.dates) state.dates = {};
+
+        /* --- 1. CURRENT DATE EVALUATION --- */
+        const localCurrentDateTs = localData.currentDateTimestamp || 0;
+        const remoteCurrentDateTs = remoteData.currentDateTimestamp || 0;
+
+        if (localCurrentDateTs > remoteCurrentDateTs) {
+            pendingCloudUpdates["currentDate"] = localData.currentDate || "";
+            pendingCloudUpdates["currentDateTimestamp"] = localCurrentDateTs;
+        } else if (remoteCurrentDateTs > localCurrentDateTs) {
+            state.currentDate = remoteData.currentDate;
+            state.currentDateTimestamp = remoteCurrentDateTs;
+            localNeedsRefresh = true;
+        } else {
+            if (remoteData.currentDate && !state.currentDate) {
+                state.currentDate = remoteData.currentDate;
+                state.currentDateTimestamp = remoteCurrentDateTs;
+                localNeedsRefresh = true;
+            }
+        }
+
+        /* --- 2. GRANULAR SUB-RECORD EVALUATION (DATES MATRIX) --- */
+        const localDates = localData.dates || {};
+        const remoteDates = remoteData.dates || {};
+
+        const allDateKeys = new Set([
+            ...Object.keys(localDates).filter(k => k !== "timestamp"),
+            ...Object.keys(remoteDates).filter(k => k !== "timestamp")
+        ]);
+
+        allDateKeys.forEach(dateKey => {
+            const localDay = localDates[dateKey] || {};
+            const remoteDay = remoteDates[dateKey] || {};
+
+            if (!state.dates[dateKey]) {
+                state.dates[dateKey] = { incomes: {}, expenses: {} };
+            }
+            const currentDayState = state.dates[dateKey];
+
+            // --- A. BALANCE STATUS COMPARISON ---
+            const localBalTs = localDay.balancedTimestamp || 0;
+            const remoteBalTs = remoteDay.balancedTimestamp || 0;
+
+            if (localBalTs > remoteBalTs) {
+                pendingCloudUpdates[`dates/${dateKey}/balanced`] = localDay.balanced !== undefined ? localDay.balanced : null;
+                pendingCloudUpdates[`dates/${dateKey}/balancedTimestamp`] = localBalTs;
+            } else if (remoteBalTs > localBalTs) {
+                currentDayState.balanced = remoteDay.balanced;
+                currentDayState.balancedTimestamp = remoteBalTs;
+                localNeedsRefresh = true;
+            } else {
+                if (remoteDay.balanced !== undefined) {
+                    currentDayState.balanced = remoteDay.balanced;
+                    currentDayState.balancedTimestamp = remoteBalTs;
+                }
+            }
+
+            // --- B. INDIVIDUAL INCOME ITEMS COMPARISON ---
+            const localIncomes = localDay.incomes || {};
+            const remoteIncomes = remoteDay.incomes || {};
+
+            const allIncomeIds = new Set([
+                ...Object.keys(localIncomes).filter(k => k !== "timestamp"),
+                ...Object.keys(remoteIncomes).filter(k => k !== "timestamp")
+            ]);
+
+            if (!currentDayState.incomes) currentDayState.incomes = {};
+
+            allIncomeIds.forEach(itemId => {
+                const localItem = localIncomes[itemId];
+                const remoteItem = remoteIncomes[itemId];
+
+                const localItemTs = (localItem && localItem.timestamp) || 0;
+                const remoteItemTs = (remoteItem && remoteItem.timestamp) || 0;
+
+                if (localItemTs > remoteItemTs) {
+                    pendingCloudUpdates[`dates/${dateKey}/incomes/${itemId}`] = localItem;
+                } else if (remoteItemTs > localItemTs) {
+                    currentDayState.incomes[itemId] = remoteItem;
+                    localNeedsRefresh = true;
+                } else {
+                    if (remoteItem) {
+                        currentDayState.incomes[itemId] = remoteItem;
+                    }
+                }
+            });
+
+            // Sync structural income parent wrapper timestamp
+            const localIncomesTs = localIncomes.timestamp || 0;
+            const remoteIncomesTs = remoteIncomes.timestamp || 0;
+            if (localIncomesTs > remoteIncomesTs) {
+                pendingCloudUpdates[`dates/${dateKey}/incomes/timestamp`] = localIncomesTs;
+            } else if (remoteIncomesTs > localIncomesTs) {
+                currentDayState.incomes.timestamp = remoteIncomesTs;
+                localNeedsRefresh = true;
+            }
+
+            // --- C. INDIVIDUAL EXPENSE ITEMS COMPARISON ---
+            const localExpenses = localDay.expenses || {};
+            const remoteExpenses = remoteDay.expenses || {};
+
+            const allExpenseIds = new Set([
+                ...Object.keys(localExpenses).filter(k => k !== "timestamp"),
+                ...Object.keys(remoteExpenses).filter(k => k !== "timestamp")
+            ]);
+
+            if (!currentDayState.expenses) currentDayState.expenses = {};
+
+            allExpenseIds.forEach(itemId => {
+                const localItem = localExpenses[itemId];
+                const remoteItem = remoteExpenses[itemId];
+
+                const localItemTs = (localItem && localItem.timestamp) || 0;
+                const remoteItemTs = (remoteItem && remoteItem.timestamp) || 0;
+
+                if (localItemTs > remoteItemTs) {
+                    pendingCloudUpdates[`dates/${dateKey}/expenses/${itemId}`] = localItem;
+                } else if (remoteItemTs > localItemTs) {
+                    currentDayState.expenses[itemId] = remoteItem;
+                    localNeedsRefresh = true;
+                } else {
+                    if (remoteItem) {
+                        currentDayState.expenses[itemId] = remoteItem;
+                    }
+                }
+            });
+
+            // Sync structural expense parent wrapper timestamp
+            const localExpensesTs = localExpenses.timestamp || 0;
+            const remoteExpensesTs = remoteExpenses.timestamp || 0;
+            if (localExpensesTs > remoteExpensesTs) {
+                pendingCloudUpdates[`dates/${dateKey}/expenses/timestamp`] = localExpensesTs;
+            } else if (remoteExpensesTs > localExpensesTs) {
+                currentDayState.expenses.timestamp = remoteExpensesTs;
+                localNeedsRefresh = true;
+            }
+
+            // --- D. TIMELINE DAY CONTAINER SYNC ---
+            const localDayTs = localDay.timestamp || 0;
+            const remoteDayTs = remoteDay.timestamp || 0;
+            if (localDayTs > remoteDayTs) {
+                pendingCloudUpdates[`dates/${dateKey}/timestamp`] = localDayTs;
+            } else if (remoteDayTs > localDayTs) {
+                currentDayState.timestamp = remoteDayTs;
+                localNeedsRefresh = true;
+            }
+        });
+
+        /* --- 3. COMMIT OPERATIONAL PAYLOADS --- */
+        if (Object.keys(pendingCloudUpdates).length > 0) {
+            console.log("Conflict Engine → Upstream updates targeted for Firebase:", pendingCloudUpdates);
+            firebaseDB.ref(REMOTE_DB_PATH).update(pendingCloudUpdates).catch(err => {
+                console.error("Firebase payload pipeline transmission interrupted:", err);
+            });
+        }
+
+        if (localNeedsRefresh || Object.keys(pendingCloudUpdates).length > 0) {
+            const integratedMirrorObj = {
+                currentDate: state.currentDate,
+                currentDateTimestamp: state.currentDateTimestamp,
+                dates: state.dates,
+                _meta: {
+                    accountKey: localStorage.getItem("AV_ledger_account_key"),
+                    dbPath: window.REMOTE_DB_PATH,
+                    savedAt: Date.now()
+                }
+            };
+
+            localStorage.setItem(CACHE_KEY, JSON.stringify(integratedMirrorObj));
+            
+            if (typeof renderAll === "function") {
+                renderAll();
+            }
+            console.log("Conflict Engine → Local memory safely converged with target record truths.");
+        }
     });
 };
 
 /* =========================================================
-   FAST STARTUP (LOCAL ONLY)
+   BOOTSTRAP APPLICATION EVENT POINTER
 ========================================================= */
 document.addEventListener("DOMContentLoaded", () => {
     loadLocalMirror();
@@ -6307,6 +6597,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 })();
 </script>
+
 
 <script>
 document.addEventListener("DOMContentLoaded", () => {
@@ -6358,6 +6649,85 @@ document.addEventListener("DOMContentLoaded", () => {
     // Run initial check on page load
     updateButtonStatus();
 });
+</script>
+
+<script>
+(function interceptFirebaseWrites() {
+    // Ensure the Firebase library is loaded before attempting prototype modification
+    if (typeof firebase === 'undefined' || !firebase.database) {
+        console.error('Firebase SDK must be loaded before the write interceptor.');
+        return;
+    }
+
+    const Reference = firebase.database.Reference;
+    if (!Reference) return;
+
+    // Cache the original Firebase write methods
+    const originalSet = Reference.prototype.set;
+    const originalUpdate = Reference.prototype.update;
+
+    // Helper utility to identify complex variables (objects) vs primitives
+    function isObject(val) {
+        return val !== null && typeof val === 'object' && !Array.isArray(val);
+    }
+
+    /**
+     * Intercepts all direct .set() calls
+     */
+    Reference.prototype.set = function(value, onComplete) {
+        const timestamp = Date.now(); // Generates epoch milliseconds timestamp
+
+        if (isObject(value)) {
+            // Rule 1: Variable has variables under it -> add timestamp internally
+            value.timestamp = timestamp;
+            return originalSet.call(this, value, onComplete);
+        } else if (value !== undefined && value !== null) {
+            // Rule 2: Variable has NO variables under it (primitive like currentDate)
+            // Fire the original primitive write
+            const primaryWrite = originalSet.call(this, value, onComplete);
+            
+            // Create a parallel keyNameTimestamp variable alongside it in the parent node
+            if (this.parent && this.key) {
+                const parallelTimestampKey = this.key + "Timestamp";
+                this.parent.child(parallelTimestampKey).set(timestamp).catch(err => {
+                    console.error(`Interceptor failed writing parallel timestamp for: ${this.key}`, err);
+                });
+            }
+            return primaryWrite;
+        }
+
+        return originalSet.call(this, value, onComplete);
+    };
+
+    /**
+     * Intercepts all structural .update() updates
+     */
+    Reference.prototype.update = function(values, onComplete) {
+        if (isObject(values)) {
+            const timestamp = Date.now();
+            const hijackedValues = { ...values };
+
+            // Iterate through all key paths being changed inside this update cycle
+            Object.keys(values).forEach(key => {
+                const subValue = values[key];
+                
+                if (isObject(subValue)) {
+                    // Rule 1: Object payload -> inject property directly inside it
+                    hijackedValues[key] = { ...subValue, timestamp: timestamp };
+                } else if (subValue !== undefined && subValue !== null) {
+                    // Rule 2: Primitive payload -> append an adjacent custom key string
+                    hijackedValues[key + "Timestamp"] = timestamp;
+                }
+            });
+
+            return originalUpdate.call(this, hijackedValues, onComplete);
+        }
+
+        return originalUpdate.call(this, values, onComplete);
+    };
+
+    console.log("Firebase Interceptor Engine: Active. Tracking structural data timelines.");
+})();
 </script>
 
 
