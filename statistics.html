@@ -6666,16 +6666,30 @@ document.addEventListener("DOMContentLoaded", () => {
     const originalSet = Reference.prototype.set;
     const originalUpdate = Reference.prototype.update;
 
+    // Re-entrancy protection flag to stop the interceptor from processing its own actions
+    let isInternalWrite = false;
+
     // Helper utility to identify complex variables (objects) vs primitives
     function isObject(val) {
         return val !== null && typeof val === 'object' && !Array.isArray(val);
+    }
+
+    // Helper to detect if a field or key path is already tracking a timestamp
+    function isTimestampKey(key) {
+        if (!key || typeof key !== 'string') return false;
+        return key.toLowerCase().endsWith('timestamp');
     }
 
     /**
      * Intercepts all direct .set() calls
      */
     Reference.prototype.set = function(value, onComplete) {
-        const timestamp = Date.now(); // Generates epoch milliseconds timestamp
+        // If this write was triggered internally by this script or targets a timestamp key, bypass tracking
+        if (isInternalWrite || (this.key && isTimestampKey(this.key))) {
+            return originalSet.call(this, value, onComplete);
+        }
+
+        const timestamp = Date.now(); 
 
         if (isObject(value)) {
             // Rule 1: Variable has variables under it -> add timestamp internally
@@ -6683,17 +6697,22 @@ document.addEventListener("DOMContentLoaded", () => {
             return originalSet.call(this, value, onComplete);
         } else if (value !== undefined && value !== null) {
             // Rule 2: Variable has NO variables under it (primitive like currentDate)
-            // Fire the original primitive write
-            const primaryWrite = originalSet.call(this, value, onComplete);
-            
-            // Create a parallel keyNameTimestamp variable alongside it in the parent node
-            if (this.parent && this.key) {
-                const parallelTimestampKey = this.key + "Timestamp";
-                this.parent.child(parallelTimestampKey).set(timestamp).catch(err => {
-                    console.error(`Interceptor failed writing parallel timestamp for: ${this.key}`, err);
-                });
+            isInternalWrite = true;
+            try {
+                // Fire the original primitive write
+                const primaryWrite = originalSet.call(this, value, onComplete);
+                
+                // Create a parallel keyNameTimestamp variable alongside it in the parent node
+                if (this.parent && this.key) {
+                    const parallelTimestampKey = this.key + "Timestamp";
+                    this.parent.child(parallelTimestampKey).set(timestamp).catch(err => {
+                        console.error(`Interceptor failed writing parallel timestamp for: ${this.key}`, err);
+                    });
+                }
+                return primaryWrite;
+            } finally {
+                isInternalWrite = false;
             }
-            return primaryWrite;
         }
 
         return originalSet.call(this, value, onComplete);
@@ -6703,33 +6722,50 @@ document.addEventListener("DOMContentLoaded", () => {
      * Intercepts all structural .update() updates
      */
     Reference.prototype.update = function(values, onComplete) {
+        // If this update was triggered internally by this script, bypass tracking
+        if (isInternalWrite) {
+            return originalUpdate.call(this, values, onComplete);
+        }
+
         if (isObject(values)) {
             const timestamp = Date.now();
             const hijackedValues = { ...values };
+            let hasStructuralChanges = false;
 
             // Iterate through all key paths being changed inside this update cycle
             Object.keys(values).forEach(key => {
+                // SKIP if the key path itself already targets a timestamp field (prevents trailing infinite text strings)
+                if (isTimestampKey(key)) return;
+
                 const subValue = values[key];
                 
                 if (isObject(subValue)) {
                     // Rule 1: Object payload -> inject property directly inside it
                     hijackedValues[key] = { ...subValue, timestamp: timestamp };
+                    hasStructuralChanges = true;
                 } else if (subValue !== undefined && subValue !== null) {
                     // Rule 2: Primitive payload -> append an adjacent custom key string
                     hijackedValues[key + "Timestamp"] = timestamp;
+                    hasStructuralChanges = true;
                 }
             });
 
-            return originalUpdate.call(this, hijackedValues, onComplete);
+            if (hasStructuralChanges) {
+                isInternalWrite = true;
+                try {
+                    return originalUpdate.call(this, hijackedValues, onComplete);
+                } finally {
+                    isInternalWrite = false;
+                }
+            }
         }
 
         return originalUpdate.call(this, values, onComplete);
     };
 
-    console.log("Firebase Interceptor Engine: Active. Tracking structural data timelines.");
+    console.log("Firebase Interceptor Engine: Active. Protected from recursive timestamp compounding.");
 })();
 </script>
-
 
 </body>
 </html>
