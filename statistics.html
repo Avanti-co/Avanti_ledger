@@ -6183,418 +6183,218 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
 <script>
-(function(){
-
-/* =========================================================
-   DYNAMIC CACHE KEY UTILITY
-========================================================= */
-function getCacheKey(){
-    const accountKey =
-        localStorage.getItem("AV_ledger_account_key") ||
-        window.AV_LEDGER_ACCOUNT_KEY ||
-        "default";
-
-    const dbPath =
-        window.REMOTE_DB_PATH ||
-        "default_db";
-
-    return `AVANTI_LEDGER_LOCAL_MIRROR_${accountKey}_${dbPath}`;
-}
-
-/* =========================================================
-   SMART MICRO-MUTATION TIMESTAMP TRACKER
-   - Compares active memory state to local storage cache.
-   - Refreshes timestamps ONLY for fields that were modified.
-========================================================= */
-function applySmartGranularTimestamps() {
-    const CACHE_KEY = getCacheKey();
-    let cached = {};
-    try {
-        cached = JSON.parse(localStorage.getItem(CACHE_KEY) || "{}");
-    } catch(e) {
-        cached = {};
+(function interceptFirebaseWrites() {
+    // Ensure the Firebase library is loaded before attempting prototype modification
+    if (typeof firebase === 'undefined' || !firebase.database) {
+        console.error('Firebase SDK must be loaded before the write interceptor.');
+        return;
     }
 
-    const ts = Date.now();
+    const Reference = firebase.database.Reference;
+    if (!Reference) return;
 
-    // 1. Evaluate Current Date Pointer
-    if (!state.currentDateTimestamp || state.currentDate !== cached.currentDate) {
-        state.currentDateTimestamp = ts;
-    } else {
-        state.currentDateTimestamp = cached.currentDateTimestamp || ts;
+    // Cache the original Firebase write methods
+    const originalSet = Reference.prototype.set;
+    const originalUpdate = Reference.prototype.update;
+
+    // Re-entrancy protection flag
+    let isInternalWrite = false;
+
+    /**
+     * LOCAL ITEM CACHE
+     * Stores the latest known local timestamps for individual database paths.
+     * Acts as an immediate synchronous reference layer for offline/online tracking.
+     */
+    const localItemCache = new Map();
+
+    // Helper utility to identify complex variables (objects) vs primitives
+    function isObject(val) {
+        return val !== null && typeof val === 'object' && !Array.isArray(val);
     }
 
-    if (!state.dates) state.dates = {};
-    const cachedDates = cached.dates || {};
-
-    // 2. Evaluate Nested Day Timelines
-    Object.keys(state.dates).forEach(dateKey => {
-        if (dateKey === "timestamp") return;
-        const currentDay = state.dates[dateKey];
-        const cachedDay = cachedDates[dateKey] || {};
-
-        let dayChanged = false;
-
-        // A. Balanced Status Mutation Check
-        if (!currentDay.balancedTimestamp || currentDay.balanced !== cachedDay.balanced) {
-            currentDay.balancedTimestamp = ts;
-            dayChanged = true;
-        } else {
-            currentDay.balancedTimestamp = cachedDay.balancedTimestamp || ts;
-        }
-
-        // B. Granular Item Incomes Verification
-        if (currentDay.incomes && typeof currentDay.incomes === "object") {
-            const cachedIncomes = cachedDay.incomes || {};
-            let incomesChanged = false;
-
-            Object.keys(currentDay.incomes).forEach(itemId => {
-                if (itemId === "timestamp") return;
-                const currentItem = currentDay.incomes[itemId];
-                const cachedItem = cachedIncomes[itemId];
-
-                // Deep primitive value change comparison
-                const currentStr = JSON.stringify({ ...currentItem, timestamp: null });
-                const cachedStr = JSON.stringify({ ...cachedItem, timestamp: null });
-
-                if (!currentItem.timestamp || currentStr !== cachedStr) {
-                    currentItem.timestamp = ts;
-                    incomesChanged = true;
-                } else {
-                    currentItem.timestamp = cachedItem.timestamp;
-                }
-            });
-
-            if (incomesChanged || !currentDay.incomes.timestamp) {
-                currentDay.incomes.timestamp = ts;
-                dayChanged = true;
-            } else {
-                currentDay.incomes.timestamp = cachedIncomes.timestamp || ts;
-            }
-        }
-
-        // C. Granular Item Expenses Verification
-        if (currentDay.expenses && typeof currentDay.expenses === "object") {
-            const cachedExpenses = cachedDay.expenses || {};
-            let expensesChanged = false;
-
-            Object.keys(currentDay.expenses).forEach(itemId => {
-                if (itemId === "timestamp") return;
-                const currentItem = currentDay.expenses[itemId];
-                const cachedItem = cachedExpenses[itemId];
-
-                // Deep primitive value change comparison
-                const currentStr = JSON.stringify({ ...currentItem, timestamp: null });
-                const cachedStr = JSON.stringify({ ...cachedItem, timestamp: null });
-
-                if (!currentItem.timestamp || currentStr !== cachedStr) {
-                    currentItem.timestamp = ts;
-                    expensesChanged = true;
-                } else {
-                    currentItem.timestamp = cachedItem.timestamp;
-                }
-            });
-
-            if (expensesChanged || !currentDay.expenses.timestamp) {
-                currentDay.expenses.timestamp = ts;
-                dayChanged = true;
-            } else {
-                currentDay.expenses.timestamp = cachedExpenses.timestamp || ts;
-            }
-        }
-
-        // D. Day Collection Level Finalization
-        if (dayChanged || !currentDay.timestamp) {
-            currentDay.timestamp = ts;
-        } else {
-            currentDay.timestamp = cachedDay.timestamp || ts;
-        }
-    });
-}
-
-/* =========================================================
-   LOAD LOCAL CACHE FIRST
-========================================================= */
-function loadLocalMirror(){
-    try{
-        const CACHE_KEY = getCacheKey();
-        const cached = JSON.parse(localStorage.getItem(CACHE_KEY) || "{}");
-
-        if(cached && typeof cached === "object"){
-            if(cached.currentDate){
-                state.currentDate = cached.currentDate;
-                state.currentDateTimestamp = cached.currentDateTimestamp || 0;
-            }
-
-            if(cached.dates && typeof cached.dates === "object"){
-                state.dates = cached.dates;
-            }
-        }
-
-        if(state.currentDate){
-            ensureDateExists(state.currentDate);
-        }
-
-        if (typeof renderAll === "function") renderAll();
-        console.log("Instant application view generated from local storage baseline cache.");
-
-    }catch(err){
-        console.error("Local mirror initialization sequence bypassed:", err);
-    }
-}
-
-/* =========================================================
-   SAVE LOCAL CACHE
-========================================================= */
-function saveLocalMirror(){
-    try{
-        const CACHE_KEY = getCacheKey();
-        
-        // Evaluate and lock down precision timestamps before serialization
-        applySmartGranularTimestamps();
-
-        const mirror = {
-            currentDate: state.currentDate,
-            currentDateTimestamp: state.currentDateTimestamp,
-            dates: state.dates,
-            _meta: {
-                accountKey: localStorage.getItem("AV_ledger_account_key"),
-                dbPath: window.REMOTE_DB_PATH,
-                savedAt: Date.now()
-            }
-        };
-
-        localStorage.setItem(CACHE_KEY, JSON.stringify(mirror));
-
-    }catch(err){
-        console.error("Mirror tracking transaction save execution failed", err);
-    }
-}
-
-/* =========================================================
-   OVERRIDE SAVE STATE INTERCEPTOR
-========================================================= */
-const originalSaveState = window.saveState;
-
-window.saveState = function(){
-    saveLocalMirror();
-
-    if(typeof originalSaveState === "function"){
-        return originalSaveState.apply(this, arguments);
-    }
-};
-
-/* =========================================================
-   FAIR FIELD-BY-FIELD CONFLICT RESOLUTION ENGINE
-========================================================= */
-const originalSetupDataListener = window.setupDataListener;
-
-window.setupDataListener = function(){
-    if(typeof originalSetupDataListener === "function"){
-        originalSetupDataListener();
+    // Helper to detect if a field or key path is already tracking a timestamp
+    function isTimestampKey(key) {
+        if (!key || typeof key !== 'string') return false;
+        return key.toLowerCase().endsWith('timestamp');
     }
 
-    if(!firebaseDB || !REMOTE_DB_PATH) return;
+    /**
+     * Recursively injects timestamps into individual items and populates the local cache
+     */
+    function processAndCacheItem(obj, currentPath, globalTimestamp) {
+        if (!isObject(obj)) return obj;
 
-    firebaseDB.ref(REMOTE_DB_PATH).on("value", snap => {
-        const remoteData = snap.val() || {};
-        const CACHE_KEY = getCacheKey();
-        
-        let localData = {};
-        try {
-            localData = JSON.parse(localStorage.getItem(CACHE_KEY) || "{}");
-        } catch(e) {
-            localData = {};
+        // Ensure this individual item has its own timestamp root
+        if (!obj.timestamp) {
+            obj.timestamp = globalTimestamp;
         }
+        localItemCache.set(currentPath, obj.timestamp);
 
-        let localNeedsRefresh = false;
-        let pendingCloudUpdates = {};
+        Object.keys(obj).forEach(key => {
+            if (isTimestampKey(key)) return;
 
-        if (!state.dates) state.dates = {};
+            const val = obj[key];
+            const subPath = `${currentPath}/${key}`;
 
-        /* --- 1. CURRENT DATE EVALUATION --- */
-        const localCurrentDateTs = localData.currentDateTimestamp || 0;
-        const remoteCurrentDateTs = remoteData.currentDateTimestamp || 0;
-
-        if (localCurrentDateTs > remoteCurrentDateTs) {
-            pendingCloudUpdates["currentDate"] = localData.currentDate || "";
-            pendingCloudUpdates["currentDateTimestamp"] = localCurrentDateTs;
-        } else if (remoteCurrentDateTs > localCurrentDateTs) {
-            state.currentDate = remoteData.currentDate;
-            state.currentDateTimestamp = remoteCurrentDateTs;
-            localNeedsRefresh = true;
-        } else {
-            if (remoteData.currentDate && !state.currentDate) {
-                state.currentDate = remoteData.currentDate;
-                state.currentDateTimestamp = remoteCurrentDateTs;
-                localNeedsRefresh = true;
-            }
-        }
-
-        /* --- 2. GRANULAR SUB-RECORD EVALUATION (DATES MATRIX) --- */
-        const localDates = localData.dates || {};
-        const remoteDates = remoteData.dates || {};
-
-        const allDateKeys = new Set([
-            ...Object.keys(localDates).filter(k => k !== "timestamp"),
-            ...Object.keys(remoteDates).filter(k => k !== "timestamp")
-        ]);
-
-        allDateKeys.forEach(dateKey => {
-            const localDay = localDates[dateKey] || {};
-            const remoteDay = remoteDates[dateKey] || {};
-
-            if (!state.dates[dateKey]) {
-                state.dates[dateKey] = { incomes: {}, expenses: {} };
-            }
-            const currentDayState = state.dates[dateKey];
-
-            // --- A. BALANCE STATUS COMPARISON ---
-            const localBalTs = localDay.balancedTimestamp || 0;
-            const remoteBalTs = remoteDay.balancedTimestamp || 0;
-
-            if (localBalTs > remoteBalTs) {
-                pendingCloudUpdates[`dates/${dateKey}/balanced`] = localDay.balanced !== undefined ? localDay.balanced : null;
-                pendingCloudUpdates[`dates/${dateKey}/balancedTimestamp`] = localBalTs;
-            } else if (remoteBalTs > localBalTs) {
-                currentDayState.balanced = remoteDay.balanced;
-                currentDayState.balancedTimestamp = remoteBalTs;
-                localNeedsRefresh = true;
-            } else {
-                if (remoteDay.balanced !== undefined) {
-                    currentDayState.balanced = remoteDay.balanced;
-                    currentDayState.balancedTimestamp = remoteBalTs;
-                }
-            }
-
-            // --- B. INDIVIDUAL INCOME ITEMS COMPARISON ---
-            const localIncomes = localDay.incomes || {};
-            const remoteIncomes = remoteDay.incomes || {};
-
-            const allIncomeIds = new Set([
-                ...Object.keys(localIncomes).filter(k => k !== "timestamp"),
-                ...Object.keys(remoteIncomes).filter(k => k !== "timestamp")
-            ]);
-
-            if (!currentDayState.incomes) currentDayState.incomes = {};
-
-            allIncomeIds.forEach(itemId => {
-                const localItem = localIncomes[itemId];
-                const remoteItem = remoteIncomes[itemId];
-
-                const localItemTs = (localItem && localItem.timestamp) || 0;
-                const remoteItemTs = (remoteItem && remoteItem.timestamp) || 0;
-
-                if (localItemTs > remoteItemTs) {
-                    pendingCloudUpdates[`dates/${dateKey}/incomes/${itemId}`] = localItem;
-                } else if (remoteItemTs > localItemTs) {
-                    currentDayState.incomes[itemId] = remoteItem;
-                    localNeedsRefresh = true;
-                } else {
-                    if (remoteItem) {
-                        currentDayState.incomes[itemId] = remoteItem;
-                    }
-                }
-            });
-
-            // Sync structural income parent wrapper timestamp
-            const localIncomesTs = localIncomes.timestamp || 0;
-            const remoteIncomesTs = remoteIncomes.timestamp || 0;
-            if (localIncomesTs > remoteIncomesTs) {
-                pendingCloudUpdates[`dates/${dateKey}/incomes/timestamp`] = localIncomesTs;
-            } else if (remoteIncomesTs > localIncomesTs) {
-                currentDayState.incomes.timestamp = remoteIncomesTs;
-                localNeedsRefresh = true;
-            }
-
-            // --- C. INDIVIDUAL EXPENSE ITEMS COMPARISON ---
-            const localExpenses = localDay.expenses || {};
-            const remoteExpenses = remoteDay.expenses || {};
-
-            const allExpenseIds = new Set([
-                ...Object.keys(localExpenses).filter(k => k !== "timestamp"),
-                ...Object.keys(remoteExpenses).filter(k => k !== "timestamp")
-            ]);
-
-            if (!currentDayState.expenses) currentDayState.expenses = {};
-
-            allExpenseIds.forEach(itemId => {
-                const localItem = localExpenses[itemId];
-                const remoteItem = remoteExpenses[itemId];
-
-                const localItemTs = (localItem && localItem.timestamp) || 0;
-                const remoteItemTs = (remoteItem && remoteItem.timestamp) || 0;
-
-                if (localItemTs > remoteItemTs) {
-                    pendingCloudUpdates[`dates/${dateKey}/expenses/${itemId}`] = localItem;
-                } else if (remoteItemTs > localItemTs) {
-                    currentDayState.expenses[itemId] = remoteItem;
-                    localNeedsRefresh = true;
-                } else {
-                    if (remoteItem) {
-                        currentDayState.expenses[itemId] = remoteItem;
-                    }
-                }
-            });
-
-            // Sync structural expense parent wrapper timestamp
-            const localExpensesTs = localExpenses.timestamp || 0;
-            const remoteExpensesTs = remoteExpenses.timestamp || 0;
-            if (localExpensesTs > remoteExpensesTs) {
-                pendingCloudUpdates[`dates/${dateKey}/expenses/timestamp`] = localExpensesTs;
-            } else if (remoteExpensesTs > localExpensesTs) {
-                currentDayState.expenses.timestamp = remoteExpensesTs;
-                localNeedsRefresh = true;
-            }
-
-            // --- D. TIMELINE DAY CONTAINER SYNC ---
-            const localDayTs = localDay.timestamp || 0;
-            const remoteDayTs = remoteDay.timestamp || 0;
-            if (localDayTs > remoteDayTs) {
-                pendingCloudUpdates[`dates/${dateKey}/timestamp`] = localDayTs;
-            } else if (remoteDayTs > localDayTs) {
-                currentDayState.timestamp = remoteDayTs;
-                localNeedsRefresh = true;
+            if (isObject(val)) {
+                processAndCacheItem(val, subPath, globalTimestamp);
+            } else if (val !== undefined && val !== null) {
+                // Individual primitive item property tracking
+                const propTimestamp = globalTimestamp;
+                obj[key + "Timestamp"] = propTimestamp;
+                localItemCache.set(subPath, propTimestamp);
             }
         });
 
-        /* --- 3. COMMIT OPERATIONAL PAYLOADS --- */
-        if (Object.keys(pendingCloudUpdates).length > 0) {
-            console.log("Conflict Engine → Upstream updates targeted for Firebase:", pendingCloudUpdates);
-            firebaseDB.ref(REMOTE_DB_PATH).update(pendingCloudUpdates).catch(err => {
-                console.error("Firebase payload pipeline transmission interrupted:", err);
-            });
+        return obj;
+    }
+
+    /**
+     * Generic Server-Side Conflict Resolution
+     * Recursively merges incoming data with server data down to individual item properties
+     */
+    function mergeServerGraph(server, incoming) {
+        if (server === null || server === undefined || typeof server !== 'object') {
+            return incoming;
+        }
+        if (incoming === null || incoming === undefined || typeof incoming !== 'object') {
+            return incoming;
         }
 
-        if (localNeedsRefresh || Object.keys(pendingCloudUpdates).length > 0) {
-            const integratedMirrorObj = {
-                currentDate: state.currentDate,
-                currentDateTimestamp: state.currentDateTimestamp,
-                dates: state.dates,
-                _meta: {
-                    accountKey: localStorage.getItem("AV_ledger_account_key"),
-                    dbPath: window.REMOTE_DB_PATH,
-                    savedAt: Date.now()
+        const mergedResult = { ...server };
+
+        Object.keys(incoming).forEach(key => {
+            if (isTimestampKey(key)) return;
+
+            const incomingVal = incoming[key];
+            const serverVal = server[key];
+
+            let incomingTs = 0;
+            let serverTs = 0;
+
+            if (isObject(incomingVal)) {
+                incomingTs = incomingVal.timestamp || 0;
+                serverTs = (isObject(serverVal) ? serverVal.timestamp : server[key + "Timestamp"]) || 0;
+
+                // If the individual incoming item is newer, merge its nested properties
+                if (incomingTs >= serverTs) {
+                    mergedResult[key] = mergeServerGraph(serverVal, incomingVal);
                 }
-            };
+            } else {
+                incomingTs = incoming[key + "Timestamp"] || 0;
+                serverTs = (isObject(serverVal) ? serverVal.timestamp : server[key + "Timestamp"]) || 0;
 
-            localStorage.setItem(CACHE_KEY, JSON.stringify(integratedMirrorObj));
-            
-            if (typeof renderAll === "function") {
-                renderAll();
+                // If the individual incoming property value is newer, overwrite it
+                if (incomingTs >= serverTs) {
+                    mergedResult[key] = incomingVal;
+                    mergedResult[key + "Timestamp"] = incomingTs;
+                }
             }
-            console.log("Conflict Engine → Local memory safely converged with target record truths.");
+        });
+
+        // Maintain the highest high-water mark timestamp for the parent item container
+        mergedResult.timestamp = Math.max(server.timestamp || 0, incoming.timestamp || 0);
+        return mergedResult;
+    }
+
+    /**
+     * Intercepts all direct .set() calls
+     */
+    Reference.prototype.set = function(value, onComplete) {
+        if (isInternalWrite || (this.key && isTimestampKey(this.key))) {
+            return originalSet.call(this, value, onComplete);
         }
-    });
-};
 
-/* =========================================================
-   BOOTSTRAP APPLICATION EVENT POINTER
-========================================================= */
-document.addEventListener("DOMContentLoaded", () => {
-    loadLocalMirror();
-});
+        const globalTimestamp = Date.now();
+        const absolutePath = this.toString();
+        isInternalWrite = true;
 
+        // 1. Process mutations and write to the local cache immediately
+        let processedPayload = value;
+        if (isObject(value)) {
+            processedPayload = processAndCacheItem({ ...value }, absolutePath, globalTimestamp);
+        } else if (value !== undefined && value !== null) {
+            localItemCache.set(absolutePath, globalTimestamp);
+        }
+
+        // 2. Run an authoritative transaction processing individual items safely
+        return this.transaction(currentServerData => {
+            if (!isObject(processedPayload)) {
+                return processedPayload; 
+            }
+            return mergeServerGraph(currentServerData, processedPayload);
+        }, (error, committed, snapshot) => {
+            isInternalWrite = false;
+            if (typeof onComplete === 'function') onComplete(error, committed, snapshot);
+        });
+    };
+
+    /**
+     * Intercepts structural .update() calls
+     */
+    Reference.prototype.update = function(values, onComplete) {
+        if (isInternalWrite || !isObject(values)) {
+            return originalUpdate.call(this, values, onComplete);
+        }
+
+        const globalTimestamp = Date.now();
+        const basePath = this.toString();
+        const hijackedValues = {};
+        isInternalWrite = true;
+
+        // 1. Run item compilation and map tracking markers into the local cache map
+        Object.keys(values).forEach(keyPath => {
+            if (isTimestampKey(keyPath)) return;
+
+            const absolutePath = `${basePath}/${keyPath}`;
+            const targetVal = values[keyPath];
+
+            if (isObject(targetVal)) {
+                hijackedValues[keyPath] = processAndCacheItem({ ...targetVal }, absolutePath, globalTimestamp);
+            } else if (targetVal !== undefined && targetVal !== null) {
+                hijackedValues[keyPath] = targetVal;
+                hijackedValues[keyPath + "Timestamp"] = globalTimestamp;
+                localItemCache.set(absolutePath, globalTimestamp);
+            }
+        });
+
+        // 2. Commit updates via a server-side transaction mapping
+        return this.transaction(currentServerData => {
+            if (currentServerData === null || typeof currentServerData !== 'object') {
+                currentServerData = {};
+            }
+
+            // Simple data simulation context to utilities
+            Object.keys(hijackedValues).forEach(keyPath => {
+                if (isTimestampKey(keyPath)) return;
+
+                const incomingItem = hijackedValues[keyPath];
+                const serverItem = currentServerData[keyPath];
+
+                let incomingTs = isObject(incomingItem) ? (incomingItem.timestamp || 0) : (hijackedValues[keyPath + "Timestamp"] || 0);
+                let serverTs = isObject(serverItem) ? (serverItem.timestamp || 0) : (currentServerData[keyPath + "Timestamp"] || 0);
+
+                if (incomingTs >= serverTs) {
+                    if (isObject(incomingItem)) {
+                        currentServerData[keyPath] = mergeServerGraph(serverItem, incomingItem);
+                    } else {
+                        currentServerData[keyPath] = incomingItem;
+                        currentServerData[keyPath + "Timestamp"] = incomingTs;
+                    }
+                }
+            });
+
+            return currentServerData;
+        }, (error, committed, snapshot) => {
+            isInternalWrite = false;
+            if (typeof onComplete === 'function') onComplete(error, committed, snapshot);
+        });
+    };
+
+    // Expose the cache to the window scope for debugging or validation checks if needed
+    window.__firebaseItemCache = localItemCache;
+
+    console.log("Firebase Interceptor Engine: Active. Granular item tracking & local caching enabled.");
 })();
 </script>
 
@@ -6651,121 +6451,7 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 </script>
 
-<script>
-(function interceptFirebaseWrites() {
-    // Ensure the Firebase library is loaded before attempting prototype modification
-    if (typeof firebase === 'undefined' || !firebase.database) {
-        console.error('Firebase SDK must be loaded before the write interceptor.');
-        return;
-    }
 
-    const Reference = firebase.database.Reference;
-    if (!Reference) return;
-
-    // Cache the original Firebase write methods
-    const originalSet = Reference.prototype.set;
-    const originalUpdate = Reference.prototype.update;
-
-    // Re-entrancy protection flag to stop the interceptor from processing its own actions
-    let isInternalWrite = false;
-
-    // Helper utility to identify complex variables (objects) vs primitives
-    function isObject(val) {
-        return val !== null && typeof val === 'object' && !Array.isArray(val);
-    }
-
-    // Helper to detect if a field or key path is already tracking a timestamp
-    function isTimestampKey(key) {
-        if (!key || typeof key !== 'string') return false;
-        return key.toLowerCase().endsWith('timestamp');
-    }
-
-    /**
-     * Intercepts all direct .set() calls
-     */
-    Reference.prototype.set = function(value, onComplete) {
-        // If this write was triggered internally by this script or targets a timestamp key, bypass tracking
-        if (isInternalWrite || (this.key && isTimestampKey(this.key))) {
-            return originalSet.call(this, value, onComplete);
-        }
-
-        const timestamp = Date.now(); 
-
-        if (isObject(value)) {
-            // Rule 1: Variable has variables under it -> add timestamp internally
-            value.timestamp = timestamp;
-            return originalSet.call(this, value, onComplete);
-        } else if (value !== undefined && value !== null) {
-            // Rule 2: Variable has NO variables under it (primitive like currentDate)
-            isInternalWrite = true;
-            try {
-                // Fire the original primitive write
-                const primaryWrite = originalSet.call(this, value, onComplete);
-                
-                // Create a parallel keyNameTimestamp variable alongside it in the parent node
-                if (this.parent && this.key) {
-                    const parallelTimestampKey = this.key + "Timestamp";
-                    this.parent.child(parallelTimestampKey).set(timestamp).catch(err => {
-                        console.error(`Interceptor failed writing parallel timestamp for: ${this.key}`, err);
-                    });
-                }
-                return primaryWrite;
-            } finally {
-                isInternalWrite = false;
-            }
-        }
-
-        return originalSet.call(this, value, onComplete);
-    };
-
-    /**
-     * Intercepts all structural .update() updates
-     */
-    Reference.prototype.update = function(values, onComplete) {
-        // If this update was triggered internally by this script, bypass tracking
-        if (isInternalWrite) {
-            return originalUpdate.call(this, values, onComplete);
-        }
-
-        if (isObject(values)) {
-            const timestamp = Date.now();
-            const hijackedValues = { ...values };
-            let hasStructuralChanges = false;
-
-            // Iterate through all key paths being changed inside this update cycle
-            Object.keys(values).forEach(key => {
-                // SKIP if the key path itself already targets a timestamp field (prevents trailing infinite text strings)
-                if (isTimestampKey(key)) return;
-
-                const subValue = values[key];
-                
-                if (isObject(subValue)) {
-                    // Rule 1: Object payload -> inject property directly inside it
-                    hijackedValues[key] = { ...subValue, timestamp: timestamp };
-                    hasStructuralChanges = true;
-                } else if (subValue !== undefined && subValue !== null) {
-                    // Rule 2: Primitive payload -> append an adjacent custom key string
-                    hijackedValues[key + "Timestamp"] = timestamp;
-                    hasStructuralChanges = true;
-                }
-            });
-
-            if (hasStructuralChanges) {
-                isInternalWrite = true;
-                try {
-                    return originalUpdate.call(this, hijackedValues, onComplete);
-                } finally {
-                    isInternalWrite = false;
-                }
-            }
-        }
-
-        return originalUpdate.call(this, values, onComplete);
-    };
-
-    console.log("Firebase Interceptor Engine: Active. Protected from recursive timestamp compounding.");
-})();
-</script>
 
 </body>
 </html>
