@@ -6210,7 +6210,6 @@ function loadLocalMirror(){
         const CACHE_KEY = getCacheKey();
         const cached = JSON.parse(localStorage.getItem(CACHE_KEY) || "{}");
 
-        // only apply if valid structure
         if(cached && typeof cached === "object"){
             if(cached.currentDate){
                 state.currentDate = cached.currentDate;
@@ -6226,24 +6225,17 @@ function loadLocalMirror(){
 
         renderAll();
         console.log("Rendered instantly from isolated local mirror:", CACHE_KEY);
-
     }catch(err){
         console.error("Failed to load local mirror:", err);
     }
 }
 
 /* =========================================================
-   SAVE LOCAL CACHE & INJECT LOCAL TIMESTAMPS
+   SAVE LOCAL CACHE (ISOLATED PER ACCOUNT + DB PATH)
 ========================================================= */
 function saveLocalMirror(){
     try{
         const CACHE_KEY = getCacheKey();
-
-        // Inject high-precision timestamp into the active date entry exactly like the interceptor
-        if (state.dates && state.currentDate && state.dates[state.currentDate]) {
-            state.dates[state.currentDate].lastUpdated = Date.now();
-        }
-
         const mirror = {
             currentDate: state.currentDate,
             dates: state.dates,
@@ -6255,133 +6247,144 @@ function saveLocalMirror(){
         };
 
         localStorage.setItem(CACHE_KEY, JSON.stringify(mirror));
-
     }catch(err){
         console.error("Mirror save failed", err);
     }
 }
 
 /* =========================================================
-   OVERRIDE SAVE STATE
+   INTERCEPTION: TIMESTAMP GENERATOR FOR DATES
+   - Deep-compares changes against local storage cache
+   - Appends/updates 'lastUpdated' ONLY if content changed
+========================================================= */
+function applyTimestampsToModifiedDates(){
+    try {
+        const CACHE_KEY = getCacheKey();
+        const cachedRaw = localStorage.getItem(CACHE_KEY);
+        let cachedDates = {};
+        
+        if (cachedRaw) {
+            const parsed = JSON.parse(cachedRaw);
+            if (parsed && parsed.dates) {
+                cachedDates = parsed.dates;
+            }
+        }
+
+        const now = Date.now();
+
+        if (state && state.dates && typeof state.dates === "object") {
+            for (const dKey in state.dates) {
+                if (Object.prototype.hasOwnProperty.call(state.dates, dKey)) {
+                    const currentData = state.dates[dKey];
+                    const cachedData = cachedDates[dKey];
+
+                    if (typeof currentData === "object" && currentData !== null) {
+                        if (!cachedData) {
+                            // Brand new local date entry
+                            currentData.lastUpdated = now;
+                        } else {
+                            // Content check: strip existing timestamps before comparison
+                            const currentCopy = { ...currentData };
+                            const cachedCopy = { ...cachedData };
+                            delete currentCopy.lastUpdated;
+                            delete cachedCopy.lastUpdated;
+
+                            if (JSON.stringify(currentCopy) !== JSON.stringify(cachedCopy)) {
+                                currentData.lastUpdated = now;
+                            } else if (!currentData.lastUpdated) {
+                                // Fallback if timestamp was stripped or missing
+                                currentData.lastUpdated = cachedData.lastUpdated || now;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    } catch (err) {
+        console.error("Failed to apply timestamps:", err);
+    }
+}
+
+/* =========================================================
+   OVERRIDE SAVE STATE (WITH INTERCEPTION)
 ========================================================= */
 const originalSaveState = window.saveState;
 
 window.saveState = function(){
-    // First, save locally and stamp the modification time
+    // 1. Intercept write and stamp modified date objects
+    applyTimestampsToModifiedDates();
+
+    // 2. Commit the stamped objects to local storage mirror
     saveLocalMirror();
 
-    // Then, let the original save state push the stamped records to Firebase
+    // 3. Hand off the data structures to the main Firebase writer safely
     if(typeof originalSaveState === "function"){
         return originalSaveState.apply(this, arguments);
     }
 };
 
 /* =========================================================
-   FIREBASE SYNC & TIMESTAMP RECONCILIATION ENGINE
+   FIREBASE SYNC + CLEAN CONFLICT RESOLUTION
 ========================================================= */
 const originalSetupDataListener = window.setupDataListener;
 
 window.setupDataListener = function(){
+
     if(typeof originalSetupDataListener === "function"){
         originalSetupDataListener();
     }
 
     if(!firebaseDB || !REMOTE_DB_PATH) return;
 
-    // Remove any older listener instances to prevent double synchronization triggers
-    firebaseDB.ref(REMOTE_DB_PATH).off("value");
-
     firebaseDB.ref(REMOTE_DB_PATH).on("value", snap => {
         const remoteData = snap.val();
         if(!remoteData) return;
 
         const CACHE_KEY = getCacheKey();
-        let localChanged = false;
-        const uploadPayload = {};
+        const localDates = state.dates || {};
+        const remoteDates = remoteData.dates || {};
+        
+        let stateChanged = false;
 
-        // Defensive structural initializations
-        if (!state.dates) state.dates = {};
-        if (!remoteData.dates) remoteData.dates = {};
+        // Extract a unique collection of all keys across local memory and remote DB
+        const allDateKeys = new Set([...Object.keys(localDates), ...Object.keys(remoteDates)]);
 
-        // Merge and identify all dates across local memory and the remote server
-        const allDateKeys = new Set([
-            ...Object.keys(state.dates),
-            ...Object.keys(remoteData.dates)
-        ]);
+        allDateKeys.forEach(dKey => {
+            const localDateObj = localDates[dKey];
+            const remoteDateObj = remoteDates[dKey];
 
-        allDateKeys.forEach(dateKey => {
-            const localDateObj = state.dates[dateKey];
-            const remoteDateObj = remoteData.dates[dateKey];
+            if (localDateObj && remoteDateObj) {
+                const localTS = localDateObj.lastUpdated || 0;
+                const remoteTS = remoteDateObj.lastUpdated || 0;
 
-            if (localDateObj && !remoteDateObj) {
-                // Scenario A: Exists locally but missing on server -> Queue upload payload
-                uploadPayload[dateKey] = localDateObj;
-            } 
-            else if (!localDateObj && remoteDateObj) {
-                // Scenario B: Exists on server but missing locally -> Pull to local memory
-                state.dates[dateKey] = remoteDateObj;
-                localChanged = true;
-            } 
-            else if (localDateObj && remoteDateObj) {
-                // Scenario C: Exists in both fields -> Evaluate timestamps to settle Record of Truth
-                const localTS = Number(localDateObj.lastUpdated || 0);
-                const remoteTS = Number(remoteDateObj.lastUpdated || 0);
-
+                // CRITICAL FIX: Only accept remote data if it is strictly newer.
+                // If local data is newer, do nothing here. The user's application loop
+                // will push it to Firebase naturally without causing infinite write loops.
                 if (remoteTS > localTS) {
-                    // Remote is the true record -> Update local cache state
-                    state.dates[dateKey] = remoteDateObj;
-                    localChanged = true;
-                    console.log(`[Reconciler] Local record for ${dateKey} was outdated. Synced forward with Server.`);
-                } 
-                else if (localTS > remoteTS) {
-                    // Local memory is the true record -> Queue write payload to patch the server
-                    uploadPayload[dateKey] = localDateObj;
-                    console.log(`[Reconciler] Server record for ${dateKey} was outdated. Queued local record update.`);
+                    state.dates[dKey] = remoteDateObj;
+                    stateChanged = true;
                 }
+            } else if (remoteDateObj) {
+                // Exists exclusively on remote database, pull down
+                state.dates[dKey] = remoteDateObj;
+                stateChanged = true;
             }
+            // If it exists exclusively locally, we keep it in memory. It will naturally upload on next save.
         });
 
-        // Reconcile current working date pointer
-        if (remoteData.currentDate && remoteData.currentDate !== state.currentDate) {
+        // Sync current active view selection if missing locally
+        if (remoteData.currentDate && !state.currentDate) {
             state.currentDate = remoteData.currentDate;
-            localChanged = true;
+            stateChanged = true;
         }
 
-        // Action: Push local record of truth modifications up to Firebase
-        if (Object.keys(uploadPayload).length > 0) {
-            firebaseDB.ref(REMOTE_DB_PATH).child("dates").update(uploadPayload)
-                .then(() => console.log("✓ [Reconciler] Successfully patched server outdates with local records."))
-                .catch(err => console.error("❌ [Reconciler] Server sync reconciliation upload failed:", err));
-        }
-
-        // Action: Commit changes locally if server held newer info, then trigger system updates
-        if (localChanged) {
-            const mirror = {
-                currentDate: state.currentDate,
-                dates: state.dates,
-                _meta: {
-                    accountKey: localStorage.getItem("AV_ledger_account_key"),
-                    dbPath: window.REMOTE_DB_PATH,
-                    savedAt: Date.now()
-                }
-            };
-            localStorage.setItem(CACHE_KEY, JSON.stringify(mirror));
-            
+        // Only touch UI rendering and storage mirrors if an actionable data change occurred
+        if (stateChanged) {
+            saveLocalMirror();
             if (typeof renderAll === "function") {
                 renderAll();
             }
-        } else {
-            // Keep the cache key backup perfectly current even when variables align equally
-            const mirror = {
-                currentDate: state.currentDate,
-                dates: state.dates,
-                _meta: {
-                    accountKey: localStorage.getItem("AV_ledger_account_key"),
-                    dbPath: window.REMOTE_DB_PATH,
-                    savedAt: Date.now()
-                }
-            };
-            localStorage.setItem(CACHE_KEY, JSON.stringify(mirror));
+            console.log("Mirror updated from cleaner Firebase merge:", CACHE_KEY);
         }
     });
 };
@@ -6395,7 +6398,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
 })();
 </script>
-
 
 <script>
 document.addEventListener("DOMContentLoaded", () => {
@@ -6447,63 +6449,6 @@ document.addEventListener("DOMContentLoaded", () => {
     // Run initial check on page load
     updateButtonStatus();
 });
-</script>
-
-<script>
-/**
- * Firebase Realtime Database Global Write Interceptor
- * Automatically injects an updated timestamp into objects saved via .set() or .update()
- */
-(function() {
-    // Safety check: Ensure the Firebase core and database libraries are available globally
-    if (typeof firebase !== 'undefined' && firebase.database) {
-        
-        const TIMESTAMP_FIELD_NAME = 'lastUpdated';
-
-        // 1. Intercept the .set() method
-        const originalSet = firebase.database.Reference.prototype.set;
-        firebase.database.Reference.prototype.set = function(value, onComplete) {
-            try {
-                // If writing an object, append the current epoch timestamp
-                if (value && typeof value === 'object' && !Array.isArray(value)) {
-                    value[TIMESTAMP_FIELD_NAME] = Date.now();
-                }
-            } catch (error) {
-                console.warn('Interceptor failed to inject timestamp during .set():', error);
-            }
-            // Execute the original Firebase functionality
-            return originalSet.apply(this, [value, onComplete]);
-        };
-
-        // 2. Intercept the .update() method
-        const originalUpdate = firebase.database.Reference.prototype.update;
-        firebase.database.Reference.prototype.update = function(values, onComplete) {
-            try {
-                if (values && typeof values === 'object' && !Array.isArray(values)) {
-                    const currentTimestamp = Date.now();
-                    
-                    // Assign timestamp to the primary payload wrapper object
-                    values[TIMESTAMP_FIELD_NAME] = currentTimestamp;
-
-                    // Deep scan keys to catch nested date pathways (e.g., "dates/2026-06-16")
-                    Object.keys(values).forEach(key => {
-                        if (values[key] && typeof values[key] === 'object' && !Array.isArray(values[key])) {
-                            values[key][TIMESTAMP_FIELD_NAME] = currentTimestamp;
-                        }
-                    });
-                }
-            } catch (error) {
-                console.warn('Interceptor failed to inject timestamp during .update():', error);
-            }
-            // Execute the original Firebase functionality
-            return originalUpdate.apply(this, [values, onComplete]);
-        };
-
-        console.log("🚀 Avanti Ledger Engine: Global Firebase write-interceptor successfully attached.");
-    } else {
-        console.error("⚠️ Global Interceptor Init Error: Firebase database library not detected. Check script loading order.");
-    }
-})();
 </script>
 
 
