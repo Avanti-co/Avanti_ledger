@@ -6185,10 +6185,9 @@ document.addEventListener('DOMContentLoaded', () => {
 <script>
 (function(){
 
-let isSystemOnline = navigator.onLine;
-
 /* =========================================================
    DYNAMIC CACHE KEY
+   - prevents cross-profile data leakage
 ========================================================= */
 function getCacheKey(){
     const accountKey =
@@ -6201,100 +6200,6 @@ function getCacheKey(){
         "default_db";
 
     return `AVANTI_LEDGER_LOCAL_MIRROR_${accountKey}_${dbPath}`;
-}
-
-/* =========================================================
-   DYNAMIC CONNECTION SWITCH
-   - Forces the active Firebase instance offline/online manually
-========================================================= */
-function handleNetworkSwitch(isOnline) {
-    if (!window.firebaseDB) return;
-
-    try {
-        if (isOnline) {
-            console.log("Network online: Enabling production database connection...");
-            window.firebaseDB.goOnline();
-            
-            // Run the timestamp conflict engine as soon as connectivity is restored
-            resolveTimestampConflicts();
-        } else {
-            console.log("Network offline: Disconnecting from production database...");
-            window.firebaseDB.goOffline();
-        }
-    } catch (err) {
-        console.error("Error toggling Firebase network state:", err);
-    }
-}
-
-/* =========================================================
-   TIMESTAMP CONFLICT RESOLUTION MATRIX (ONLINE MODE ONLY)
-   - Compares timestamps directly; strictly updates the outdated storage medium
-========================================================= */
-function resolveTimestampConflicts() {
-    if (!window.firebaseDB || !window.REMOTE_DB_PATH) return;
-
-    window.firebaseDB.ref(window.REMOTE_DB_PATH).once("value").then(snap => {
-        const remoteData = snap.val();
-        if (!remoteData) return;
-
-        const CACHE_KEY = getCacheKey();
-        const localDates = state.dates || {};
-        const remoteDates = remoteData.dates || {};
-        
-        let localNeedsUpdate = false;
-        let remoteNeedsUpdate = false;
-
-        const allDateKeys = new Set([...Object.keys(localDates), ...Object.keys(remoteDates)]);
-
-        allDateKeys.forEach(dKey => {
-            const localDateObj = localDates[dKey];
-            const remoteDateObj = remoteDates[dKey];
-
-            if (localDateObj && remoteDateObj) {
-                const localTS = localDateObj.lastUpdated || 0;
-                const remoteTS = remoteDateObj.lastUpdated || 0;
-
-                if (remoteTS > localTS) {
-                    // Remote has latest info -> update local storage state
-                    state.dates[dKey] = remoteDateObj;
-                    localNeedsUpdate = true;
-                } else if (localTS > remoteTS) {
-                    // Local medium has latest info -> update remote database
-                    remoteNeedsUpdate = true;
-                }
-            } else if (remoteDateObj) {
-                // Exists only on remote -> update local storage state
-                state.dates[dKey] = remoteDateObj;
-                localNeedsUpdate = true;
-            } else if (localDateObj) {
-                // Exists only locally -> update remote database
-                remoteNeedsUpdate = true;
-            }
-        });
-
-        if (remoteData.currentDate && state.currentDate !== remoteData.currentDate) {
-            state.currentDate = remoteData.currentDate;
-            localNeedsUpdate = true;
-        }
-
-        // Apply state assignments to respective mediums
-        if (localNeedsUpdate) {
-            saveLocalMirror();
-            if (typeof renderAll === "function") {
-                renderAll();
-            }
-            console.log("Local storage updated with latest production entries.");
-        }
-
-        if (remoteNeedsUpdate) {
-            console.log("Local storage contains newest timestamps. Writing to production...");
-            if (typeof originalSaveState === "function") {
-                originalSaveState();
-            }
-        }
-    }).catch(err => {
-        console.error("Error reading data during conflict resolution:", err);
-    });
 }
 
 /* =========================================================
@@ -6319,13 +6224,14 @@ function loadLocalMirror(){
         }
 
         renderAll();
+        console.log("Rendered instantly from isolated local mirror:", CACHE_KEY);
     }catch(err){
-        console.error("Mirror read failed", err);
+        console.error("Failed to load local mirror:", err);
     }
 }
 
 /* =========================================================
-   SAVE LOCAL CACHE
+   SAVE LOCAL CACHE (ISOLATED PER ACCOUNT + DB PATH)
 ========================================================= */
 function saveLocalMirror(){
     try{
@@ -6339,6 +6245,7 @@ function saveLocalMirror(){
                 savedAt: Date.now()
             }
         };
+
         localStorage.setItem(CACHE_KEY, JSON.stringify(mirror));
     }catch(err){
         console.error("Mirror save failed", err);
@@ -6347,6 +6254,8 @@ function saveLocalMirror(){
 
 /* =========================================================
    INTERCEPTION: TIMESTAMP GENERATOR FOR DATES
+   - Deep-compares changes against local storage cache
+   - Appends/updates 'lastUpdated' ONLY if content changed
 ========================================================= */
 function applyTimestampsToModifiedDates(){
     try {
@@ -6371,8 +6280,10 @@ function applyTimestampsToModifiedDates(){
 
                     if (typeof currentData === "object" && currentData !== null) {
                         if (!cachedData) {
+                            // New date record created offline
                             currentData.lastUpdated = now;
                         } else {
+                            // Isolate content from timestamps for clean checking
                             const currentCopy = { ...currentData };
                             const cachedCopy = { ...cachedData };
                             delete currentCopy.lastUpdated;
@@ -6394,54 +6305,192 @@ function applyTimestampsToModifiedDates(){
 }
 
 /* =========================================================
+   INTERCEPTOR: MONKEY-PATCH FIREBASE WRITE OPERATIONS
+   - Converts blind .set() or .update() calls into safe
+     atomic transactions that evaluate timestamps on the server.
+========================================================= */
+function patchFirebaseWrites(){
+    const db = window.firebaseDB || (typeof firebaseDB !== "undefined" ? firebaseDB : null);
+    if (!db || db._patchedForLWW) return;
+
+    const originalRef = db.ref;
+    db.ref = function(path) {
+        const refInstance = originalRef.apply(this, arguments);
+        const targetPath = window.REMOTE_DB_PATH || "";
+
+        if (path === targetPath && targetPath !== "") {
+            // Overwrite standard .set()
+            refInstance.set = function(newData) {
+                if (!newData || typeof newData !== "object") {
+                    return refInstance.transaction(() => newData);
+                }
+
+                console.log("Intercepted blind write operation. Executing secure timestamp transaction...");
+                return refInstance.transaction(currentServerData => {
+                    // If server data is completely blank, accept client input wholesale
+                    if (!currentServerData) return newData;
+
+                    const mergedData = { ...newData };
+                    const remoteDates = currentServerData.dates || {};
+                    const localDates = newData.dates || {};
+                    const mergedDates = { ...localDates };
+
+                    const allKeys = new Set([...Object.keys(remoteDates), ...Object.keys(localDates)]);
+
+                    allKeys.forEach(dKey => {
+                        const localObj = localDates[dKey];
+                        const remoteObj = remoteDates[dKey];
+
+                        if (localObj && remoteObj) {
+                            const localTS = localObj.lastUpdated || 0;
+                            const remoteTS = remoteObj.lastUpdated || 0;
+
+                            // The ultimate truth rule: Newest timestamp wins
+                            if (remoteTS >= localTS) {
+                                mergedDates[dKey] = remoteObj;
+                            } else {
+                                mergedDates[dKey] = localObj;
+                            }
+                        } else if (remoteObj) {
+                            // Preserves records that exist only on the live server
+                            mergedDates[dKey] = remoteObj;
+                        }
+                    });
+
+                    mergedData.dates = mergedDates;
+
+                    // Ensure selection data maps cleanly
+                    if (currentServerData.currentDate && !newData.currentDate) {
+                        mergedData.currentDate = currentServerData.currentDate;
+                    }
+
+                    return mergedData;
+                });
+            };
+
+            // Route updates through our safe transactional logic
+            refInstance.update = function(newData) {
+                if (newData && (newData.dates || newData["dates"])) {
+                    return refInstance.set(newData);
+                }
+                return refInstance.set(state);
+            };
+        }
+        return refInstance;
+    };
+
+    db._patchedForLWW = true;
+    console.log("Firebase Database writing layer protected successfully.");
+}
+
+/* =========================================================
    OVERRIDE SAVE STATE
 ========================================================= */
 const originalSaveState = window.saveState;
 
 window.saveState = function(){
-    // Check connection parameters before processing the state chain
-    const systemOnlineNow = navigator.onLine;
-    if (systemOnlineNow !== isSystemOnline) {
-        isSystemOnline = systemOnlineNow;
-        handleNetworkSwitch(isSystemOnline);
-    }
+    // Ensure write interceptors are active
+    patchFirebaseWrites();
 
-    // 1. Force state stamp generation
+    // 1. Intercept edit states and update local timestamps
     applyTimestampsToModifiedDates();
 
-    // 2. Persist directly to local browser mirror storage
+    // 2. Write safely to browser storage cache
     saveLocalMirror();
 
-    // 3. Forward to the main application's standard firebase logic
+    // 3. Execute original save logic (now protected by transaction layer)
     if(typeof originalSaveState === "function"){
         return originalSaveState.apply(this, arguments);
     }
 };
 
 /* =========================================================
-   NETWORK STATE LISTENERS
+   FIREBASE SYNC + REAL-TIME MERGE LISTENER
 ========================================================= */
-window.addEventListener("online", () => {
-    isSystemOnline = true;
-    handleNetworkSwitch(true);
-});
+const originalSetupDataListener = window.setupDataListener;
 
-window.addEventListener("offline", () => {
-    isSystemOnline = false;
-    handleNetworkSwitch(false);
-});
+window.setupDataListener = function(){
+
+    if(typeof originalSetupDataListener === "function"){
+        originalSetupDataListener();
+    }
+
+    patchFirebaseWrites();
+
+    const db = window.firebaseDB || (typeof firebaseDB !== "undefined" ? firebaseDB : null);
+    const path = window.REMOTE_DB_PATH;
+    if(!db || !path) return;
+
+    db.ref(path).on("value", snap => {
+        const remoteData = snap.val();
+        if(!remoteData) return;
+
+        const CACHE_KEY = getCacheKey();
+        const localDates = state.dates || {};
+        const remoteDates = remoteData.dates || {};
+        
+        let stateChanged = false;
+        let localHasNewerEdits = false;
+
+        const allDateKeys = new Set([...Object.keys(localDates), ...Object.keys(remoteDates)]);
+
+        allDateKeys.forEach(dKey => {
+            const localDateObj = localDates[dKey];
+            const remoteDateObj = remoteDates[dKey];
+
+            if (localDateObj && remoteDateObj) {
+                const localTS = localDateObj.lastUpdated || 0;
+                const remoteTS = remoteDateObj.lastUpdated || 0;
+
+                if (remoteTS > localTS) {
+                    state.dates[dKey] = remoteDateObj;
+                    stateChanged = true;
+                } else if (localTS > remoteTS) {
+                    // Flag that an offline edit needs to sync to the server
+                    localHasNewerEdits = true;
+                } else {
+                    // Content correction safe-check for identical timestamps
+                    if (JSON.stringify(localDateObj) !== JSON.stringify(remoteDateObj)) {
+                        state.dates[dKey] = remoteDateObj;
+                        stateChanged = true;
+                    }
+                }
+            } else if (remoteDateObj) {
+                state.dates[dKey] = remoteDateObj;
+                stateChanged = true;
+            } else if (localDateObj) {
+                localHasNewerEdits = true;
+            }
+        });
+
+        if (remoteData.currentDate && state.currentDate !== remoteData.currentDate) {
+            state.currentDate = remoteData.currentDate;
+            stateChanged = true;
+        }
+
+        if (stateChanged) {
+            saveLocalMirror();
+            if (typeof renderAll === "function") {
+                renderAll();
+            }
+            console.log("UI updated with fresh remote changes:", CACHE_KEY);
+        }
+
+        // Automatically pushes offline sessions upstream safely upon reconnection
+        if (localHasNewerEdits) {
+            console.log("Detected local updates saved while offline. Syncing upstream...");
+            if (typeof originalSaveState === "function") {
+                originalSaveState();
+            }
+        }
+    });
+};
 
 /* =========================================================
-   FAST STARTUP
+   FAST STARTUP (LOCAL ONLY)
 ========================================================= */
 document.addEventListener("DOMContentLoaded", () => {
     loadLocalMirror();
-    
-    // Set baseline network connection context based on current status
-    if (!navigator.onLine) {
-        isSystemOnline = false;
-        handleNetworkSwitch(false);
-    }
 });
 
 })();
@@ -6499,7 +6548,109 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 </script>
 
+<script>
+/* ---------- Config / Firebase ---------- */
+const ORIGINAL_CONFIG = {
+  apiKey: "AIzaSyDZeQXOHRjhqijerFLyNkOLcbQUIwRLRqY",
+  authDomain: "mwelaisha-shaba.firebaseapp.com",
+  databaseURL: "https://mwelaisha-shaba-default-rtdb.firebaseio.com",
+  projectId: "mwelaisha-shaba",
+  storageBucket: "mwelaisha-shaba.firebasestorage.app",
+  messagingSenderId: "262165456072",
+  appId: "1:262165456072:web:40926b87a0eb513cc971fd",
+  measurementId: "G-LVWW6PJ0P0"
+};
 
+const DUMMY_CONFIG = {
+  apiKey: "DUMMY_KEY_OFFLINE",
+  authDomain: "dummy.firebaseapp.com",
+  databaseURL: "https://dummy-default-rtdb.firebaseio.com",
+  projectId: "dummy-project",
+  storageBucket: "dummy.appspot.com",
+  messagingSenderId: "000000000000",
+  appId: "1:000000000000:web:dummyappid"
+};
+
+let firebaseApp = null;
+let firebaseDB = null; 
+
+// Function to safely initialize or re-initialize Firebase
+function initFirebase(config) {
+  if (typeof firebase === 'undefined') {
+    console.error('Firebase library is not loaded.');
+    return;
+  }
+
+  try {
+    // If an app already exists, delete it first to clear cached connections/queues
+    if (firebase.apps.length > 0) {
+      firebase.app().delete().then(() => {
+        completeInitialization(config);
+      }).catch(e => {
+        console.error('Failed to delete old Firebase app instance:', e);
+      });
+    } else {
+      completeInitialization(config);
+    }
+  } catch (e) {
+    console.warn('Firebase init failed', e);
+  }
+}
+
+function completeInitialization(config) {
+  firebaseApp = firebase.initializeApp(config);
+  firebaseDB = firebase.database();
+  console.log(`Firebase initialized with ${config.apiKey === ORIGINAL_CONFIG.apiKey ? 'ORIGINAL' : 'DUMMY'} config.`);
+}
+
+// Function to monitor network status
+function setupNetworkListeners() {
+  // 1. Standard browser online/offline events
+  window.addEventListener('online', () => {
+    console.log('Device is online. Restoring original Firebase config...');
+    initFirebase(ORIGINAL_CONFIG);
+  });
+
+  window.addEventListener('offline', () => {
+    console.log('Device is offline. Switching to dummy Firebase config...');
+    initFirebase(DUMMY_CONFIG);
+  });
+
+  // 2. Optional: Bad connection detection (Network Information API)
+  if (navigator.connection) {
+    navigator.connection.addEventListener('change', () => {
+      const { effectiveType, saveData } = navigator.connection;
+      // Define "bad connection" (e.g., 'slow-2g' or '2g')
+      if (effectiveType === 'slow-2g' || effectiveType === '2g') {
+        console.warn(`Bad internet connection detected (${effectiveType}). Dropping to dummy config...`);
+        initFirebase(DUMMY_CONFIG);
+      } else if (navigator.onLine) {
+        // Restore if connection recovers to 3g/4g/wifi while still online
+        initFirebase(ORIGINAL_CONFIG);
+      }
+    });
+  }
+}
+
+// Initial bootup check
+(function boot() {
+  if (typeof firebase !== 'undefined') {
+    const isBadConnection = navigator.connection && (navigator.connection.effectiveType === 'slow-2g' || navigator.connection.effectiveType === '2g');
+    
+    if (navigator.onLine && !isBadConnection) {
+      initFirebase(ORIGINAL_CONFIG);
+    } else {
+      initFirebase(DUMMY_CONFIG);
+    }
+    
+    setupNetworkListeners();
+  } else {
+    // Retry if script execution order is slightly off
+    setTimeout(boot, 100);
+  }
+})();
+
+</script>
 
 </body>
 </html>
