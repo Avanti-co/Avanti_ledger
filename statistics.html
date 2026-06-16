@@ -6254,6 +6254,8 @@ function saveLocalMirror(){
 
 /* =========================================================
    INTERCEPTION: TIMESTAMP GENERATOR FOR DATES
+   - Deep-compares changes against local storage cache
+   - Appends/updates 'lastUpdated' ONLY if content changed
 ========================================================= */
 function applyTimestampsToModifiedDates(){
     try {
@@ -6278,8 +6280,10 @@ function applyTimestampsToModifiedDates(){
 
                     if (typeof currentData === "object" && currentData !== null) {
                         if (!cachedData) {
+                            // New date record created offline
                             currentData.lastUpdated = now;
                         } else {
+                            // Isolate content from timestamps for clean checking
                             const currentCopy = { ...currentData };
                             const cachedCopy = { ...cachedData };
                             delete currentCopy.lastUpdated;
@@ -6301,29 +6305,107 @@ function applyTimestampsToModifiedDates(){
 }
 
 /* =========================================================
-   OVERRIDE SAVE STATE (CONTROLLED BY NETWORK STATUS)
+   INTERCEPTOR: MONKEY-PATCH FIREBASE WRITE OPERATIONS
+   - Converts blind .set() or .update() calls into safe
+     atomic transactions that evaluate timestamps on the server.
+========================================================= */
+function patchFirebaseWrites(){
+    const db = window.firebaseDB || (typeof firebaseDB !== "undefined" ? firebaseDB : null);
+    if (!db || db._patchedForLWW) return;
+
+    const originalRef = db.ref;
+    db.ref = function(path) {
+        const refInstance = originalRef.apply(this, arguments);
+        const targetPath = window.REMOTE_DB_PATH || "";
+
+        if (path === targetPath && targetPath !== "") {
+            // Overwrite standard .set()
+            refInstance.set = function(newData) {
+                if (!newData || typeof newData !== "object") {
+                    return refInstance.transaction(() => newData);
+                }
+
+                console.log("Intercepted blind write operation. Executing secure timestamp transaction...");
+                return refInstance.transaction(currentServerData => {
+                    // If server data is completely blank, accept client input wholesale
+                    if (!currentServerData) return newData;
+
+                    const mergedData = { ...newData };
+                    const remoteDates = currentServerData.dates || {};
+                    const localDates = newData.dates || {};
+                    const mergedDates = { ...localDates };
+
+                    const allKeys = new Set([...Object.keys(remoteDates), ...Object.keys(localDates)]);
+
+                    allKeys.forEach(dKey => {
+                        const localObj = localDates[dKey];
+                        const remoteObj = remoteDates[dKey];
+
+                        if (localObj && remoteObj) {
+                            const localTS = localObj.lastUpdated || 0;
+                            const remoteTS = remoteObj.lastUpdated || 0;
+
+                            // The ultimate truth rule: Newest timestamp wins
+                            if (remoteTS >= localTS) {
+                                mergedDates[dKey] = remoteObj;
+                            } else {
+                                mergedDates[dKey] = localObj;
+                            }
+                        } else if (remoteObj) {
+                            // Preserves records that exist only on the live server
+                            mergedDates[dKey] = remoteObj;
+                        }
+                    });
+
+                    mergedData.dates = mergedDates;
+
+                    // Ensure selection data maps cleanly
+                    if (currentServerData.currentDate && !newData.currentDate) {
+                        mergedData.currentDate = currentServerData.currentDate;
+                    }
+
+                    return mergedData;
+                });
+            };
+
+            // Route updates through our safe transactional logic
+            refInstance.update = function(newData) {
+                if (newData && (newData.dates || newData["dates"])) {
+                    return refInstance.set(newData);
+                }
+                return refInstance.set(state);
+            };
+        }
+        return refInstance;
+    };
+
+    db._patchedForLWW = true;
+    console.log("Firebase Database writing layer protected successfully.");
+}
+
+/* =========================================================
+   OVERRIDE SAVE STATE
 ========================================================= */
 const originalSaveState = window.saveState;
 
 window.saveState = function(){
-    // 1. Always stamp modified items with the current client timestamp
+    // Ensure write interceptors are active
+    patchFirebaseWrites();
+
+    // 1. Intercept edit states and update local timestamps
     applyTimestampsToModifiedDates();
 
-    // 2. Always update local storage so changes are never lost locally
+    // 2. Write safely to browser storage cache
     saveLocalMirror();
 
-    // 3. CRITICAL INTERCEPTION: Check network availability before talking to Firebase
-    if (navigator.onLine) {
-        if(typeof originalSaveState === "function"){
-            return originalSaveState.apply(this, arguments);
-        }
-    } else {
-        console.warn("Device is offline! Changes saved locally. Firebase sync deferred until reconnection.");
+    // 3. Execute original save logic (now protected by transaction layer)
+    if(typeof originalSaveState === "function"){
+        return originalSaveState.apply(this, arguments);
     }
 };
 
 /* =========================================================
-   FIREBASE SYNC + DISCONNECTED CONFLICT RESOLUTION MERGE
+   FIREBASE SYNC + REAL-TIME MERGE LISTENER
 ========================================================= */
 const originalSetupDataListener = window.setupDataListener;
 
@@ -6333,87 +6415,73 @@ window.setupDataListener = function(){
         originalSetupDataListener();
     }
 
-    if(!firebaseDB || !REMOTE_DB_PATH) return;
+    patchFirebaseWrites();
 
-    firebaseDB.ref(REMOTE_DB_PATH).on("value", snap => {
+    const db = window.firebaseDB || (typeof firebaseDB !== "undefined" ? firebaseDB : null);
+    const path = window.REMOTE_DB_PATH;
+    if(!db || !path) return;
+
+    db.ref(path).on("value", snap => {
         const remoteData = snap.val();
         if(!remoteData) return;
 
         const CACHE_KEY = getCacheKey();
-        
-        // Pull latest state from local cache mirror to find offline changes
-        const cached = JSON.parse(localStorage.getItem(CACHE_KEY) || "{}");
-        const localDates = cached.dates || state.dates || {};
+        const localDates = state.dates || {};
         const remoteDates = remoteData.dates || {};
         
-        const mergedDates = {};
         let stateChanged = false;
-        let localHasNewerOfflineEdits = false;
+        let localHasNewerEdits = false;
 
-        // Collect all distinct date strings present in both records
         const allDateKeys = new Set([...Object.keys(localDates), ...Object.keys(remoteDates)]);
 
         allDateKeys.forEach(dKey => {
-            const localObj = localDates[dKey];
-            const remoteObj = remoteDates[dKey];
+            const localDateObj = localDates[dKey];
+            const remoteDateObj = remoteDates[dKey];
 
-            if (localObj && remoteObj) {
-                const localTS = localObj.lastUpdated || 0;
-                const remoteTS = remoteObj.lastUpdated || 0;
+            if (localDateObj && remoteDateObj) {
+                const localTS = localDateObj.lastUpdated || 0;
+                const remoteTS = remoteDateObj.lastUpdated || 0;
 
                 if (remoteTS > localTS) {
-                    // Server holds a newer change. Accept it.
-                    mergedDates[dKey] = remoteObj;
+                    state.dates[dKey] = remoteDateObj;
                     stateChanged = true;
                 } else if (localTS > remoteTS) {
-                    // This device holds a newer offline modification. Protect it.
-                    mergedDates[dKey] = localObj;
-                    localHasNewerOfflineEdits = true;
+                    // Flag that an offline edit needs to sync to the server
+                    localHasNewerEdits = true;
                 } else {
-                    // Timestamps match. Do a fallback data check to ensure convergence.
-                    if (JSON.stringify(localObj) !== JSON.stringify(remoteObj)) {
-                        mergedDates[dKey] = remoteObj; 
+                    // Content correction safe-check for identical timestamps
+                    if (JSON.stringify(localDateObj) !== JSON.stringify(remoteDateObj)) {
+                        state.dates[dKey] = remoteDateObj;
                         stateChanged = true;
-                    } else {
-                        mergedDates[dKey] = localObj;
                     }
                 }
-            } else if (remoteObj) {
-                // Node exists only on server
-                mergedDates[dKey] = remoteObj;
+            } else if (remoteDateObj) {
+                state.dates[dKey] = remoteDateObj;
                 stateChanged = true;
-            } else if (localObj) {
-                // Created entirely offline on this device
-                mergedDates[dKey] = localObj;
-                localHasNewerOfflineEdits = true;
+            } else if (localDateObj) {
+                localHasNewerEdits = true;
             }
         });
-
-        // Apply cleanly merged structural updates to app state
-        state.dates = mergedDates;
 
         if (remoteData.currentDate && state.currentDate !== remoteData.currentDate) {
             state.currentDate = remoteData.currentDate;
             stateChanged = true;
         }
 
-        // Commit resolution data back to local disk and trigger UI redraw
-        if (stateChanged || localHasNewerOfflineEdits) {
+        if (stateChanged) {
             saveLocalMirror();
             if (typeof renderAll === "function") {
                 renderAll();
             }
+            console.log("UI updated with fresh remote changes:", CACHE_KEY);
         }
 
-        // 4. POST-RECONNECT RECONCILIATION
-        // If we have verified newer offline data, push the perfectly merged state up to Firebase
-        if (localHasNewerOfflineEdits && navigator.onLine) {
-            console.log("Reconnection synchronization: Pushing true timestamp records up to Firebase...");
+        // Automatically pushes offline sessions upstream safely upon reconnection
+        if (localHasNewerEdits) {
+            console.log("Detected local updates saved while offline. Syncing upstream...");
             if (typeof originalSaveState === "function") {
                 originalSaveState();
             }
-        } else if (stateChanged) {
-            console.log("Local application state updated with newer server records.");
         }
     });
 };
@@ -6478,6 +6546,109 @@ document.addEventListener("DOMContentLoaded", () => {
     // Run initial check on page load
     updateButtonStatus();
 });
+</script>
+
+<script type="module">
+  // Import Firebase core and network management modules
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+  import { 
+    getFirestore, 
+    disableNetwork, 
+    enableNetwork,
+    doc,
+    setDoc,
+    runTransaction
+  } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+  // 1. Initialize your Firebase Configuration
+  const firebaseConfig = {
+    apiKey: "YOUR_API_KEY",
+    authDomain: "YOUR_AUTH_DOMAIN",
+    projectId: "YOUR_PROJECT_ID",
+    storageBucket: "YOUR_STORAGE_BUCKET",
+    messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+    appId: "YOUR_APP_ID"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+
+  // App-level state tracker to guard the internal write pipeline
+  let isDeviceOnline = navigator.onLine;
+
+  /**
+   * LAYER 1: STRICT NETWORK CUTOFF
+   * Forces Firebase to cut off all background connection retries immediately.
+   */
+  window.addEventListener('offline', async () => {
+    isDeviceOnline = false;
+    console.warn("Device offline: Cutting off Firebase server communication.");
+    try {
+      await disableNetwork(db); 
+      // Firestore will now strictly serve reads from local cache and halt network streams
+    } catch (err) {
+      console.error("Failed to disable Firebase network:", err);
+    }
+  });
+
+  window.addEventListener('online', async () => {
+    isDeviceOnline = true;
+    console.log("Device online: Re-enabling Firebase server communication.");
+    try {
+      await enableNetwork(db);
+    } catch (err) {
+      console.error("Failed to enable Firebase network:", err);
+    }
+  });
+
+  /**
+   * LAYER 2: QUEUE PREVENTION WRAPPER
+   * Intercepts writes before Firebase can drop them into its internal sync queue.
+   */
+  async function executeOnlineWrite(writeOperationFn) {
+    if (!isDeviceOnline) {
+      // Throw an error immediately to completely bypass the Firebase offline queue
+      throw new Error("Write rejected: Device is offline and queuing is disabled.");
+    }
+    return await writeOperationFn();
+  }
+
+  /**
+   * METHOD A: Guarded Standard Write (Using the Wrapper)
+   */
+  async function secureSaveData(collectionName, docId, data) {
+    try {
+      await executeOnlineWrite(async () => {
+        const docRef = doc(db, collectionName, docId);
+        await setDoc(docRef, data);
+        console.log("Data successfully committed to the server.");
+      });
+    } catch (error) {
+      console.error("Operation Blocked Cleanly:", error.message);
+      // Handle the fallback locally (e.g., notifying the user progress wasn't saved)
+    }
+  }
+
+  /**
+   * METHOD B: Alternative Transaction Method 
+   * Firestore Transactions natively fail instantly if offline because they
+   * require a server handshake. They NEVER queue items.
+   */
+  async function transactionSaveData(collectionName, docId, data) {
+    const docRef = doc(db, collectionName, docId);
+    try {
+      await runTransaction(db, async (transaction) => {
+        transaction.set(docRef, data);
+      });
+      console.log("Transaction successfully committed to the server.");
+    } catch (error) {
+      console.error("Transaction failed instantly due to offline status:", error.message);
+    }
+  }
+
+  // Expose execution functions to the window object for global application access
+  window.secureSaveData = secureSaveData;
+  window.transactionSaveData = transactionSaveData;
 </script>
 
 
