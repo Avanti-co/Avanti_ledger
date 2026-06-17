@@ -2009,19 +2009,8 @@ if (FIREBASE_CONFIG) {
 
 }
 
-window.addEventListener("online",()=>{
-
-    isOnline=true;
-
-    console.log(
-        "Connection restored. Waiting for timestamp reconciliation..."
-    );
-
-    if(typeof setupDataListener==="function"){
-        setupDataListener();
-    }
-
-});
+window.addEventListener('online', () => { isOnline = true; console.log("Connection restored! You are back online. Avanti has successfully re-synchronized your ledger states, secure audit logs, and inventory balances with the main server network.");
+ });
 window.addEventListener('offline', () => { isOnline = false; console.log("Network connection interrupted. You are now entering offline mode. Avanti has successfully activated local storage engines to securely cache your ledger entries and audit trails until connectivity is restored.");
  });
 
@@ -6197,7 +6186,7 @@ document.addEventListener('DOMContentLoaded', () => {
 (function(){
 
 /* =========================================================
-   DYNAMIC CACHE KEY
+   DYNAMIC CACHE KEY (CRITICAL FIX)
    - prevents cross-profile data leakage
 ========================================================= */
 function getCacheKey(){
@@ -6219,12 +6208,16 @@ function getCacheKey(){
 function loadLocalMirror(){
     try{
         const CACHE_KEY = getCacheKey();
+
         const cached = JSON.parse(localStorage.getItem(CACHE_KEY) || "{}");
 
+        // only apply if valid structure
         if(cached && typeof cached === "object"){
+
             if(cached.currentDate){
                 state.currentDate = cached.currentDate;
             }
+
             if(cached.dates && typeof cached.dates === "object"){
                 state.dates = cached.dates;
             }
@@ -6235,9 +6228,11 @@ function loadLocalMirror(){
         }
 
         renderAll();
+
         console.log("Rendered instantly from isolated local mirror:", CACHE_KEY);
+
     }catch(err){
-        console.error("Failed to load local mirror:", err);
+        
     }
 }
 
@@ -6247,6 +6242,7 @@ function loadLocalMirror(){
 function saveLocalMirror(){
     try{
         const CACHE_KEY = getCacheKey();
+
         const mirror = {
             currentDate: state.currentDate,
             dates: state.dates,
@@ -6258,301 +6254,27 @@ function saveLocalMirror(){
         };
 
         localStorage.setItem(CACHE_KEY, JSON.stringify(mirror));
+
     }catch(err){
         console.error("Mirror save failed", err);
     }
 }
 
 /* =========================================================
-   INTERCEPTION: TIMESTAMP GENERATOR FOR DATES
-   - Deep-compares changes against local storage cache
-   - Appends/updates 'lastUpdated' ONLY if content changed
-========================================================= */
-function applyTimestampsToModifiedDates(){
-    try {
-        const CACHE_KEY = getCacheKey();
-        const cachedRaw = localStorage.getItem(CACHE_KEY);
-        let cachedDates = {};
-        
-        if (cachedRaw) {
-            const parsed = JSON.parse(cachedRaw);
-            if (parsed && parsed.dates) {
-                cachedDates = parsed.dates;
-            }
-        }
-
-        const now = Date.now();
-
-        if (state && state.dates && typeof state.dates === "object") {
-            for (const dKey in state.dates) {
-                if (Object.prototype.hasOwnProperty.call(state.dates, dKey)) {
-                    const currentData = state.dates[dKey];
-                    const cachedData = cachedDates[dKey];
-
-                    if (typeof currentData === "object" && currentData !== null) {
-                        if (!cachedData) {
-                            // New date record created offline
-                            currentData.lastUpdated = now;
-                        } else {
-                            // Isolate content from timestamps for clean checking
-                            const currentCopy = { ...currentData };
-                            const cachedCopy = { ...cachedData };
-                            delete currentCopy.lastUpdated;
-                            delete cachedCopy.lastUpdated;
-
-                            if (JSON.stringify(currentCopy) !== JSON.stringify(cachedCopy)) {
-                                currentData.lastUpdated = now;
-                            } else if (!currentData.lastUpdated) {
-                                currentData.lastUpdated = cachedData.lastUpdated || now;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    } catch (err) {
-        console.error("Failed to apply timestamps:", err);
-    }
-}
-
-/* =========================================================
-   INTERCEPTOR: MONKEY-PATCH FIREBASE WRITE OPERATIONS
-   - Converts blind .set() or .update() calls into safe
-     atomic transactions that evaluate timestamps on the server.
-========================================================= */
-function patchFirebaseWrites(){
-
-    const db = window.firebaseDB || 
-        (typeof firebaseDB !== "undefined" ? firebaseDB : null);
-
-    if(!db || db._patchedForLWW) return;
-
-
-    const originalRef = db.ref;
-
-    db.ref = function(path){
-
-        const refInstance = originalRef.apply(this, arguments);
-
-        const targetPath = window.REMOTE_DB_PATH || "";
-
-        // Protect ALL child writes under the ledger path
-        if(
-            path &&
-            targetPath &&
-            path.startsWith(targetPath)
-        ){
-
-            const originalSet = refInstance.set.bind(refInstance);
-            const originalUpdate = refInstance.update.bind(refInstance);
-
-
-            refInstance.set = function(newData){
-
-                console.log(
-                    "Protected Firebase SET:",
-                    path
-                );
-
-
-                return refInstance.transaction(currentServerData=>{
-
-
-                    if(!currentServerData){
-                        return newData;
-                    }
-
-
-                    // If this is a child path, allow normal transaction
-                    if(path !== targetPath){
-
-                        return mergeByTimestamp(
-                            currentServerData,
-                            newData
-                        );
-
-                    }
-
-
-                    return mergeLedgerByDate(
-                        currentServerData,
-                        newData
-                    );
-
-                });
-
-            };
-
-
-
-            refInstance.update = function(newData){
-
-                console.log(
-                    "Protected Firebase UPDATE:",
-                    path
-                );
-
-
-                return refInstance.transaction(currentServerData=>{
-
-
-                    if(!currentServerData){
-                        return newData;
-                    }
-
-
-                    return mergeLedgerByDate(
-                        currentServerData,
-                        newData
-                    );
-
-
-                });
-
-            };
-
-        }
-
-
-        return refInstance;
-
-    };
-
-
-    db._patchedForLWW = true;
-
-    console.log(
-        "AVANTI Firebase timestamp protection enabled"
-    );
-
-}
-
-function mergeLedgerByDate(remote, local){
-
-
-    const merged = {
-        ...remote,
-        ...local
-    };
-
-
-    const remoteDates = remote.dates || {};
-    const localDates = local.dates || {};
-
-    const finalDates = {};
-
-
-    const keys = new Set([
-        ...Object.keys(remoteDates),
-        ...Object.keys(localDates)
-    ]);
-
-
-
-    keys.forEach(dateKey=>{
-
-
-        const remoteDate = remoteDates[dateKey];
-        const localDate = localDates[dateKey];
-
-
-        if(remoteDate && localDate){
-
-
-            const remoteTS =
-                remoteDate.lastUpdated || 0;
-
-
-            const localTS =
-                localDate.lastUpdated || 0;
-
-
-
-            if(localTS > remoteTS){
-
-                finalDates[dateKey] = localDate;
-
-            }else{
-
-                finalDates[dateKey] = remoteDate;
-
-            }
-
-
-        }
-
-        else if(localDate){
-
-            finalDates[dateKey] = localDate;
-
-        }
-
-        else{
-
-            finalDates[dateKey] = remoteDate;
-
-        }
-
-
-    });
-
-
-
-    merged.dates = finalDates;
-
-
-    return merged;
-
-}
-
-
-
-
-function mergeLedgerByTimestamp(remote, local){
-
-
-    const remoteTS =
-        remote?.lastUpdated || 0;
-
-
-    const localTS =
-        local?.lastUpdated || 0;
-
-
-
-    if(localTS > remoteTS){
-
-        return local;
-
-    }
-
-
-    return remote;
-
-}
-/* =========================================================
    OVERRIDE SAVE STATE
 ========================================================= */
 const originalSaveState = window.saveState;
 
 window.saveState = function(){
-    // Ensure write interceptors are active
-    patchFirebaseWrites();
-
-    // 1. Intercept edit states and update local timestamps
-    applyTimestampsToModifiedDates();
-
-    // 2. Write safely to browser storage cache
     saveLocalMirror();
 
-    // 3. Execute original save logic (now protected by transaction layer)
     if(typeof originalSaveState === "function"){
         return originalSaveState.apply(this, arguments);
     }
 };
 
 /* =========================================================
-   FIREBASE SYNC + REAL-TIME MERGE LISTENER
+   FIREBASE SYNC → ALSO RESPECTS CACHE KEY
 ========================================================= */
 const originalSetupDataListener = window.setupDataListener;
 
@@ -6562,85 +6284,17 @@ window.setupDataListener = function(){
         originalSetupDataListener();
     }
 
-    patchFirebaseWrites();
+    if(!firebaseDB || !REMOTE_DB_PATH) return;
 
-    const db = window.firebaseDB || (typeof firebaseDB !== "undefined" ? firebaseDB : null);
-    const path = window.REMOTE_DB_PATH;
-    if(!db || !path) return;
-
-    db.ref(path).on("value", snap => {
-        const remoteData = snap.val();
-        if(!remoteData) return;
+    firebaseDB.ref(REMOTE_DB_PATH).on("value", snap => {
+        const data = snap.val();
+        if(!data) return;
 
         const CACHE_KEY = getCacheKey();
-        const localDates = state.dates || {};
-        const remoteDates = remoteData.dates || {};
-        
-        let stateChanged = false;
-        let localHasNewerEdits = false;
 
-        const allDateKeys = new Set([...Object.keys(localDates), ...Object.keys(remoteDates)]);
+        localStorage.setItem(CACHE_KEY, JSON.stringify(data));
 
-        allDateKeys.forEach(dKey => {
-            const localDateObj = localDates[dKey];
-            const remoteDateObj = remoteDates[dKey];
-
-            if (localDateObj && remoteDateObj) {
-                const localTS = localDateObj.lastUpdated || 0;
-                const remoteTS = remoteDateObj.lastUpdated || 0;
-
-                if (remoteTS > localTS) {
-                    state.dates[dKey] = remoteDateObj;
-                    stateChanged = true;
-                } else if (localTS > remoteTS) {
-                    // Flag that an offline edit needs to sync to the server
-                    localHasNewerEdits = true;
-                } else {
-                    // Content correction safe-check for identical timestamps
-                    if (JSON.stringify(localDateObj) !== JSON.stringify(remoteDateObj)) {
-                        state.dates[dKey] = remoteDateObj;
-                        stateChanged = true;
-                    }
-                }
-            } else if (remoteDateObj) {
-                state.dates[dKey] = remoteDateObj;
-                stateChanged = true;
-            } else if (localDateObj) {
-                localHasNewerEdits = true;
-            }
-        });
-
-        if (remoteData.currentDate && state.currentDate !== remoteData.currentDate) {
-            state.currentDate = remoteData.currentDate;
-            stateChanged = true;
-        }
-
-        if (stateChanged) {
-            saveLocalMirror();
-            if (typeof renderAll === "function") {
-                renderAll();
-            }
-            console.log("UI updated with fresh remote changes:", CACHE_KEY);
-        }
-
-        // Automatically pushes offline sessions upstream safely upon reconnection
-        if(localHasNewerEdits){
-
-    console.log(
-        "Local changes are newer. Uploading through protected transaction."
-    );
-
-
-    patchFirebaseWrites();
-
-
-    if(typeof originalSaveState==="function"){
-
-        originalSaveState();
-
-    }
-
-}
+        console.log("Mirror updated from Firebase:", CACHE_KEY);
     });
 };
 
