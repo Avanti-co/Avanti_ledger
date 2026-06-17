@@ -1974,7 +1974,7 @@ Expenses</span>
     ======================================================= */
 
 /* ---------- Config / Firebase ---------- */
-let FIREBASE_CONFIG = {
+const FIREBASE_CONFIG = {
     apiKey: "AIzaSyDZeQXOHRjhqijerFLyNkOLcbQUIwRLRqY",
   authDomain: "mwelaisha-shaba.firebaseapp.com",
   databaseURL: "https://mwelaisha-shaba-default-rtdb.firebaseio.com",
@@ -2009,8 +2009,19 @@ if (FIREBASE_CONFIG) {
 
 }
 
-window.addEventListener('online', () => { isOnline = true; console.log("Connection restored! You are back online. Avanti has successfully re-synchronized your ledger states, secure audit logs, and inventory balances with the main server network.");
- });
+window.addEventListener("online",()=>{
+
+    isOnline=true;
+
+    console.log(
+        "Connection restored. Waiting for timestamp reconciliation..."
+    );
+
+    if(typeof setupDataListener==="function"){
+        setupDataListener();
+    }
+
+});
 window.addEventListener('offline', () => { isOnline = false; console.log("Network connection interrupted. You are now entering offline mode. Avanti has successfully activated local storage engines to securely cache your ledger entries and audit trails until connectivity is restored.");
  });
 
@@ -6310,79 +6321,215 @@ function applyTimestampsToModifiedDates(){
      atomic transactions that evaluate timestamps on the server.
 ========================================================= */
 function patchFirebaseWrites(){
-    const db = window.firebaseDB || (typeof firebaseDB !== "undefined" ? firebaseDB : null);
-    if (!db || db._patchedForLWW) return;
+
+    const db = window.firebaseDB || 
+        (typeof firebaseDB !== "undefined" ? firebaseDB : null);
+
+    if(!db || db._patchedForLWW) return;
+
 
     const originalRef = db.ref;
-    db.ref = function(path) {
+
+    db.ref = function(path){
+
         const refInstance = originalRef.apply(this, arguments);
+
         const targetPath = window.REMOTE_DB_PATH || "";
 
-        if (path === targetPath && targetPath !== "") {
-            // Overwrite standard .set()
-            refInstance.set = function(newData) {
-                if (!newData || typeof newData !== "object") {
-                    return refInstance.transaction(() => newData);
-                }
+        // Protect ALL child writes under the ledger path
+        if(
+            path &&
+            targetPath &&
+            path.startsWith(targetPath)
+        ){
 
-                console.log("Intercepted blind write operation. Executing secure timestamp transaction...");
-                return refInstance.transaction(currentServerData => {
-                    // If server data is completely blank, accept client input wholesale
-                    if (!currentServerData) return newData;
+            const originalSet = refInstance.set.bind(refInstance);
+            const originalUpdate = refInstance.update.bind(refInstance);
 
-                    const mergedData = { ...newData };
-                    const remoteDates = currentServerData.dates || {};
-                    const localDates = newData.dates || {};
-                    const mergedDates = { ...localDates };
 
-                    const allKeys = new Set([...Object.keys(remoteDates), ...Object.keys(localDates)]);
+            refInstance.set = function(newData){
 
-                    allKeys.forEach(dKey => {
-                        const localObj = localDates[dKey];
-                        const remoteObj = remoteDates[dKey];
+                console.log(
+                    "Protected Firebase SET:",
+                    path
+                );
 
-                        if (localObj && remoteObj) {
-                            const localTS = localObj.lastUpdated || 0;
-                            const remoteTS = remoteObj.lastUpdated || 0;
 
-                            // The ultimate truth rule: Newest timestamp wins
-                            if (remoteTS >= localTS) {
-                                mergedDates[dKey] = remoteObj;
-                            } else {
-                                mergedDates[dKey] = localObj;
-                            }
-                        } else if (remoteObj) {
-                            // Preserves records that exist only on the live server
-                            mergedDates[dKey] = remoteObj;
-                        }
-                    });
+                return refInstance.transaction(currentServerData=>{
 
-                    mergedData.dates = mergedDates;
 
-                    // Ensure selection data maps cleanly
-                    if (currentServerData.currentDate && !newData.currentDate) {
-                        mergedData.currentDate = currentServerData.currentDate;
+                    if(!currentServerData){
+                        return newData;
                     }
 
-                    return mergedData;
+
+                    // If this is a child path, allow normal transaction
+                    if(path !== targetPath){
+
+                        return mergeByTimestamp(
+                            currentServerData,
+                            newData
+                        );
+
+                    }
+
+
+                    return mergeLedgerByDate(
+                        currentServerData,
+                        newData
+                    );
+
                 });
+
             };
 
-            // Route updates through our safe transactional logic
-            refInstance.update = function(newData) {
-                if (newData && (newData.dates || newData["dates"])) {
-                    return refInstance.set(newData);
-                }
-                return refInstance.set(state);
+
+
+            refInstance.update = function(newData){
+
+                console.log(
+                    "Protected Firebase UPDATE:",
+                    path
+                );
+
+
+                return refInstance.transaction(currentServerData=>{
+
+
+                    if(!currentServerData){
+                        return newData;
+                    }
+
+
+                    return mergeLedgerByDate(
+                        currentServerData,
+                        newData
+                    );
+
+
+                });
+
             };
+
         }
+
+
         return refInstance;
+
     };
 
+
     db._patchedForLWW = true;
-    console.log("Firebase Database writing layer protected successfully.");
+
+    console.log(
+        "AVANTI Firebase timestamp protection enabled"
+    );
+
 }
 
+function mergeLedgerByDate(remote, local){
+
+
+    const merged = {
+        ...remote,
+        ...local
+    };
+
+
+    const remoteDates = remote.dates || {};
+    const localDates = local.dates || {};
+
+    const finalDates = {};
+
+
+    const keys = new Set([
+        ...Object.keys(remoteDates),
+        ...Object.keys(localDates)
+    ]);
+
+
+
+    keys.forEach(dateKey=>{
+
+
+        const remoteDate = remoteDates[dateKey];
+        const localDate = localDates[dateKey];
+
+
+        if(remoteDate && localDate){
+
+
+            const remoteTS =
+                remoteDate.lastUpdated || 0;
+
+
+            const localTS =
+                localDate.lastUpdated || 0;
+
+
+
+            if(localTS > remoteTS){
+
+                finalDates[dateKey] = localDate;
+
+            }else{
+
+                finalDates[dateKey] = remoteDate;
+
+            }
+
+
+        }
+
+        else if(localDate){
+
+            finalDates[dateKey] = localDate;
+
+        }
+
+        else{
+
+            finalDates[dateKey] = remoteDate;
+
+        }
+
+
+    });
+
+
+
+    merged.dates = finalDates;
+
+
+    return merged;
+
+}
+
+
+
+
+function mergeLedgerByTimestamp(remote, local){
+
+
+    const remoteTS =
+        remote?.lastUpdated || 0;
+
+
+    const localTS =
+        local?.lastUpdated || 0;
+
+
+
+    if(localTS > remoteTS){
+
+        return local;
+
+    }
+
+
+    return remote;
+
+}
 /* =========================================================
    OVERRIDE SAVE STATE
 ========================================================= */
@@ -6477,12 +6624,23 @@ window.setupDataListener = function(){
         }
 
         // Automatically pushes offline sessions upstream safely upon reconnection
-        if (localHasNewerEdits) {
-            console.log("Detected local updates saved while offline. Syncing upstream...");
-            if (typeof originalSaveState === "function") {
-                originalSaveState();
-            }
-        }
+        if(localHasNewerEdits){
+
+    console.log(
+        "Local changes are newer. Uploading through protected transaction."
+    );
+
+
+    patchFirebaseWrites();
+
+
+    if(typeof originalSaveState==="function"){
+
+        originalSaveState();
+
+    }
+
+}
     });
 };
 
@@ -6548,109 +6706,6 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 </script>
 
-<script>
-/* ---------- Config / Firebase ---------- */
-const ORIGINAL_CONFIG = {
-  apiKey: "AIzaSyDZeQXOHRjhqijerFLyNkOLcbQUIwRLRqY",
-  authDomain: "mwelaisha-shaba.firebaseapp.com",
-  databaseURL: "https://mwelaisha-shaba-default-rtdb.firebaseio.com",
-  projectId: "mwelaisha-shaba",
-  storageBucket: "mwelaisha-shaba.firebasestorage.app",
-  messagingSenderId: "262165456072",
-  appId: "1:262165456072:web:40926b87a0eb513cc971fd",
-  measurementId: "G-LVWW6PJ0P0"
-};
-
-const DUMMY_CONFIG = {
-  apiKey: "DUMMY_KEY_OFFLINE",
-  authDomain: "dummy.firebaseapp.com",
-  databaseURL: "https://dummy-default-rtdb.firebaseio.com",
-  projectId: "dummy-project",
-  storageBucket: "dummy.appspot.com",
-  messagingSenderId: "000000000000",
-  appId: "1:000000000000:web:dummyappid"
-};
-
-let firebaseApp = null;
-let firebaseDB = null; 
-
-// Function to safely initialize or re-initialize Firebase
-function initFirebase(config) {
-  if (typeof firebase === 'undefined') {
-    console.error('Firebase library is not loaded.');
-    return;
-  }
-
-  try {
-    // If an app already exists, delete it first to clear cached connections/queues
-    if (firebase.apps.length > 0) {
-      firebase.app().delete().then(() => {
-        completeInitialization(config);
-      }).catch(e => {
-        console.error('Failed to delete old Firebase app instance:', e);
-      });
-    } else {
-      completeInitialization(config);
-    }
-  } catch (e) {
-    console.warn('Firebase init failed', e);
-  }
-}
-
-function completeInitialization(config) {
-  firebaseApp = firebase.initializeApp(config);
-  firebaseDB = firebase.database();
-  console.log(`Firebase initialized with ${config.apiKey === ORIGINAL_CONFIG.apiKey ? 'ORIGINAL' : 'DUMMY'} config.`);
-}
-
-// Function to monitor network status
-function setupNetworkListeners() {
-  // 1. Standard browser online/offline events
-  window.addEventListener('online', () => {
-    console.log('Device is online. Restoring original Firebase config...');
-    initFirebase(ORIGINAL_CONFIG);
-  });
-
-  window.addEventListener('offline', () => {
-    console.log('Device is offline. Switching to dummy Firebase config...');
-    initFirebase(DUMMY_CONFIG);
-  });
-
-  // 2. Optional: Bad connection detection (Network Information API)
-  if (navigator.connection) {
-    navigator.connection.addEventListener('change', () => {
-      const { effectiveType, saveData } = navigator.connection;
-      // Define "bad connection" (e.g., 'slow-2g' or '2g')
-      if (effectiveType === 'slow-2g' || effectiveType === '2g') {
-        console.warn(`Bad internet connection detected (${effectiveType}). Dropping to dummy config...`);
-        initFirebase(DUMMY_CONFIG);
-      } else if (navigator.onLine) {
-        // Restore if connection recovers to 3g/4g/wifi while still online
-        initFirebase(ORIGINAL_CONFIG);
-      }
-    });
-  }
-}
-
-// Initial bootup check
-(function boot() {
-  if (typeof firebase !== 'undefined') {
-    const isBadConnection = navigator.connection && (navigator.connection.effectiveType === 'slow-2g' || navigator.connection.effectiveType === '2g');
-    
-    if (navigator.onLine && !isBadConnection) {
-      initFirebase(ORIGINAL_CONFIG);
-    } else {
-      initFirebase(DUMMY_CONFIG);
-    }
-    
-    setupNetworkListeners();
-  } else {
-    // Retry if script execution order is slightly off
-    setTimeout(boot, 100);
-  }
-})();
-
-</script>
 
 </body>
 </html>
