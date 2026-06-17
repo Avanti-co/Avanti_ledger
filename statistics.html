@@ -1989,7 +1989,6 @@ const FIREBASE_CONFIG = {
 let firebaseApp = null;
 let firebaseDB = null; // This will hold the firebase.database() reference
 let isOnline = navigator.onLine;
-let connectionStatus = isOnline ? "online" : "offline";
 
 if (FIREBASE_CONFIG) {
     try {
@@ -2010,20 +2009,10 @@ if (FIREBASE_CONFIG) {
 
 }
 
-window.addEventListener('online', () => { 
-    isOnline = true;
-    connectionStatus = "online";
-
-    console.log("Connection restored! Avanti is now connected to Firebase.");
-});
-
-
-window.addEventListener('offline', () => { 
-    isOnline = false;
-    connectionStatus = "offline";
-
-    console.log("Offline mode activated. Firebase writes disabled.");
-});
+window.addEventListener('online', () => { isOnline = true; console.log("Connection restored! You are back online. Avanti has successfully re-synchronized your ledger states, secure audit logs, and inventory balances with the main server network.");
+ });
+window.addEventListener('offline', () => { isOnline = false; console.log("Network connection interrupted. You are now entering offline mode. Avanti has successfully activated local storage engines to securely cache your ledger entries and audit trails until connectivity is restored.");
+ });
 
 /* ---------- User Context & Paths (Dynamically Updated) ---------- */
 let AV_LEDGER_ACCOUNT_KEY = localStorage.getItem('AV_ledger_account_key');
@@ -2423,37 +2412,15 @@ function saveState(){
 }
 
 function saveToDatabase(data){
+    if(!firebaseDB || !isOnline || REMOTE_DB_PATH === DEFAULT_FALLBACK_PATH) return;
 
-    // Stop all Firebase writes when offline
-    if(
-        !firebaseDB ||
-        !isOnline ||
-        connectionStatus !== "online" ||
-        REMOTE_DB_PATH === DEFAULT_FALLBACK_PATH
-    ){
-        console.log("Firebase write blocked: Offline mode");
-        return;
-    }
-
-
+    // Only save current date and NOT the entire table
     const updates = {};
-
     updates[`currentDate`] = state.currentDate;
     updates[`dates/${state.currentDate}`] = state.dates[state.currentDate];
 
-    // Required by Firebase rules
-    updates[`connectionStatus`] = "online";
-
-
-    updates.connectionStatus = "online";
-
-firebaseDB.ref(REMOTE_DB_PATH).update(updates)
-        .then(()=>{
-            console.log("Firebase sync successful");
-        })
-        .catch(err=>{
-            console.error("Firebase update failed:", err);
-        });
+    firebaseDB.ref(REMOTE_DB_PATH).update(updates)
+        .catch(err => console.error('Firebase update failed', err));
 }
 /* ---------- Initialize Default (No Hardcoded Items) ---------- */
 function initializeDefault(){
@@ -3172,9 +3139,7 @@ function confirmDuplicateAction() {
 
     // Fire network batch payload execution request up to Remote Firebase Server
     if (firebaseDB && isOnline && Object.keys(updates).length > 0) {
-        updates.connectionStatus = "online";
-
-firebaseDB.ref(REMOTE_DB_PATH).update(updates)
+        firebaseDB.ref(REMOTE_DB_PATH).update(updates)
             .then(() => console.log(`Data Pipeline: Duplicated ${selectedIds.length} items to ${targetDate}`))
             .catch(err => console.error("Firebase batch duplication push error:", err));
     }
@@ -3376,52 +3341,26 @@ function deleteItemFromDateAndFuture(itemId, fromDateKey){
     }
 
     if(firebaseDB && isOnline && Object.keys(updates).length){
-        updates.connectionStatus = "online";
-
-firebaseDB.ref(REMOTE_DB_PATH).update(updates);
+        firebaseDB.ref(REMOTE_DB_PATH).update(updates);
     }
 }
 
 function persistItemChange(itemId){
-
     const dateKey = state.currentDate;
-
     const item = state.dates[dateKey]?.items?.[itemId];
-
     if(!item) return;
 
-
-    item.opening = Number(item.opening || 0);
-    item.orders  = Number(item.orders || 0);
-    item.closing = Number(item.closing || 0);
-    item.price   = Number(item.price || 0);
-
+    item.opening = Number(item.opening||0);
+    item.orders  = Number(item.orders||0);
+    item.closing = Number(item.closing||0);
+    item.price   = Number(item.price||0);
 
     propagateClosingToNext(itemId);
 
+    const path = `${REMOTE_DB_PATH}/dates/${dateKey}/items/${itemId}`;
+    firebaseDB.ref(path).update(item);
 
-    // Block offline writes
-    if(
-        firebaseDB &&
-        isOnline &&
-        connectionStatus === "online"
-    ){
-
-        item.connectionStatus = "online";
-
-        const path = `${REMOTE_DB_PATH}/dates/${dateKey}/items/${itemId}`;
-
-        firebaseDB.ref(path).update(item);
-
-    }
-    else{
-
-        console.log("Item change stored locally only. Device offline.");
-
-    }
-
-
-    updateRow(itemId);
+    updateRow(itemId); // only re-render this row
 }
 
 function saveDateImmediately(dateKey){
@@ -3455,9 +3394,7 @@ function propagateNameAcrossDates(itemId, newName){
     }
 
     if(firebaseDB && isOnline && Object.keys(updates).length){
-        updates.connectionStatus = "online";
-
-firebaseDB.ref(REMOTE_DB_PATH).update(updates);
+        firebaseDB.ref(REMOTE_DB_PATH).update(updates);
     }
 }
 /**
@@ -3490,9 +3427,7 @@ function propagatePriceToFuture(itemId,newPrice){
     }
 
     if(firebaseDB && isOnline && Object.keys(updates).length){
-        updates.connectionStatus = "online";
-
-firebaseDB.ref(REMOTE_DB_PATH).update(updates);
+        firebaseDB.ref(REMOTE_DB_PATH).update(updates);
     }
 }
 
@@ -3550,9 +3485,7 @@ function propagateClosingToNext(itemId){
     }
 
     if(firebaseDB && isOnline){
-        updates.connectionStatus = "online";
-
-firebaseDB.ref(REMOTE_DB_PATH).update(updates);
+        firebaseDB.ref(REMOTE_DB_PATH).update(updates);
     }
 }
 
@@ -3598,9 +3531,7 @@ function propagateItemToFuture(item, fromDateKey){
     }
 
     if(firebaseDB && isOnline && Object.keys(updates).length){
-        updates.connectionStatus = "online";
-
-firebaseDB.ref(REMOTE_DB_PATH).update(updates);
+        firebaseDB.ref(REMOTE_DB_PATH).update(updates);
     }
 }
 
@@ -6044,10 +5975,338 @@ document.addEventListener('DOMContentLoaded', () => {
   })();
 </script>
 
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const container = document.getElementById('floatingActionsContainer');
+    if (!container) return;
+
+    // ==========================================
+    // CONFIGURATION: Set edge margin parameter (in pixels)
+    // ==========================================
+    const SCREEN_MARGIN = 16; 
+
+    let isDragging = false;
+    let hasMoved = false;
+    let startX, startY;
+    let initialLeft, initialTop;
+
+    // Enforce robust layout properties
+    container.style.position = 'fixed';
+    container.style.zIndex = '9999';
+    container.style.cursor = 'grab';
+    container.style.boxSizing = 'border-box';
+
+    const clamp = (val, min, max) => Math.max(min, Math.min(val, max));
+
+    // 1. Intelligent Positioning Matrix with Expansion Protection
+    const repositionContainer = () => {
+        const rect = container.getBoundingClientRect();
+        const maxLeft = window.innerWidth - rect.width - SCREEN_MARGIN;
+        const maxTop = window.innerHeight - rect.height - SCREEN_MARGIN;
+
+        const edge = localStorage.getItem('fa_snapped_edge') || 'right';
+        const axisRatio = parseFloat(localStorage.getItem('fa_axis_ratio')) || 0.8;
+
+        let targetLeft = SCREEN_MARGIN;
+        let targetTop = SCREEN_MARGIN;
+
+        // Dynamic Anchor Tuning: Dictates which way the element grows when its HTML content changes/extends
+        if (edge === 'left') {
+            targetLeft = SCREEN_MARGIN;
+            targetTop = clamp(axisRatio * window.innerHeight, SCREEN_MARGIN, maxTop);
+            container.style.transformOrigin = 'left center';
+        } else if (edge === 'right') {
+            targetLeft = maxLeft;
+            targetTop = clamp(axisRatio * window.innerHeight, SCREEN_MARGIN, maxTop);
+            container.style.transformOrigin = 'right center';
+        } else if (edge === 'top') {
+            targetLeft = clamp(axisRatio * window.innerWidth, SCREEN_MARGIN, maxLeft);
+            targetTop = SCREEN_MARGIN;
+            container.style.transformOrigin = 'center top';
+        } else if (edge === 'bottom') {
+            targetLeft = clamp(axisRatio * window.innerWidth, SCREEN_MARGIN, maxLeft);
+            targetTop = maxTop;
+            container.style.transformOrigin = 'center bottom';
+        }
+
+        // Hard Boundary Safety Clamp
+        targetLeft = clamp(targetLeft, SCREEN_MARGIN, maxLeft);
+        targetTop = clamp(targetTop, SCREEN_MARGIN, maxTop);
+
+        container.style.left = `${targetLeft}px`;
+        container.style.top = `${targetTop}px`;
+        container.style.right = 'auto';
+        container.style.bottom = 'auto';
+    };
+
+    // Initialize layout position
+    repositionContainer();
+
+    // 2. Drag Initialization Engine
+    const onStart = (e) => {
+        const clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
+        const clientY = e.type.includes('touch') ? e.touches[0].clientY : e.clientY;
+        
+        isDragging = true;
+        hasMoved = false;
+        
+        container.style.transition = 'none';
+        container.style.cursor = 'grabbing';
+
+        const rect = container.getBoundingClientRect();
+        startX = clientX;
+        startY = clientY;
+        initialLeft = rect.left;
+        initialTop = rect.top;
+
+        if (e.type === 'mousedown') {
+            e.preventDefault(); 
+        }
+    };
+
+    // 3. Live Move Calculations
+    const onMove = (e) => {
+        if (!isDragging) return;
+
+        const clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
+        const clientY = e.type.includes('touch') ? e.touches[0].clientY : e.clientY;
+
+        const deltaX = clientX - startX;
+        const deltaY = clientY - startY;
+
+        if (Math.abs(deltaX) > 4 || Math.abs(deltaY) > 4) {
+            hasMoved = true;
+        }
+
+        if (hasMoved) {
+            if (e.cancelable) e.preventDefault();
+
+            let newLeft = initialLeft + deltaX;
+            let newTop = initialTop + deltaY;
+
+            const rect = container.getBoundingClientRect();
+            const maxLeft = window.innerWidth - rect.width - SCREEN_MARGIN;
+            const maxTop = window.innerHeight - rect.height - SCREEN_MARGIN;
+
+            newLeft = clamp(newLeft, SCREEN_MARGIN, maxLeft);
+            newTop = clamp(newTop, SCREEN_MARGIN, maxTop);
+
+            container.style.left = `${newLeft}px`;
+            container.style.top = `${newTop}px`;
+        }
+    };
+
+    // 4. Drag Release & Edge Detection Commit
+    const onEnd = () => {
+        if (!isDragging) return;
+        isDragging = false;
+        container.style.cursor = 'grab';
+
+        if (hasMoved) {
+            // Apply fluid deceleration curve transitions for repositioning and scaling
+            container.style.transition = 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)';
+
+            const rect = container.getBoundingClientRect();
+            const maxLeft = window.innerWidth - rect.width - SCREEN_MARGIN;
+            const maxTop = window.innerHeight - rect.height - SCREEN_MARGIN;
+
+            const distLeft = rect.left - SCREEN_MARGIN;
+            const distRight = maxLeft - rect.left;
+            const distTop = rect.top - SCREEN_MARGIN;
+            const distBottom = maxTop - rect.top;
+
+            const minDist = Math.min(distLeft, distRight, distTop, distBottom);
+
+            let chosenEdge = 'right';
+            let axisRatio = 0;
+
+            if (minDist === distLeft) {
+                chosenEdge = 'left';
+                axisRatio = rect.top / window.innerHeight;
+            } else if (minDist === distRight) {
+                chosenEdge = 'right';
+                axisRatio = rect.top / window.innerHeight;
+            } else if (minDist === distTop) {
+                chosenEdge = 'top';
+                axisRatio = rect.left / window.innerWidth;
+            } else if (minDist === distBottom) {
+                chosenEdge = 'bottom';
+                axisRatio = rect.left / window.innerWidth;
+            }
+
+            localStorage.setItem('fa_snapped_edge', chosenEdge);
+            localStorage.setItem('fa_axis_ratio', axisRatio.toString());
+
+            repositionContainer();
+        }
+    };
+
+    // Device Pointer Event Hookups
+    container.addEventListener('mousedown', onStart);
+    document.addEventListener('mousemove', onMove, { passive: false });
+    document.addEventListener('mouseup', onEnd);
+
+    container.addEventListener('touchstart', onStart, { passive: true });
+    document.addEventListener('touchmove', onMove, { passive: false });
+    document.addEventListener('touchend', onEnd);
+
+    // Click Suppression Shield
+    container.addEventListener('click', (e) => {
+        if (hasMoved) {
+            e.stopImmediatePropagation();
+            e.preventDefault();
+        }
+    }, true);
+
+    // 5. Continuous Extension Watchdog
+    // Automatically triggers if your other code modifies classes, heights, or widths dynamically
+    const resizeObserver = new ResizeObserver(() => {
+        if (!isDragging) {
+            repositionContainer();
+        }
+    });
+    resizeObserver.observe(container);
+
+    // 6. Real-time Window Parameter Watchdog
+    let resizeTimeout;
+    window.addEventListener('resize', () => {
+        container.style.transition = 'none';
+        repositionContainer();
+        
+        clearTimeout(resizeTimeout);
+        resizeTimeout = setTimeout(() => {
+            container.style.transition = 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)';
+        }, 100);
+    });
+});
+</script>
 
 
+<script>
+(function(){
 
+/* =========================================================
+   DYNAMIC CACHE KEY (CRITICAL FIX)
+   - prevents cross-profile data leakage
+========================================================= */
+function getCacheKey(){
+    const accountKey =
+        localStorage.getItem("AV_ledger_account_key") ||
+        window.AV_LEDGER_ACCOUNT_KEY ||
+        "default";
 
+    const dbPath =
+        window.REMOTE_DB_PATH ||
+        "default_db";
+
+    return `AVANTI_LEDGER_LOCAL_MIRROR_${accountKey}_${dbPath}`;
+}
+
+/* =========================================================
+   LOAD LOCAL CACHE FIRST
+========================================================= */
+function loadLocalMirror(){
+    try{
+        const CACHE_KEY = getCacheKey();
+
+        const cached = JSON.parse(localStorage.getItem(CACHE_KEY) || "{}");
+
+        // only apply if valid structure
+        if(cached && typeof cached === "object"){
+
+            if(cached.currentDate){
+                state.currentDate = cached.currentDate;
+            }
+
+            if(cached.dates && typeof cached.dates === "object"){
+                state.dates = cached.dates;
+            }
+        }
+
+        if(state.currentDate){
+            ensureDateExists(state.currentDate);
+        }
+
+        renderAll();
+
+        console.log("Rendered instantly from isolated local mirror:", CACHE_KEY);
+
+    }catch(err){
+        
+    }
+}
+
+/* =========================================================
+   SAVE LOCAL CACHE (ISOLATED PER ACCOUNT + DB PATH)
+========================================================= */
+function saveLocalMirror(){
+    try{
+        const CACHE_KEY = getCacheKey();
+
+        const mirror = {
+            currentDate: state.currentDate,
+            dates: state.dates,
+            _meta: {
+                accountKey: localStorage.getItem("AV_ledger_account_key"),
+                dbPath: window.REMOTE_DB_PATH,
+                savedAt: Date.now()
+            }
+        };
+
+        localStorage.setItem(CACHE_KEY, JSON.stringify(mirror));
+
+    }catch(err){
+        console.error("Mirror save failed", err);
+    }
+}
+
+/* =========================================================
+   OVERRIDE SAVE STATE
+========================================================= */
+const originalSaveState = window.saveState;
+
+window.saveState = function(){
+    saveLocalMirror();
+
+    if(typeof originalSaveState === "function"){
+        return originalSaveState.apply(this, arguments);
+    }
+};
+
+/* =========================================================
+   FIREBASE SYNC → ALSO RESPECTS CACHE KEY
+========================================================= */
+const originalSetupDataListener = window.setupDataListener;
+
+window.setupDataListener = function(){
+
+    if(typeof originalSetupDataListener === "function"){
+        originalSetupDataListener();
+    }
+
+    if(!firebaseDB || !REMOTE_DB_PATH) return;
+
+    firebaseDB.ref(REMOTE_DB_PATH).on("value", snap => {
+        const data = snap.val();
+        if(!data) return;
+
+        const CACHE_KEY = getCacheKey();
+
+        localStorage.setItem(CACHE_KEY, JSON.stringify(data));
+
+        console.log("Mirror updated from Firebase:", CACHE_KEY);
+    });
+};
+
+/* =========================================================
+   FAST STARTUP (LOCAL ONLY)
+========================================================= */
+document.addEventListener("DOMContentLoaded", () => {
+    loadLocalMirror();
+});
+
+})();
+</script>
 
 <script>
 document.addEventListener("DOMContentLoaded", () => {
@@ -6100,320 +6359,6 @@ document.addEventListener("DOMContentLoaded", () => {
     updateButtonStatus();
 });
 </script>
-<script>
-(function(){
-
-/* =========================================================
-   DYNAMIC CACHE KEY
-   - prevents cross-profile data leakage
-========================================================= */
-function getCacheKey(){
-    const accountKey =
-        localStorage.getItem("AV_ledger_account_key") ||
-        window.AV_LEDGER_ACCOUNT_KEY ||
-        "default";
-
-    const dbPath =
-        window.REMOTE_DB_PATH ||
-        "default_db";
-
-    return `AVANTI_LEDGER_LOCAL_MIRROR_${accountKey}_${dbPath}`;
-}
-
-/* =========================================================
-   LOAD LOCAL CACHE FIRST
-========================================================= */
-function loadLocalMirror(){
-    try{
-        const CACHE_KEY = getCacheKey();
-        const cached = JSON.parse(localStorage.getItem(CACHE_KEY) || "{}");
-
-        if(cached && typeof cached === "object"){
-            if(cached.currentDate){
-                state.currentDate = cached.currentDate;
-            }
-            if(cached.dates && typeof cached.dates === "object"){
-                state.dates = cached.dates;
-            }
-        }
-
-        if(state.currentDate){
-            ensureDateExists(state.currentDate);
-        }
-
-        renderAll();
-        console.log("Rendered instantly from isolated local mirror:", CACHE_KEY);
-    }catch(err){
-        console.error("Failed to load local mirror:", err);
-    }
-}
-
-/* =========================================================
-   SAVE LOCAL CACHE (ISOLATED PER ACCOUNT + DB PATH)
-========================================================= */
-function saveLocalMirror(){
-    try{
-        const CACHE_KEY = getCacheKey();
-        const mirror = {
-            currentDate: state.currentDate,
-            dates: state.dates,
-            _meta: {
-                accountKey: localStorage.getItem("AV_ledger_account_key"),
-                dbPath: window.REMOTE_DB_PATH,
-                savedAt: Date.now()
-            }
-        };
-
-        localStorage.setItem(CACHE_KEY, JSON.stringify(mirror));
-    }catch(err){
-        console.error("Mirror save failed", err);
-    }
-}
-
-/* =========================================================
-   INTERCEPTION: TIMESTAMP GENERATOR FOR DATES
-   - Deep-compares changes against local storage cache
-   - Appends/updates 'lastUpdated' ONLY if content changed
-========================================================= */
-function applyTimestampsToModifiedDates(){
-    try {
-        const CACHE_KEY = getCacheKey();
-        const cachedRaw = localStorage.getItem(CACHE_KEY);
-        let cachedDates = {};
-        
-        if (cachedRaw) {
-            const parsed = JSON.parse(cachedRaw);
-            if (parsed && parsed.dates) {
-                cachedDates = parsed.dates;
-            }
-        }
-
-        const now = Date.now();
-
-        if (state && state.dates && typeof state.dates === "object") {
-            for (const dKey in state.dates) {
-                if (Object.prototype.hasOwnProperty.call(state.dates, dKey)) {
-                    const currentData = state.dates[dKey];
-                    const cachedData = cachedDates[dKey];
-
-                    if (typeof currentData === "object" && currentData !== null) {
-                        if (!cachedData) {
-                            // New date record created offline
-                            currentData.lastUpdated = now;
-                        } else {
-                            // Isolate content from timestamps for clean checking
-                            const currentCopy = { ...currentData };
-                            const cachedCopy = { ...cachedData };
-                            delete currentCopy.lastUpdated;
-                            delete cachedCopy.lastUpdated;
-
-                            if (JSON.stringify(currentCopy) !== JSON.stringify(cachedCopy)) {
-                                currentData.lastUpdated = now;
-                            } else if (!currentData.lastUpdated) {
-                                currentData.lastUpdated = cachedData.lastUpdated || now;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    } catch (err) {
-        console.error("Failed to apply timestamps:", err);
-    }
-}
-
-/* =========================================================
-   INTERCEPTOR: MONKEY-PATCH FIREBASE WRITE OPERATIONS
-   - Converts blind .set() or .update() calls into safe
-     atomic transactions that evaluate timestamps on the server.
-========================================================= */
-function patchFirebaseWrites(){
-    const db = window.firebaseDB || (typeof firebaseDB !== "undefined" ? firebaseDB : null);
-    if (!db || db._patchedForLWW) return;
-
-    const originalRef = db.ref;
-    db.ref = function(path) {
-        const refInstance = originalRef.apply(this, arguments);
-        const targetPath = window.REMOTE_DB_PATH || "";
-
-        if (path === targetPath && targetPath !== "") {
-            // Overwrite standard .set()
-            refInstance.set = function(newData) {
-                if (!newData || typeof newData !== "object") {
-                    return refInstance.transaction(() => newData);
-                }
-
-                console.log("Intercepted blind write operation. Executing secure timestamp transaction...");
-                return refInstance.transaction(currentServerData => {
-                    // If server data is completely blank, accept client input wholesale
-                    if (!currentServerData) return newData;
-
-                    const mergedData = { ...newData };
-                    const remoteDates = currentServerData.dates || {};
-                    const localDates = newData.dates || {};
-                    const mergedDates = { ...localDates };
-
-                    const allKeys = new Set([...Object.keys(remoteDates), ...Object.keys(localDates)]);
-
-                    allKeys.forEach(dKey => {
-                        const localObj = localDates[dKey];
-                        const remoteObj = remoteDates[dKey];
-
-                        if (localObj && remoteObj) {
-                            const localTS = localObj.lastUpdated || 0;
-                            const remoteTS = remoteObj.lastUpdated || 0;
-
-                            // The ultimate truth rule: Newest timestamp wins
-                            if (remoteTS >= localTS) {
-                                mergedDates[dKey] = remoteObj;
-                            } else {
-                                mergedDates[dKey] = localObj;
-                            }
-                        } else if (remoteObj) {
-                            // Preserves records that exist only on the live server
-                            mergedDates[dKey] = remoteObj;
-                        }
-                    });
-
-                    mergedData.dates = mergedDates;
-
-                    // Ensure selection data maps cleanly
-                    if (currentServerData.currentDate && !newData.currentDate) {
-                        mergedData.currentDate = currentServerData.currentDate;
-                    }
-
-                    return mergedData;
-                });
-            };
-
-            // Route updates through our safe transactional logic
-            refInstance.update = function(newData) {
-                if (newData && (newData.dates || newData["dates"])) {
-                    return refInstance.set(newData);
-                }
-                return refInstance.set(state);
-            };
-        }
-        return refInstance;
-    };
-
-    db._patchedForLWW = true;
-    console.log("Firebase Database writing layer protected successfully.");
-}
-
-/* =========================================================
-   OVERRIDE SAVE STATE
-========================================================= */
-const originalSaveState = window.saveState;
-
-window.saveState = function(){
-    // Ensure write interceptors are active
-    patchFirebaseWrites();
-
-    // 1. Intercept edit states and update local timestamps
-    applyTimestampsToModifiedDates();
-
-    // 2. Write safely to browser storage cache
-    saveLocalMirror();
-
-    // 3. Execute original save logic (now protected by transaction layer)
-    if(typeof originalSaveState === "function"){
-        return originalSaveState.apply(this, arguments);
-    }
-};
-
-/* =========================================================
-   FIREBASE SYNC + REAL-TIME MERGE LISTENER
-========================================================= */
-const originalSetupDataListener = window.setupDataListener;
-
-window.setupDataListener = function(){
-
-    if(typeof originalSetupDataListener === "function"){
-        originalSetupDataListener();
-    }
-
-    patchFirebaseWrites();
-
-    const db = window.firebaseDB || (typeof firebaseDB !== "undefined" ? firebaseDB : null);
-    const path = window.REMOTE_DB_PATH;
-    if(!db || !path) return;
-
-    db.ref(path).on("value", snap => {
-        const remoteData = snap.val();
-        if(!remoteData) return;
-
-        const CACHE_KEY = getCacheKey();
-        const localDates = state.dates || {};
-        const remoteDates = remoteData.dates || {};
-        
-        let stateChanged = false;
-        let localHasNewerEdits = false;
-
-        const allDateKeys = new Set([...Object.keys(localDates), ...Object.keys(remoteDates)]);
-
-        allDateKeys.forEach(dKey => {
-            const localDateObj = localDates[dKey];
-            const remoteDateObj = remoteDates[dKey];
-
-            if (localDateObj && remoteDateObj) {
-                const localTS = localDateObj.lastUpdated || 0;
-                const remoteTS = remoteDateObj.lastUpdated || 0;
-
-                if (remoteTS > localTS) {
-                    state.dates[dKey] = remoteDateObj;
-                    stateChanged = true;
-                } else if (localTS > remoteTS) {
-                    // Flag that an offline edit needs to sync to the server
-                    localHasNewerEdits = true;
-                } else {
-                    // Content correction safe-check for identical timestamps
-                    if (JSON.stringify(localDateObj) !== JSON.stringify(remoteDateObj)) {
-                        state.dates[dKey] = remoteDateObj;
-                        stateChanged = true;
-                    }
-                }
-            } else if (remoteDateObj) {
-                state.dates[dKey] = remoteDateObj;
-                stateChanged = true;
-            } else if (localDateObj) {
-                localHasNewerEdits = true;
-            }
-        });
-
-        if (remoteData.currentDate && state.currentDate !== remoteData.currentDate) {
-            state.currentDate = remoteData.currentDate;
-            stateChanged = true;
-        }
-
-        if (stateChanged) {
-            saveLocalMirror();
-            if (typeof renderAll === "function") {
-                renderAll();
-            }
-            console.log("UI updated with fresh remote changes:", CACHE_KEY);
-        }
-
-        // Automatically pushes offline sessions upstream safely upon reconnection
-        if (localHasNewerEdits) {
-            console.log("Detected local updates saved while offline. Syncing upstream...");
-            if (typeof originalSaveState === "function") {
-                originalSaveState();
-            }
-        }
-    });
-};
-
-/* =========================================================
-   FAST STARTUP (LOCAL ONLY)
-========================================================= */
-document.addEventListener("DOMContentLoaded", () => {
-    loadLocalMirror();
-});
-
-})();
-</script>
-
 
 
 </body>
