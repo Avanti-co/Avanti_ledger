@@ -6257,238 +6257,142 @@ document.addEventListener("DOMContentLoaded", () => {
 (function(){
 
 /* =========================================================
-   DYNAMIC CACHE KEY
-   - Prevents cross-profile data leakage between ledger profiles
+   DYNAMIC CACHE KEY ENGINE
 ========================================================= */
-function getCacheKey(){
-    const accountKey =
-        localStorage.getItem("AV_ledger_account_key") ||
-        window.AV_LEDGER_ACCOUNT_KEY ||
-        "default";
-
-    const dbPath =
-        window.REMOTE_DB_PATH ||
-        "default_db";
-
-    return `AVANTI_LEDGER_LOCAL_MIRROR_${accountKey}_${dbPath}`;
+function getCacheKey(dateKey) {
+    const accountKey = localStorage.getItem("AV_ledger_account_key") || window.AV_LEDGER_ACCOUNT_KEY || "default";
+    const dbPath = window.REMOTE_DB_PATH || "default_db";
+    const targetDate = dateKey || state.currentDate || new Date().toISOString().split('T')[0];
+    return `AVANTI_LEDGER_LOCAL_MIRROR_${accountKey}_${dbPath}_${targetDate}`;
 }
 
 /* =========================================================
-   LOAD LOCAL CACHE FIRST (RENDERS ONE DATE AT A TIME)
+   RESOLVE CONFLICTS (LAST-WRITE-WINS ENGINE)
 ========================================================= */
-function loadLocalMirror(){
-    try{
-        const CACHE_KEY = getCacheKey();
-        const cached = JSON.parse(localStorage.getItem(CACHE_KEY) || "{}");
-
-        if(cached && typeof cached === "object"){
-            if(cached.currentDate){
-                state.currentDate = cached.currentDate;
+function resolveConflictAndApply(localData, remoteData) {
+    if (!localData && !remoteData) return makeEmptyDate();
+    
+    const localTime = (localData && localData.updatedAt) ? localData.updatedAt : 0;
+    const remoteTime = (remoteData && remoteData.updatedAt) ? remoteData.updatedAt : 0;
+    
+    // Last-Write-Wins arbitration criteria
+    if (remoteTime >= localTime) {
+        return remoteData;
+    } else {
+        // Local is newer: queue up a synchronization upload
+        setTimeout(() => {
+            if (window.isOnline && window.firebaseDB && window.REMOTE_DB_PATH) {
+                const dateKey = state.currentDate;
+                window.firebaseDB.ref(`${window.REMOTE_DB_PATH}/dates/${dateKey}`).set(localData)
+                    .then(() => console.log(`Conflict pipeline: Synchronized local-first state forward for date: ${dateKey}`))
+                    .catch(err => console.error("Conflict pipeline upload failure", err));
             }
-            if(cached.dates && typeof cached.dates === "object"){
-                state.dates = cached.dates;
-            }
-        }
+        }, 1000);
+        return localData;
+    }
+}
 
-        // Initialize to today's date if completely empty
-        if(!state.currentDate){
+/* =========================================================
+   LOAD LOCAL TARGET CACHE (ONE DATE PIECELL)
+========================================================= */
+window.loadLocalMirror = function() {
+    try {
+        if (!state.currentDate) {
             state.currentDate = new Date().toISOString().split('T')[0];
         }
         
-        if(typeof ensureDateExists === "function"){
-            ensureDateExists(state.currentDate);
-        }
-
-        // CRITICAL FIX: Renders strictly the isolated active date container first
-        if(typeof renderAll === "function"){
-            renderAll();
-        }
-
-        console.log("Rendered instantly from isolated local mirror:", CACHE_KEY);
-
-    }catch(err){
-        console.error("Local mirror initialization failed:", err);
-    }
-}
-
-/* =========================================================
-   SAVE LOCAL CACHE (ISOLATED STORAGE SAVES)
-========================================================= */
-function saveLocalMirror(){
-    try{
-        const CACHE_KEY = getCacheKey();
-
-        const mirror = {
-            currentDate: state.currentDate,
-            dates: state.dates,
-            _meta: {
-                accountKey: localStorage.getItem("AV_ledger_account_key"),
-                dbPath: window.REMOTE_DB_PATH,
-                savedAt: Date.now()
+        const CACHE_KEY = getCacheKey(state.currentDate);
+        const cachedString = localStorage.getItem(CACHE_KEY);
+        const localSnapshot = cachedString ? JSON.parse(cachedString) : null;
+        
+        // Apply locally to runtime states instantly
+        if (localSnapshot) {
+            state.dates[state.currentDate] = localSnapshot;
+        } else {
+            if (!state.dates[state.currentDate]) {
+                ensureDateExists(state.currentDate);
             }
-        };
-
-        localStorage.setItem(CACHE_KEY, JSON.stringify(mirror));
-
-    }catch(err){
-        console.error("Mirror save failed", err);
+        }
+        
+        renderAll();
+        console.log("Rendered from date-isolated mirror framework:", CACHE_KEY);
+    } catch(err) {
+        console.error("Failed loading local mirror segment:", err);
     }
-}
+};
 
 /* =========================================================
-   OVERRIDE SAVE STATE (LOCAL MUTATION TIMESTAMPING)
+   SAVE LOCAL CACHE WITH ACCURATE UPDATE TIMESTAMP
+========================================================= */
+window.saveLocalMirror = function() {
+    try {
+        if (!state.currentDate) return;
+        
+        ensureDateExists(state.currentDate);
+        const dateRecord = state.dates[state.currentDate];
+        
+        // Embed the updated timestamp property onto structural nodes
+        dateRecord.updatedAt = Date.now();
+        
+        const CACHE_KEY = getCacheKey(state.currentDate);
+        localStorage.setItem(CACHE_KEY, JSON.stringify(dateRecord));
+    } catch(err) {
+        console.error("Segment mirror save execution failed:", err);
+    }
+};
+
+/* =========================================================
+   OVERRIDE APPLICATION SAVE STATE HOOK
 ========================================================= */
 const originalSaveState = window.saveState;
-
-window.saveState = function(){
-    if (state.currentDate) {
-        if (!state.dates) state.dates = {};
-        if (!state.dates[state.currentDate]) {
-            state.dates[state.currentDate] = { items: {}, expenses: [], incomes: [], balanced: false };
-        }
-        // Injects standard last updated UNIX timestamp locally
-        state.dates[state.currentDate]._updatedAt = Date.now();
-    }
-
-    saveLocalMirror();
-
-    if(typeof originalSaveState === "function"){
+window.saveState = function() {
+    window.saveLocalMirror();
+    if(typeof originalSaveState === "function") {
         return originalSaveState.apply(this, arguments);
     }
 };
 
 /* =========================================================
-   FIREBASE SYNC ENGINE & TIMESTAMP CONFLICT RESOLUTION
+   FIREBASE REALTIME LISTENER OVERRIDE (TARGETED HOOK)
 ========================================================= */
-window.setupDataListener = function(){
-    if(!firebaseDB || !REMOTE_DB_PATH || REMOTE_DB_PATH === "avanti_stats_default") return;
-
-    const currentDataRef = firebaseDB.ref(REMOTE_DB_PATH);
-    const originalRef = firebaseDB.ref;
-
-    // -----------------------------------------------------
-    // PART A: OUTBOUND WRITE INTERCEPTOR (AUTOMATIC TIMESTAMPS)
-    // -----------------------------------------------------
-    firebaseDB.ref = function(basePath) {
-        const refObj = originalRef.call(this, basePath);
-        
-        const extractDateKey = (str) => {
-            const match = str.match(/dates\/(\d{4}-\d{2}-\d{2})/);
-            return match ? match[1] : null;
-        };
-        
-        const dateFromBase = extractDateKey(basePath || "");
-
-        // Intercept bulk object updates (.update)
-        const originalUpdate = refObj.update;
-        refObj.update = function(updates) {
-            const now = Date.now();
-            if (dateFromBase && state.dates[dateFromBase]) {
-                state.dates[dateFromBase]._updatedAt = now;
-                originalRef.call(firebaseDB, `${REMOTE_DB_PATH}/dates/${dateFromBase}/_updatedAt`).set(now);
-            }
-            if (updates && typeof updates === 'object') {
-                Object.keys(updates).forEach(k => {
-                    const dateFromKey = extractDateKey(k);
-                    if (dateFromKey && state.dates[dateFromKey]) {
-                        state.dates[dateFromKey]._updatedAt = now;
-                        updates[`dates/${dateFromKey}/_updatedAt`] = now;
-                    }
-                });
-            }
-            saveLocalMirror();
-            return originalUpdate.apply(this, arguments);
-        };
-
-        // Intercept absolute payload replacements (.set)
-        const originalSet = refObj.set;
-        refObj.set = function(val) {
-            const now = Date.now();
-            if (dateFromBase) {
-                if (state.dates[dateFromBase]) state.dates[dateFromBase]._updatedAt = now;
-                if (val && typeof val === 'object') val._updatedAt = now;
-                originalRef.call(firebaseDB, `${REMOTE_DB_PATH}/dates/${dateFromBase}/_updatedAt`).set(now);
-            }
-            saveLocalMirror();
-            return originalSet.apply(this, arguments);
-        };
-
-        return refObj;
-    };
-
-    // -----------------------------------------------------
-    // PART B: INBOUND DELTA RESOLUTION (CONFLICT RESOLUTION ENGINE)
-    // -----------------------------------------------------
-    currentDataRef.on("value", snap => {
+const originalSetupDataListener = window.setupDataListener;
+window.setupDataListener = function() {
+    // Execute default path determination structures 
+    if(typeof originalSetupDataListener === "function") {
+        originalSetupDataListener();
+    }
+    
+    if(!firebaseDB || !REMOTE_DB_PATH || !state.currentDate) return;
+    
+    // Detach broad nested observers and create structural point reference listener hooks instead
+    const singleDateRef = firebaseDB.ref(`${REMOTE_DB_PATH}/dates/${state.currentDate}`);
+    
+    singleDateRef.on("value", snap => {
         const remoteData = snap.val();
         if(!remoteData) return;
-
-        let localChanged = false;
-        let remoteUpdates = {};
-
-        // 1. Sync Active Viewer Date Context
-        if (remoteData.currentDate && remoteData.currentDate !== state.currentDate) {
-            if (!state.currentDate) {
-                state.currentDate = remoteData.currentDate;
-                localChanged = true;
-            }
-        }
-
-        // 2. Perform Per-Date Handshake Conflict Resolution
-        const remoteDates = remoteData.dates || {};
-        const allDateKeys = new Set([...Object.keys(state.dates || {}), ...Object.keys(remoteDates)]);
-
-        allDateKeys.forEach(dateKey => {
-            const localDate = state.dates[dateKey];
-            const remoteDate = remoteDates[dateKey];
-
-            const localTS = localDate?._updatedAt || 0;
-            const remoteTS = remoteDate?._updatedAt || 0;
-
-            if (localDate && remoteDate) {
-                if (localTS > remoteTS) {
-                    // Device has a newer offline modification -> Push local to Firebase
-                    remoteUpdates[`dates/${dateKey}`] = localDate;
-                } else if (remoteTS > localTS) {
-                    // Remote database entry wins -> Pull Firebase update down locally
-                    state.dates[dateKey] = remoteDate;
-                    localChanged = true;
-                } else {
-                    // Balanced sync parity fallback
-                    state.dates[dateKey] = remoteDate;
-                    localChanged = true;
-                }
-            } else if (localDate && !remoteDate) {
-                // Completely new offline record -> Sync to cloud
-                remoteUpdates[`dates/${dateKey}`] = localDate;
-            } else if (!localDate && remoteDate) {
-                // Brand new cloud ledger day -> Accept locally
-                state.dates[dateKey] = remoteDate;
-                localChanged = true;
-            }
-        });
-
-        // Batch upload outstanding offline mutations back into the cloud pipeline
-        if (Object.keys(remoteUpdates).length > 0) {
-            console.log("Conflict Engine: Overwriting outdated cloud entries with newer local data...", remoteUpdates);
-            originalRef.call(firebaseDB, REMOTE_DB_PATH).update(remoteUpdates)
-                .catch(err => console.error("Firebase conflict upload failure:", err));
-        }
-
-        // Save resolved records and render changes
-        if (localChanged) {
-            saveLocalMirror();
-            if (typeof ensureDateExists === "function") ensureDateExists(state.currentDate);
-            if (typeof renderAll === "function") renderAll();
-        }
+        
+        const CACHE_KEY = getCacheKey(state.currentDate);
+        const localData = JSON.parse(localStorage.getItem(CACHE_KEY) || "null");
+        
+        // Pass through Conflict Resolution pipeline processing logic
+        const resolvedRecord = resolveConflictAndApply(localData, remoteData);
+        
+        // Mutate runtime state trees and save down to LocalStorage mirrors
+        state.dates[state.currentDate] = resolvedRecord;
+        localStorage.setItem(CACHE_KEY, JSON.stringify(resolvedRecord));
+        
+        // Force visual update cycles
+        renderTable();
+        renderExpensesIncomes();
+        updateTotalsNumbers();
     });
 };
 
 /* =========================================================
-   FAST STARTUP
+   FAST BOOTSTRAP INITIALIZATION ON CORE STACK READY
 ========================================================= */
 document.addEventListener("DOMContentLoaded", () => {
-    loadLocalMirror();
+    window.loadLocalMirror();
 });
 
 })();
