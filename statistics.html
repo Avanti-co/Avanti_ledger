@@ -6281,11 +6281,14 @@ function resolveConflictAndApply(localData, remoteData) {
     } else {
         // Local is newer: queue up a synchronization upload
         setTimeout(() => {
+            // 🟢 Guard: Verify the network connection state flag before reaching out to Firebase
             if (window.isOnline && window.firebaseDB && window.REMOTE_DB_PATH) {
                 const dateKey = state.currentDate;
                 window.firebaseDB.ref(`${window.REMOTE_DB_PATH}/dates/${dateKey}`).set(localData)
                     .then(() => console.log(`Conflict pipeline: Synchronized local-first state forward for date: ${dateKey}`))
                     .catch(err => console.error("Conflict pipeline upload failure", err));
+            } else {
+                console.warn("Conflict pipeline: Local state is newer, but sync was postponed because the network is offline.");
             }
         }, 1000);
         return localData;
@@ -6347,6 +6350,13 @@ window.saveLocalMirror = function() {
 const originalSaveState = window.saveState;
 window.saveState = function() {
     window.saveLocalMirror();
+    
+    // 🟢 Guard: Block the baseline script from attempting a network push if offline
+    if (!window.isOnline) {
+        console.warn("Save intercepted locally; remote Firebase update bypassed due to offline state.");
+        return;
+    }
+
     if(typeof originalSaveState === "function") {
         return originalSaveState.apply(this, arguments);
     }
@@ -6357,6 +6367,12 @@ window.saveState = function() {
 ========================================================= */
 const originalSetupDataListener = window.setupDataListener;
 window.setupDataListener = function() {
+    // 🟢 Guard: If offline, don't attempt to attach or trigger standard Firebase real-time sync listeners
+    if (!window.isOnline) {
+        console.warn("Offline state detected. Skipping Firebase realtime stream setup initialization.");
+        return;
+    }
+
     // Execute default path determination structures 
     if(typeof originalSetupDataListener === "function") {
         originalSetupDataListener();
@@ -6368,6 +6384,9 @@ window.setupDataListener = function() {
     const singleDateRef = firebaseDB.ref(`${REMOTE_DB_PATH}/dates/${state.currentDate}`);
     
     singleDateRef.on("value", snap => {
+        // 🟢 Guard: Extra validation safety clause inside the stream engine callback
+        if (!window.isOnline) return;
+
         const remoteData = snap.val();
         if(!remoteData) return;
         
