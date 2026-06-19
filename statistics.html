@@ -6258,7 +6258,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 /* =====================================================
    CACHE KEY ENGINE
-   ACCOUNT + PROFILE + REMOTE PATH ISOLATION
+   PROFILE + ACCOUNT + PATH ISOLATION
 ===================================================== */
 
 function getCacheKey(){
@@ -6280,13 +6280,81 @@ function getCacheKey(){
 
 
     return `AVANTI_MIRROR_${account}_${username}_${btoa(path)}`;
+
 }
 
 
 
 /* =====================================================
-   SAVE LOCAL MIRROR (CURRENT DATE ONLY)
+   LOAD LOCAL FIRST
 ===================================================== */
+
+
+function loadLocalMirror(){
+
+try{
+
+
+const key=getCacheKey();
+
+
+const cache =
+JSON.parse(localStorage.getItem(key)||"{}");
+
+
+
+if(cache.currentDate)
+state.currentDate=cache.currentDate;
+
+
+
+if(
+cache.dates &&
+state.currentDate &&
+cache.dates[state.currentDate]
+){
+
+state.dates={};
+
+state.dates[state.currentDate] =
+cache.dates[state.currentDate];
+
+}
+
+
+
+ensureDateExists(state.currentDate);
+
+
+renderAll();
+
+
+
+console.log(
+"LOCAL CACHE LOADED",
+key
+);
+
+
+
+}catch(e){
+
+console.error(
+"Local cache error",
+e
+);
+
+}
+
+
+}
+
+
+
+/* =====================================================
+   SAVE LOCAL MIRROR
+===================================================== */
+
 
 function saveLocalMirror(){
 
@@ -6301,15 +6369,19 @@ let cache =
 JSON.parse(localStorage.getItem(key)||"{}");
 
 
+
 if(!cache.dates)
 cache.dates={};
 
 
 
-const date=state.currentDate;
+const date =
+state.currentDate;
 
 
-if(!date)return;
+
+if(!date)
+return;
 
 
 
@@ -6325,8 +6397,8 @@ state.dates[date]
 
 
 
-if(!cache.dates[date]._meta)
-cache.dates[date]._meta={};
+cache.dates[date]._meta =
+cache.dates[date]._meta || {};
 
 
 
@@ -6361,314 +6433,147 @@ JSON.stringify(cache)
 
 
 
-}catch(err){
+}catch(e){
 
 console.error(
-"Local mirror save failed",
-err
+"Cache save failed",
+e
 );
 
+}
+
 
 }
 
-}
+
 
 
 
 /* =====================================================
-   LOAD LOCAL CACHE FIRST
+   TIMESTAMP ATTACHER
 ===================================================== */
 
-function loadLocalMirror(){
+
+function attachTimestamp(data){
+
+
+if(!data)
+return data;
+
+
+
+data._meta =
+data._meta || {};
+
+
+
+data._meta.lastUpdated =
+Date.now();
+
+
+
+return data;
+
+
+}
+
+
+
+
+
+/* =====================================================
+   SAVE STATE INTERCEPTOR
+   UPDATES TIMESTAMP ON EVERY NORMAL SAVE
+===================================================== */
+
+
+const oldSave =
+window.saveState;
+
+
+
+window.saveState=function(){
+
+
+
+if(
+state.currentDate &&
+state.dates[state.currentDate]
+){
+
+
+attachTimestamp(
+state.dates[state.currentDate]
+);
+
+
+
+saveLocalMirror();
+
+
+
+}
+
+
+
+if(
+typeof oldSave==="function"
+){
+
+return oldSave.apply(
+this,
+arguments
+);
+
+}
+
+
+
+};
+
+
+
+
+
+/* =====================================================
+   CHANGE WATCHER
+   DETECTS EDITS TO EXISTING FIELDS
+===================================================== */
+
+
+let previousSnapshot="";
+
+
+
+setInterval(()=>{
 
 
 try{
 
 
-const cache =
-JSON.parse(
-localStorage.getItem(
-getCacheKey()
-)||"{}"
-);
-
-
-
-if(cache.currentDate)
-state.currentDate =
-cache.currentDate;
-
-
-
 if(
-cache.dates &&
-state.currentDate &&
-cache.dates[state.currentDate]
-){
-
-
-state.dates={};
-
-
-state.dates[state.currentDate]
-=
-cache.dates[state.currentDate];
-
-
-}
-
-
-
-ensureDateExists(
-state.currentDate
-);
-
-
-
-renderAll();
-
-
-
-console.log(
-"Local mirror rendered"
-);
-
-
-
-}catch(err){
-
-console.error(
-"Local loading failed",
-err
-);
-
-
-}
-
-}
-
-
-
-
-/* =====================================================
-   TIMESTAMP GENERATOR
-===================================================== */
-
-function updateDateTimestamp(dateKey){
-
-
-if(
-!state.dates ||
-!state.dates[dateKey]
+!state.currentDate ||
+!state.dates[state.currentDate]
 )
 return;
 
 
 
-if(!state.dates[dateKey]._meta)
-state.dates[dateKey]._meta={};
-
-
-
-state.dates[dateKey]
-._meta.lastUpdated =
-Date.now();
-
-
-
-}
-
-
-
-/* =====================================================
-   FIND DATE FROM FIREBASE PATH
-===================================================== */
-
-function extractDateFromPath(path){
-
-
-const match =
-path.match(
-/dates\/(\d{4}-\d{2}-\d{2})/
+const currentSnapshot =
+JSON.stringify(
+state.dates[state.currentDate]
 );
-
-
-
-return match ? match[1] : null;
-
-
-}
-
-
-
-
-/* =====================================================
-   FIREBASE WRITE INTERCEPTOR
-   GLOBAL TIMESTAMP + OFFLINE BLOCK
-===================================================== */
-
-
-if(
-typeof firebase !== "undefined" &&
-firebase.database &&
-firebase.database.Reference
-){
-
-
-const originalSet =
-firebase.database.Reference.prototype.set;
-
-
-
-firebase.database.Reference.prototype.set =
-function(value){
 
 
 
 if(
-typeof isOnline !== "undefined" &&
-!isOnline
+previousSnapshot &&
+currentSnapshot !== previousSnapshot
 ){
 
 
-console.warn(
-"Blocked offline Firebase SET",
-this.path
-);
-
-
-return Promise.resolve();
-
-
-}
-
-
-
-
-const dateKey =
-extractDateFromPath(
-this.path.toString()
-);
-
-
-
-if(dateKey){
-
-
-if(
-typeof value==="object" &&
-value!==null &&
-!value._meta
-){
-
-value._meta={};
-
-}
-
-
-
-if(
-typeof value==="object" &&
-value!==null
-){
-
-
-value._meta.lastUpdated =
-Date.now();
-
-
-}
-
-
-
-updateDateTimestamp(
-dateKey
-);
-
-
-saveLocalMirror();
-
-
-
-}
-
-
-
-return originalSet.call(
-this,
-value
-);
-
-
-};
-
-
-
-
-
-const originalUpdate =
-firebase.database.Reference.prototype.update;
-
-
-
-firebase.database.Reference.prototype.update =
-function(updates){
-
-
-
-if(
-typeof isOnline !== "undefined" &&
-!isOnline
-){
-
-
-console.warn(
-"Blocked offline Firebase UPDATE",
-this.path
-);
-
-
-return Promise.resolve();
-
-
-}
-
-
-
-
-const basePath =
-this.path.toString();
-
-
-
-const dateKey =
-extractDateFromPath(
-basePath
-);
-
-
-
-if(dateKey){
-
-
-updates =
-Object.assign(
-{},
-updates
-);
-
-
-
-updates[
-`dates/${dateKey}/_meta/lastUpdated`
-]
-=
-Date.now();
-
-
-
-updateDateTimestamp(
-dateKey
+attachTimestamp(
+state.dates[state.currentDate]
 );
 
 
@@ -6681,25 +6586,31 @@ saveLocalMirror();
 
 
 
-return originalUpdate.call(
-this,
-updates
+previousSnapshot=currentSnapshot;
+
+
+
+}catch(e){
+
+console.log(
+"Watcher error",
+e
 );
-
-
-
-};
-
 
 
 }
 
 
 
+},1000);
+
+
+
+
 
 
 /* =====================================================
-   CONFLICT RESOLUTION
+   FIREBASE CONFLICT ENGINE
 ===================================================== */
 
 
@@ -6709,10 +6620,8 @@ firebaseData
 ){
 
 
-
 const local =
 state.dates[dateKey];
-
 
 
 if(!local)
@@ -6725,12 +6634,19 @@ local._meta?.lastUpdated || 0;
 
 
 
-const remoteTime =
+const firebaseTime =
 firebaseData?._meta?.lastUpdated || 0;
 
 
 
-
+console.log(
+"Conflict check",
+dateKey,
+{
+localTime,
+firebaseTime
+}
+);
 
 
 
@@ -6738,7 +6654,7 @@ firebaseData?._meta?.lastUpdated || 0;
  Firebase newer
 */
 
-if(remoteTime > localTime){
+if(firebaseTime > localTime){
 
 
 state.dates[dateKey]=firebaseData;
@@ -6747,17 +6663,12 @@ state.dates[dateKey]=firebaseData;
 saveLocalMirror();
 
 
-if(
-dateKey===state.currentDate
-)
 renderAll();
 
 
 return;
 
-
 }
-
 
 
 
@@ -6765,39 +6676,43 @@ return;
  Local newer
 */
 
-if(localTime > remoteTime){
+if(localTime > firebaseTime){
 
 
-
-if(isOnline){
-
-
+if(
+typeof isOnline !== "undefined" &&
+isOnline &&
 firebaseDB
+){
+
+
+await firebaseDB
 .ref(
 `${REMOTE_DB_PATH}/dates/${dateKey}`
 )
 .set(
-local
+attachTimestamp(local)
 );
 
 
 }
 
 
+return;
 
 }
 
 
 
-
 }
+
 
 
 
 
 
 /* =====================================================
-   DATA LISTENER OVERRIDE
+   FIREBASE LISTENER
 ===================================================== */
 
 
@@ -6832,25 +6747,25 @@ firebaseDB
 snap=>{
 
 
-const remote =
+const dates =
 snap.val();
 
 
 
-if(!remote)
+if(!dates)
 return;
 
 
 
-Object.keys(remote)
-.forEach(
-date=>{
+Object.keys(dates)
+.forEach(async date=>{
 
 
-resolveDateConflict(
+await resolveDateConflict(
 date,
-remote[date]
+dates[date]
 );
+
 
 
 });
@@ -6861,7 +6776,10 @@ saveLocalMirror();
 
 
 
-});
+}
+
+);
+
 
 
 };
@@ -6872,7 +6790,7 @@ saveLocalMirror();
 
 
 /* =====================================================
-   ONLINE RECONCILIATION
+   ONLINE RESYNC
 ===================================================== */
 
 
@@ -6882,7 +6800,7 @@ async()=>{
 
 
 console.log(
-"Connection restored - resolving conflicts"
+"ONLINE - conflict resolver"
 );
 
 
@@ -6905,18 +6823,17 @@ await firebaseDB
 
 
 const remote =
-snap.val()||{};
+snap.val() || {};
 
 
 
 for(
-const date in remote
+const d in remote
 ){
 
-
 await resolveDateConflict(
-date,
-remote[date]
+d,
+remote[d]
 );
 
 
@@ -6925,48 +6842,6 @@ remote[date]
 
 
 });
-
-
-
-
-
-/* =====================================================
-   SAVE STATE OVERRIDE
-===================================================== */
-
-
-const oldSave =
-window.saveState;
-
-
-
-window.saveState=function(){
-
-
-
-updateDateTimestamp(
-state.currentDate
-);
-
-
-
-saveLocalMirror();
-
-
-
-if(
-typeof oldSave==="function"
-){
-
-return oldSave.apply(
-this,
-arguments
-);
-
-}
-
-
-};
 
 
 
