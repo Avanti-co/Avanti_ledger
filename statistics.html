@@ -2009,10 +2009,18 @@ if (FIREBASE_CONFIG) {
 
 }
 
-window.addEventListener('online', () => { isOnline = true; console.log("Connection restored! You are back online. Avanti has successfully re-synchronized your ledger states, secure audit logs, and inventory balances with the main server network.");
- });
-window.addEventListener('offline', () => { isOnline = false; console.log("Network connection interrupted. You are now entering offline mode. Avanti has successfully activated local storage engines to securely cache your ledger entries and audit trails until connectivity is restored.");
- });
+window.addEventListener('online', () => { 
+    isOnline = true; 
+    if (firebaseDB) firebaseDB.goOnline(); // 🟢 Tells Firebase it's safe to sync again
+    console.log("Connection restored! Avanti has successfully re-synchronized.");
+});
+
+window.addEventListener('offline', () => { 
+    isOnline = false; 
+    if (firebaseDB) firebaseDB.goOffline(); // 🟢 Drops network ties completely so nothing leaks out
+    console.log("Network connection interrupted. Local caching activated.");
+});
+
 
 /* ---------- User Context & Paths (Dynamically Updated) ---------- */
 let AV_LEDGER_ACCOUNT_KEY = localStorage.getItem('AV_ledger_account_key');
@@ -2412,9 +2420,9 @@ function saveState(){
 }
 
 function saveToDatabase(data){
+    // 🟢 Handled beautifully here already by your architecture
     if(!firebaseDB || !isOnline || REMOTE_DB_PATH === DEFAULT_FALLBACK_PATH) return;
 
-    // Only save current date and NOT the entire table
     const updates = {};
     updates[`currentDate`] = state.currentDate;
     updates[`dates/${state.currentDate}`] = state.dates[state.currentDate];
@@ -2422,6 +2430,7 @@ function saveToDatabase(data){
     firebaseDB.ref(REMOTE_DB_PATH).update(updates)
         .catch(err => console.error('Firebase update failed', err));
 }
+
 /* ---------- Initialize Default (No Hardcoded Items) ---------- */
 function initializeDefault(){
     const start = todayKey();
@@ -3315,33 +3324,32 @@ function addRow() {
  * UNLESS the target date has the 'balanced' status set to true.
  */
 function deleteItemFromDateAndFuture(itemId, fromDateKey){
+    // 🟢 Guard: Block remote updates if offline
+    if (!isOnline) {
+        
+        return;
+    }
 
     const updates = {};
 
     for(let i=0;i<=state.futureWindowDays;i++){
-
         const dKey = addDays(fromDateKey,i);
-
         const dateData = state.dates[dKey];
 
         if(!dateData) continue;
-
         if(dateData.balanced === true){
             continue;
         }
 
         if(dateData.items && dateData.items[itemId]){
-
             delete dateData.items[itemId];
-
-            updates[
-                `dates/${dKey}/items/${itemId}`
-            ] = null;
+            updates[`dates/${dKey}/items/${itemId}`] = null;
         }
     }
 
-    if(firebaseDB && isOnline && Object.keys(updates).length){
-        firebaseDB.ref(REMOTE_DB_PATH).update(updates);
+    if(firebaseDB && Object.keys(updates).length){
+        firebaseDB.ref(REMOTE_DB_PATH).update(updates)
+            .catch(err => console.error("Firebase sync deletion failed", err));
     }
 }
 
@@ -3350,18 +3358,39 @@ function persistItemChange(itemId){
     const item = state.dates[dateKey]?.items?.[itemId];
     if(!item) return;
 
+    // 🟢 Guard: Block the update if the app state is offline
+    if (!isOnline) {
+        
+        // If you have a specific updateRow(itemId) function, call it here. 
+        // Otherwise, renderTable() keeps the UI matching the state.
+        if (typeof updateRow === 'function') {
+            updateRow(itemId);
+        } else {
+            renderTable();
+        }
+        return; 
+    }
+
     item.opening = Number(item.opening||0);
     item.orders  = Number(item.orders||0);
     item.closing = Number(item.closing||0);
     item.price   = Number(item.price||0);
 
+    // Propagate closing stock locally/remotely
     propagateClosingToNext(itemId);
 
+    // Write to Firebase safely
     const path = `${REMOTE_DB_PATH}/dates/${dateKey}/items/${itemId}`;
-    firebaseDB.ref(path).update(item);
+    firebaseDB.ref(path).update(item)
+        .catch(err => console.error('Firebase update failed', err));
 
-    updateRow(itemId); // only re-render this row
+    if (typeof updateRow === 'function') {
+        updateRow(itemId);
+    } else {
+        renderTable();
+    }
 }
+
 
 function saveDateImmediately(dateKey){
     if(!firebaseDB || !isOnline) return;
@@ -3372,11 +3401,15 @@ function saveDateImmediately(dateKey){
 } 
 
 function propagateNameAcrossDates(itemId, newName){
+    // 🟢 Guard: Block remote updates if offline
+    if (!isOnline) {
+        
+        return;
+    }
 
     const updates = {};
 
     for(let i=0;i<=state.futureWindowDays;i++){
-
         const dKey = addDays(state.currentDate,i);
         const dateData = state.dates[dKey];
 
@@ -3384,68 +3417,61 @@ function propagateNameAcrossDates(itemId, newName){
         if(dateData.balanced === true) continue;
 
         if(dateData.items && dateData.items[itemId]){
-
             dateData.items[itemId].name = newName;
-
-            updates[
-                `dates/${dKey}/items/${itemId}/name`
-            ] = newName;
+            updates[`dates/${dKey}/items/${itemId}/name`] = newName;
         }
     }
 
-    if(firebaseDB && isOnline && Object.keys(updates).length){
-        firebaseDB.ref(REMOTE_DB_PATH).update(updates);
+    if(firebaseDB && Object.keys(updates).length){
+        firebaseDB.ref(REMOTE_DB_PATH).update(updates)
+            .catch(err => console.error("Firebase name propagation failed", err));
     }
 }
+
 /**
  * Propagates price changes forward from the current date.
  */
 function propagatePriceToFuture(itemId,newPrice){
+    // 🟢 Guard: Block remote updates if offline
+    if (!isOnline) {
+        
+        return;
+    }
 
     const updates = {};
 
     for(let i=0;i<=state.futureWindowDays;i++){
-
         const dKey = addDays(state.currentDate,i);
-
         ensureDateExists(dKey);
-
         const dateData = state.dates[dKey];
 
         if(dateData.balanced === true) continue;
 
         if(dateData.items && dateData.items[itemId]){
-
             const price = Number(newPrice);
-
             dateData.items[itemId].price = price;
-
-            updates[
-                `dates/${dKey}/items/${itemId}/price`
-            ] = price;
+            updates[`dates/${dKey}/items/${itemId}/price`] = price;
         }
     }
 
-    if(firebaseDB && isOnline && Object.keys(updates).length){
-        firebaseDB.ref(REMOTE_DB_PATH).update(updates);
+    if(firebaseDB && Object.keys(updates).length){
+        firebaseDB.ref(REMOTE_DB_PATH).update(updates)
+            .catch(err => console.error("Firebase price propagation failed", err));
     }
 }
+
 
 /**
  * Propagates closing stock to the immediate next day's opening stock.
  */
 function propagateClosingToNext(itemId){
-
     const thisDate = state.currentDate;
     const nextDate = addDays(thisDate,1);
 
-    const thisItem =
-        state.dates[thisDate]?.items?.[itemId];
-
+    const thisItem = state.dates[thisDate]?.items?.[itemId];
     if(!thisItem) return;
 
     ensureDateExists(nextDate);
-
     const nextDateData = state.dates[nextDate];
 
     if(nextDateData.balanced === true){
@@ -3455,7 +3481,6 @@ function propagateClosingToNext(itemId){
     const updates = {};
 
     if(!nextDateData.items[itemId]){
-
         const copy = makeItem(
             itemId,
             thisItem.name,
@@ -3467,25 +3492,17 @@ function propagateClosingToNext(itemId){
         );
 
         copy.batches = clone(thisItem.batches || []);
-
         nextDateData.items[itemId] = copy;
-
-        updates[
-            `dates/${nextDate}/items/${itemId}`
-        ] = copy;
-
+        updates[`dates/${nextDate}/items/${itemId}`] = copy;
     }else{
-
-        nextDateData.items[itemId].opening =
-            Number(thisItem.closing || 0);
-
-        updates[
-            `dates/${nextDate}/items/${itemId}/opening`
-        ] = Number(thisItem.closing || 0);
+        nextDateData.items[itemId].opening = Number(thisItem.closing || 0);
+        updates[`dates/${nextDate}/items/${itemId}/opening`] = Number(thisItem.closing || 0);
     }
 
+    // 🟢 Guard: Only commit propagation to Firebase if network is active
     if(firebaseDB && isOnline){
-        firebaseDB.ref(REMOTE_DB_PATH).update(updates);
+        firebaseDB.ref(REMOTE_DB_PATH).update(updates)
+            .catch(err => console.error("Replication propagation failed", err));
     }
 }
 
@@ -6182,131 +6199,7 @@ document.addEventListener('DOMContentLoaded', () => {
 </script>
 
 
-<script>
-(function(){
 
-/* =========================================================
-   DYNAMIC CACHE KEY (CRITICAL FIX)
-   - prevents cross-profile data leakage
-========================================================= */
-function getCacheKey(){
-    const accountKey =
-        localStorage.getItem("AV_ledger_account_key") ||
-        window.AV_LEDGER_ACCOUNT_KEY ||
-        "default";
-
-    const dbPath =
-        window.REMOTE_DB_PATH ||
-        "default_db";
-
-    return `AVANTI_LEDGER_LOCAL_MIRROR_${accountKey}_${dbPath}`;
-}
-
-/* =========================================================
-   LOAD LOCAL CACHE FIRST
-========================================================= */
-function loadLocalMirror(){
-    try{
-        const CACHE_KEY = getCacheKey();
-
-        const cached = JSON.parse(localStorage.getItem(CACHE_KEY) || "{}");
-
-        // only apply if valid structure
-        if(cached && typeof cached === "object"){
-
-            if(cached.currentDate){
-                state.currentDate = cached.currentDate;
-            }
-
-            if(cached.dates && typeof cached.dates === "object"){
-                state.dates = cached.dates;
-            }
-        }
-
-        if(state.currentDate){
-            ensureDateExists(state.currentDate);
-        }
-
-        renderAll();
-
-        console.log("Rendered instantly from isolated local mirror:", CACHE_KEY);
-
-    }catch(err){
-        
-    }
-}
-
-/* =========================================================
-   SAVE LOCAL CACHE (ISOLATED PER ACCOUNT + DB PATH)
-========================================================= */
-function saveLocalMirror(){
-    try{
-        const CACHE_KEY = getCacheKey();
-
-        const mirror = {
-            currentDate: state.currentDate,
-            dates: state.dates,
-            _meta: {
-                accountKey: localStorage.getItem("AV_ledger_account_key"),
-                dbPath: window.REMOTE_DB_PATH,
-                savedAt: Date.now()
-            }
-        };
-
-        localStorage.setItem(CACHE_KEY, JSON.stringify(mirror));
-
-    }catch(err){
-        console.error("Mirror save failed", err);
-    }
-}
-
-/* =========================================================
-   OVERRIDE SAVE STATE
-========================================================= */
-const originalSaveState = window.saveState;
-
-window.saveState = function(){
-    saveLocalMirror();
-
-    if(typeof originalSaveState === "function"){
-        return originalSaveState.apply(this, arguments);
-    }
-};
-
-/* =========================================================
-   FIREBASE SYNC → ALSO RESPECTS CACHE KEY
-========================================================= */
-const originalSetupDataListener = window.setupDataListener;
-
-window.setupDataListener = function(){
-
-    if(typeof originalSetupDataListener === "function"){
-        originalSetupDataListener();
-    }
-
-    if(!firebaseDB || !REMOTE_DB_PATH) return;
-
-    firebaseDB.ref(REMOTE_DB_PATH).on("value", snap => {
-        const data = snap.val();
-        if(!data) return;
-
-        const CACHE_KEY = getCacheKey();
-
-        localStorage.setItem(CACHE_KEY, JSON.stringify(data));
-
-        console.log("Mirror updated from Firebase:", CACHE_KEY);
-    });
-};
-
-/* =========================================================
-   FAST STARTUP (LOCAL ONLY)
-========================================================= */
-document.addEventListener("DOMContentLoaded", () => {
-    loadLocalMirror();
-});
-
-})();
-</script>
 
 <script>
 document.addEventListener("DOMContentLoaded", () => {
@@ -6359,6 +6252,224 @@ document.addEventListener("DOMContentLoaded", () => {
     updateButtonStatus();
 });
 </script>
+
+<script>
+(function(){
+
+/* =========================================================
+   DYNAMIC CACHE KEY
+   - prevents cross-profile data leakage
+========================================================= */
+function getCacheKey(){
+    const accountKey =
+        localStorage.getItem("AV_ledger_account_key") ||
+        window.AV_LEDGER_ACCOUNT_KEY ||
+        "default";
+
+    const dbPath =
+        window.REMOTE_DB_PATH ||
+        "default_db";
+
+    return `AVANTI_LEDGER_LOCAL_MIRROR_${accountKey}_${dbPath}`;
+}
+
+/* =========================================================
+   LOAD LOCAL CACHE FIRST
+========================================================= */
+function loadLocalMirror(){
+    try{
+        const CACHE_KEY = getCacheKey();
+        const cached = JSON.parse(localStorage.getItem(CACHE_KEY) || "{}");
+
+        if(cached && typeof cached === "object"){
+            if(cached.currentDate){
+                state.currentDate = cached.currentDate;
+            }
+            if(cached.dates && typeof cached.dates === "object"){
+                state.dates = cached.dates;
+            }
+        }
+
+        if(state.currentDate){
+            ensureDateExists(state.currentDate);
+        }
+
+        renderAll();
+        console.log("Rendered instantly from isolated local mirror:", CACHE_KEY);
+    }catch(err){
+        console.error("Failed to load local mirror:", err);
+    }
+}
+
+/* =========================================================
+   SAVE LOCAL CACHE (ISOLATED PER ACCOUNT + DB PATH)
+========================================================= */
+function saveLocalMirror(){
+    try{
+        const CACHE_KEY = getCacheKey();
+        const mirror = {
+            currentDate: state.currentDate,
+            dates: state.dates,
+            _meta: {
+                accountKey: localStorage.getItem("AV_ledger_account_key"),
+                dbPath: window.REMOTE_DB_PATH,
+                savedAt: Date.now()
+            }
+        };
+
+        localStorage.setItem(CACHE_KEY, JSON.stringify(mirror));
+    }catch(err){
+        console.error("Mirror save failed", err);
+    }
+}
+
+/* =========================================================
+   INTERCEPTION: TIMESTAMP GENERATOR FOR DATES
+   - Deep-compares changes against local storage cache
+   - Appends/updates 'lastUpdated' ONLY if content changed
+========================================================= */
+function applyTimestampsToModifiedDates(){
+    try {
+        const CACHE_KEY = getCacheKey();
+        const cachedRaw = localStorage.getItem(CACHE_KEY);
+        let cachedDates = {};
+        
+        if (cachedRaw) {
+            const parsed = JSON.parse(cachedRaw);
+            if (parsed && parsed.dates) {
+                cachedDates = parsed.dates;
+            }
+        }
+
+        const now = Date.now();
+
+        if (state && state.dates && typeof state.dates === "object") {
+            for (const dKey in state.dates) {
+                if (Object.prototype.hasOwnProperty.call(state.dates, dKey)) {
+                    const currentData = state.dates[dKey];
+                    const cachedData = cachedDates[dKey];
+
+                    if (typeof currentData === "object" && currentData !== null) {
+                        if (!cachedData) {
+                            // Brand new local date entry
+                            currentData.lastUpdated = now;
+                        } else {
+                            // Content check: strip existing timestamps before comparison
+                            const currentCopy = { ...currentData };
+                            const cachedCopy = { ...cachedData };
+                            delete currentCopy.lastUpdated;
+                            delete cachedCopy.lastUpdated;
+
+                            if (JSON.stringify(currentCopy) !== JSON.stringify(cachedCopy)) {
+                                currentData.lastUpdated = now;
+                            } else if (!currentData.lastUpdated) {
+                                // Fallback if timestamp was stripped or missing
+                                currentData.lastUpdated = cachedData.lastUpdated || now;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    } catch (err) {
+        console.error("Failed to apply timestamps:", err);
+    }
+}
+
+/* =========================================================
+   OVERRIDE SAVE STATE (WITH INTERCEPTION)
+========================================================= */
+const originalSaveState = window.saveState;
+
+window.saveState = function(){
+    // 1. Intercept write and stamp modified date objects
+    applyTimestampsToModifiedDates();
+
+    // 2. Commit the stamped objects to local storage mirror
+    saveLocalMirror();
+
+    // 3. Hand off the data structures to the main Firebase writer safely
+    if(typeof originalSaveState === "function"){
+        return originalSaveState.apply(this, arguments);
+    }
+};
+
+/* =========================================================
+   FIREBASE SYNC + CLEAN CONFLICT RESOLUTION
+========================================================= */
+const originalSetupDataListener = window.setupDataListener;
+
+window.setupDataListener = function(){
+
+    if(typeof originalSetupDataListener === "function"){
+        originalSetupDataListener();
+    }
+
+    if(!firebaseDB || !REMOTE_DB_PATH) return;
+
+    firebaseDB.ref(REMOTE_DB_PATH).on("value", snap => {
+        const remoteData = snap.val();
+        if(!remoteData) return;
+
+        const CACHE_KEY = getCacheKey();
+        const localDates = state.dates || {};
+        const remoteDates = remoteData.dates || {};
+        
+        let stateChanged = false;
+
+        // Extract a unique collection of all keys across local memory and remote DB
+        const allDateKeys = new Set([...Object.keys(localDates), ...Object.keys(remoteDates)]);
+
+        allDateKeys.forEach(dKey => {
+            const localDateObj = localDates[dKey];
+            const remoteDateObj = remoteDates[dKey];
+
+            if (localDateObj && remoteDateObj) {
+                const localTS = localDateObj.lastUpdated || 0;
+                const remoteTS = remoteDateObj.lastUpdated || 0;
+
+                // CRITICAL FIX: Only accept remote data if it is strictly newer.
+                // If local data is newer, do nothing here. The user's application loop
+                // will push it to Firebase naturally without causing infinite write loops.
+                if (remoteTS > localTS) {
+                    state.dates[dKey] = remoteDateObj;
+                    stateChanged = true;
+                }
+            } else if (remoteDateObj) {
+                // Exists exclusively on remote database, pull down
+                state.dates[dKey] = remoteDateObj;
+                stateChanged = true;
+            }
+            // If it exists exclusively locally, we keep it in memory. It will naturally upload on next save.
+        });
+
+        // Sync current active view selection if missing locally
+        if (remoteData.currentDate && !state.currentDate) {
+            state.currentDate = remoteData.currentDate;
+            stateChanged = true;
+        }
+
+        // Only touch UI rendering and storage mirrors if an actionable data change occurred
+        if (stateChanged) {
+            saveLocalMirror();
+            if (typeof renderAll === "function") {
+                renderAll();
+            }
+            console.log("Mirror updated from cleaner Firebase merge:", CACHE_KEY);
+        }
+    });
+};
+
+/* =========================================================
+   FAST STARTUP (LOCAL ONLY)
+========================================================= */
+document.addEventListener("DOMContentLoaded", () => {
+    loadLocalMirror();
+});
+
+})();
+</script>
+
 
 
 </body>
