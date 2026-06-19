@@ -6257,156 +6257,221 @@ document.addEventListener("DOMContentLoaded", () => {
 (function(){
 
 /* =========================================================
-   DYNAMIC CACHE KEY ENGINE
-========================================================= */
-/* =========================================================
-   DYNAMIC CACHE KEY ENGINE (SOURCE-ISOLATED SPLITTING)
+   1. DYNAMIC DATE-ISOLATED CACHE KEY
+   - Isolates local storage keys per account, database path, AND date
+   - Ensures the cache processes exactly one date at a time
 ========================================================= */
 function getCacheKey(dateKey) {
+    const accountKey =
+        localStorage.getItem("AV_ledger_account_key") ||
+        window.AV_LEDGER_ACCOUNT_KEY ||
+        "default";
+
+    const dbPath =
+        window.REMOTE_DB_PATH ||
+        "default_db";
+
+    return `AVANTI_LEDGER_LOCAL_MIRROR_${accountKey}_${dbPath}_${dateKey}`;
+}
+
+function getLastActiveDateKey() {
     const accountKey = localStorage.getItem("AV_ledger_account_key") || window.AV_LEDGER_ACCOUNT_KEY || "default";
-    const dbPath = window.REMOTE_DB_PATH || "default_db";
-    const targetDate = dateKey || state.currentDate || new Date().toISOString().split('T')[0];
-    
-    // Extract the exact sync state source computed by updateSyncDisplay() 
-    // Fallback securely to 'none' if empty or not evaluated yet
-    const rawSource = localStorage.getItem("AV_last_sync_source") || "none";
-    
-    // Sanitize source strings to prevent key fragmentation from special characters
-    const sanitizedSource = rawSource.replace(/[^a-zA-Z0-9_:]/g, "_");
-
-    return `AVANTI_LEDGER_LOCAL_MIRROR_${accountKey}_${dbPath}_${sanitizedSource}_${targetDate}`;
+    return `AVANTI_LEDGER_LAST_ACTIVE_DATE_${accountKey}`;
 }
 
 /* =========================================================
-   RESOLVE CONFLICTS (LAST-WRITE-WINS ENGINE)
+   2. LOAD LOCAL CACHE (SINGLE DATE FOCUS)
+   - Instantly draws down cached data for the single active date
 ========================================================= */
-function resolveConflictAndApply(localData, remoteData) {
-    if (!localData && !remoteData) return makeEmptyDate();
-    
-    const localTime = (localData && localData.updatedAt) ? localData.updatedAt : 0;
-    const remoteTime = (remoteData && remoteData.updatedAt) ? remoteData.updatedAt : 0;
-    
-    if (remoteTime >= localTime) {
-        return remoteData;
-    } else {
-        setTimeout(() => {
-            // 🟢 Guard: Check active network capability status flags
-            if (!window.isOnline) {
-                console.warn("Local change is newer, but network is offline. Cloud sync pipeline blocked.");
-                return;
-            }
-            if (window.firebaseDB && window.REMOTE_DB_PATH) {
-                const dateKey = state.currentDate;
-                window.firebaseDB.ref(`${window.REMOTE_DB_PATH}/dates/${dateKey}`).set(localData)
-                    .then(() => console.log(`Conflict pipeline: Synchronized local-first state forward for date: ${dateKey}`))
-                    .catch(err => console.error("Conflict pipeline upload failure", err));
-            }
-        }, 1000);
-        return localData;
-    }
-}
-
-/* =========================================================
-   LOAD LOCAL TARGET CACHE (ONE DATE PIECELL)
-========================================================= */
-window.loadLocalMirror = function() {
+function loadLocalMirror() {
     try {
-        if (!state.currentDate) {
-            state.currentDate = new Date().toISOString().split('T')[0];
+        // Find the last viewed date context for rapid instant rendering
+        let savedDate = localStorage.getItem(getLastActiveDateKey());
+        if (!savedDate) {
+            savedDate = new Date().toISOString().split('T')[0];
         }
-        
+        state.currentDate = savedDate;
+
         const CACHE_KEY = getCacheKey(state.currentDate);
-        const cachedString = localStorage.getItem(CACHE_KEY);
-        const localSnapshot = cachedString ? JSON.parse(cachedString) : null;
-        
-        if (localSnapshot) {
-            state.dates[state.currentDate] = localSnapshot;
+        const cachedData = JSON.parse(localStorage.getItem(CACHE_KEY));
+
+        if (cachedData && typeof cachedData === "object") {
+            if (!state.dates) state.dates = {};
+            state.dates[state.currentDate] = cachedData;
+            console.log(`%c[Cache Master] Instant local render successful for date: ${state.currentDate}`, "color: #007aff");
         } else {
-            if (!state.dates[state.currentDate]) {
+            if (typeof ensureDateExists === "function") {
                 ensureDateExists(state.currentDate);
             }
         }
-        
-        renderAll();
-        console.log("Rendered from source-isolated mirror framework:", CACHE_KEY);
+
+        if (typeof renderAll === "function") renderAll();
+
     } catch(err) {
-        console.error("Failed loading local mirror segment:", err);
+        console.error("Failed to initialize single-date local mirror cache", err);
     }
-};
+}
 
 /* =========================================================
-   SAVE LOCAL CACHE WITH ACCURATE UPDATE TIMESTAMP
+   3. SAVE LOCAL CACHE WITH LAST MUTATED TIMESTAMP
+   - Updates individual date keys rather than appending giant bloated objects
 ========================================================= */
-window.saveLocalMirror = function() {
+function saveLocalMirror() {
     try {
-        if (!state.currentDate) return;
-        
-        ensureDateExists(state.currentDate);
-        const dateRecord = state.dates[state.currentDate];
-        
-        dateRecord.updatedAt = Date.now();
-        
-        const CACHE_KEY = getCacheKey(state.currentDate);
-        localStorage.setItem(CACHE_KEY, JSON.stringify(dateRecord));
+        const dateKey = state.currentDate;
+        if (!dateKey || !state.dates || !state.dates[dateKey]) return;
+
+        // Apply a highly accurate local mutated timestamp signature
+        state.dates[dateKey].lastUpdated = Date.now();
+
+        const CACHE_KEY = getCacheKey(dateKey);
+        localStorage.setItem(CACHE_KEY, JSON.stringify(state.dates[dateKey]));
+        localStorage.setItem(getLastActiveDateKey(), dateKey);
+
     } catch(err) {
-        console.error("Segment mirror save execution failed:", err);
+        console.error("Local mirror date serialization write failed", err);
     }
-};
+}
 
 /* =========================================================
-   OVERRIDE APPLICATION SAVE STATE HOOK
+   4. OVERRIDE SAVE STATE (WITH NETWORK INTERCEPTOR)
+   - Completely short-circuits Firebase SDK native offline queuing
 ========================================================= */
-const originalSaveState = window.saveState;
 window.saveState = function() {
-    window.saveLocalMirror();
-    if(typeof originalSaveState === "function") {
-        return originalSaveState.apply(this, arguments);
+    // Commit the structural change safely to local mirror with fresh timestamp first
+    saveLocalMirror();
+
+    // CRITICAL FIX: Block offline writes from registering to Firebase SDK entirely.
+    // This stops the Firebase persistence layer from queueing stale state updates
+    // and leaking old offline timestamps over your true production nodes on reconnect.
+    if (!window.isOnline || !firebaseDB || !REMOTE_DB_PATH || REMOTE_DB_PATH === "avanti_stats_default") {
+        console.log("%c[Network Interceptor] Device is Offline. Saved strictly to Local Mirror. Firebase sync blocked.", "color: #ff9500");
+        return; 
     }
+
+    // System is confirmed online -> Safe to trigger explicit remote updates
+    const dateKey = state.currentDate;
+    const targetData = state.dates[dateKey];
+    
+    const updates = {};
+    updates['currentDate'] = dateKey;
+    updates[`dates/${dateKey}`] = targetData;
+
+    firebaseDB.ref(REMOTE_DB_PATH).update(updates)
+        .then(() => console.log(`[Sync Engine] Remote ledger successfully pushed for date: ${dateKey}`))
+        .catch(err => console.error("Firebase live push failure", err));
 };
 
 /* =========================================================
-   FIREBASE REALTIME LISTENER OVERRIDE (TARGETED HOOK)
+   5. FIREBASE SYNC ENGINE + TIME-BASED CONFLICT RESOLUTION
+   - Compares timestamps step-by-step when syncing changes
 ========================================================= */
-const originalSetupDataListener = window.setupDataListener;
 window.setupDataListener = function() {
-    if(typeof originalSetupDataListener === "function") {
-        originalSetupDataListener();
+    if (!firebaseDB || !REMOTE_DB_PATH || REMOTE_DB_PATH === "avanti_stats_default") return;
+
+    // Disconnect any stale historical database listeners cleanly
+    if (window.currentDataRef) {
+        window.currentDataRef.off();
     }
-    
-    if(!firebaseDB || !REMOTE_DB_PATH || !state.currentDate) return;
-    
-    const singleDateRef = firebaseDB.ref(`${REMOTE_DB_PATH}/dates/${state.currentDate}`);
-    
-    singleDateRef.on("value", snap => {
-        // 🟢 Guard: Prevent ingestion processing if state flags are disconnected
-        if (!window.isOnline) {
-            console.warn("Network listener fired, but network status is offline. Merging blocked.");
-            return;
+
+    window.currentDataRef = firebaseDB.ref(REMOTE_DB_PATH);
+    window.dataListenerActive = true;
+
+    const datesRef = window.currentDataRef.child('dates');
+
+    // Centralized algorithmic engine responsible for reconciling state synchronization conflicts
+    function reconcileConflictingRecords(snap) {
+        const dateKey = snap.key;
+        const remoteData = snap.val();
+        if (!remoteData) return;
+
+        const CACHE_KEY = getCacheKey(dateKey);
+        const localData = JSON.parse(localStorage.getItem(CACHE_KEY));
+
+        const remoteTS = remoteData.lastUpdated || 0;
+        const localTS = localData ? (localData.lastUpdated || 0) : 0;
+
+        // CONFLICT MATRIX RESOLUTION
+        if (remoteTS >= localTS) {
+            // Scenario A: Remote entry is newer or identically matched -> Remote Wins
+            if (!state.dates) state.dates = {};
+            state.dates[dateKey] = remoteData;
+            localStorage.setItem(CACHE_KEY, JSON.stringify(remoteData));
+            
+            // Trigger UI updates selectively if the active interface matches the updated node
+            if (dateKey === state.currentDate && typeof renderTable === "function") {
+                renderTable();
+                if (typeof renderExpensesIncomes === "function") renderExpensesIncomes();
+                if (typeof updateTotalsNumbers === "function") updateTotalsNumbers();
+            }
+            console.log(`%c[Conflict Resolution] Accepted Remote Record for ${dateKey} (Remote TS: ${remoteTS} >= Local TS: ${localTS})`, "color: #34c759");
+        } else {
+            // Scenario B: Local entry timestamp is newer -> Local Wins
+            // Since we blocked old offline writes from backing up in the SDK, we safely push
+            // the true latest local master records up to Firebase to overwrite the outdated remote branch.
+            if (window.isOnline) {
+                console.log(`%c[Conflict Resolution] Local Record for ${dateKey} is NEWER! Overwriting outdated remote node...`, "color: #5856d6");
+                datesRef.child(dateKey).set(localData)
+                    .catch(err => console.error("Failed to fix remote outdated database entry", err));
+            }
+        }
+    }
+
+    // Monitor additions and continuous record mutations safely
+    datesRef.on('child_added', reconcileConflictingRecords);
+    datesRef.on('child_changed', reconcileConflictingRecords);
+
+    // Track downstream element deletions cleanly
+    datesRef.on('child_removed', snap => {
+        const dateKey = snap.key;
+        const CACHE_KEY = getCacheKey(dateKey);
+        const localData = JSON.parse(localStorage.getItem(CACHE_KEY));
+        
+        const localTS = localData ? (localData.lastUpdated || 0) : 0;
+
+        // Only process remote deletion if local doesn't have an un-synced newer change
+        if (localTS === 0) {
+            delete state.dates[dateKey];
+            localStorage.removeItem(CACHE_KEY);
+            if (dateKey === state.currentDate && typeof renderAll === "function") {
+                renderAll();
+            }
+        }
+    });
+
+    // Handle Active Selected Date Coordinator Loops
+    window.currentDataRef.child('currentDate').on('value', snap => {
+        let remoteDate = snap.val();
+        if (!remoteDate) {
+            remoteDate = new Date().toISOString().split('T')[0];
+            if (window.isOnline) {
+                window.currentDataRef.child('currentDate').set(remoteDate);
+            }
         }
 
-        const remoteData = snap.val();
-        if(!remoteData) return;
-        
-        const CACHE_KEY = getCacheKey(state.currentDate);
-        const localData = JSON.parse(localStorage.getItem(CACHE_KEY) || "null");
-        
-        const resolvedRecord = resolveConflictAndApply(localData, remoteData);
-        
-        state.dates[state.currentDate] = resolvedRecord;
-        localStorage.setItem(CACHE_KEY, JSON.stringify(resolvedRecord));
-        
-        renderTable();
-        renderExpensesIncomes();
-        updateTotalsNumbers();
+        if (remoteDate !== state.currentDate) {
+            state.currentDate = remoteDate;
+            
+            // Re-route local cache layers or initialize structures cleanly
+            const CACHE_KEY = getCacheKey(state.currentDate);
+            const cachedData = JSON.parse(localStorage.getItem(CACHE_KEY));
+            if (cachedData) {
+                if (!state.dates) state.dates = {};
+                state.dates[state.currentDate] = cachedData;
+            } else if (typeof ensureDateExists === "function") {
+                ensureDateExists(state.currentDate);
+            }
+            
+            if (typeof renderAll === "function") renderAll();
+        }
     });
 };
 
-
 /* =========================================================
-   FAST BOOTSTRAP INITIALIZATION ON CORE STACK READY
+   6. DOM READY SYSTEM BOOTSTRAPPER
 ========================================================= */
 document.addEventListener("DOMContentLoaded", () => {
-    window.loadLocalMirror();
+    loadLocalMirror();
 });
 
 })();
