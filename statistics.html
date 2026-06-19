@@ -6292,11 +6292,9 @@ function loadLocalMirror(){
         }
 
         ensureDateExists(state.currentDate);
-        
-        // This is the ONLY blind render allowed, ensuring the app loads from memory instantly
         renderAll();
 
-        console.log("System Initialized: Local Cache Active");
+        console.log("LOCAL CACHE LOADED", key);
 
     } catch(e) {
         console.error("Local cache error", e);
@@ -6339,45 +6337,35 @@ function saveLocalMirror(){
 ===================================================== */
 
 function attachTimestamp(data){
-    if(!data) return data;
     if(!data._meta) data._meta = {};
     data._meta.lastUpdated = Date.now();
     return data;
 }
 
 /* =====================================================
-   FIREBASE CONFLICT ENGINE (THE GATEKEEPER)
+   FIREBASE CONFLICT ENGINE
 ===================================================== */
 
 async function resolveDateConflict(dateKey, firebaseData){
     const local = state.dates[dateKey];
-    
-    // If local memory is completely empty for this date, accept Firebase as truth
-    if(!local) {
-        state.dates[dateKey] = firebaseData;
-        saveLocalMirror();
-        if(dateKey === state.currentDate) renderAll();
-        return;
-    }
+    if(!local) return;
 
     const localTime = local._meta?.lastUpdated || 0;
     const firebaseTime = firebaseData?._meta?.lastUpdated || 0;
 
-    /* Firebase is the true latest record */
+    console.log("Conflict check", dateKey, { localTime, firebaseTime });
+
+    /* Firebase newer */
     if(firebaseTime > localTime){
         state.dates[dateKey] = firebaseData;
         saveLocalMirror();
-        
-        // ONLY force a render if the user is currently looking at the updated date
-        if(dateKey === state.currentDate) {
-            renderAll();
-        }
+        renderAll();
         return;
     }
 
-    /* Local memory is the true latest record */
+    /* Local newer */
     if(localTime > firebaseTime){
-        if(typeof isOnline !== 'undefined' && isOnline){
+        if(isOnline){
             await firebaseDB.ref(`${REMOTE_DB_PATH}/dates/${dateKey}`).set(local);
         }
         return;
@@ -6394,6 +6382,7 @@ function injectTimestampToDateRoot(ref) {
         let dateRef = null;
         let dateKey = null;
 
+        // Traverse up the Firebase reference tree to locate the root "date" node
         while (current && current.parent) {
             if (current.parent.key === 'dates') {
                 dateRef = current;
@@ -6404,11 +6393,15 @@ function injectTimestampToDateRoot(ref) {
         }
 
         if (dateRef && dateKey) {
+            // Update local state immediately for UI consistency
             if (typeof state !== "undefined" && state.dates && state.dates[dateKey]) {
-                if (!state.dates[dateKey]._meta) state.dates[dateKey]._meta = {};
+                if (!state.dates[dateKey]._meta) {
+                    state.dates[dateKey]._meta = {};
+                }
                 state.dates[dateKey]._meta.lastUpdated = Date.now();
             }
 
+            // Prevent infinite loops if the write is ALREADY updating the _meta node
             let isMetaUpdate = false;
             let testRef = ref;
             while (testRef && testRef.parent) {
@@ -6419,8 +6412,11 @@ function injectTimestampToDateRoot(ref) {
                 testRef = testRef.parent;
             }
 
+            // Trigger a non-blocking background update to the Firebase _meta node
             if (!isMetaUpdate) {
-                dateRef.child('_meta/lastUpdated').set(Date.now()).catch(() => {});
+                dateRef.child('_meta/lastUpdated').set(Date.now()).catch(err => {
+                    console.warn("Background timestamp update failed", err);
+                });
             }
         }
     } catch (e) {
@@ -6431,18 +6427,26 @@ function injectTimestampToDateRoot(ref) {
 const originalRef = firebase.database.Reference.prototype.set;
 firebase.database.Reference.prototype.set = function(value){
     if(typeof isOnline !== "undefined" && !isOnline){
+        console.warn("Blocked offline Firebase set", this.path);
         return Promise.resolve();
     }
+
+    // NON-BLOCKING TIMESTAMP INJECTION
     injectTimestampToDateRoot(this);
+
     return originalRef.call(this, value);
 };
 
 const originalUpdate = firebase.database.Reference.prototype.update;
 firebase.database.Reference.prototype.update = function(value){
     if(typeof isOnline !== "undefined" && !isOnline){
+        console.warn("Blocked offline Firebase update", this.path);
         return Promise.resolve();
     }
+
+    // NON-BLOCKING TIMESTAMP INJECTION
     injectTimestampToDateRoot(this);
+
     return originalUpdate.call(this, value);
 };
 
@@ -6452,9 +6456,7 @@ firebase.database.Reference.prototype.update = function(value){
 
 const oldSave = window.saveState;
 window.saveState = function(){
-    if(state.currentDate && state.dates[state.currentDate]) {
-        attachTimestamp(state.dates[state.currentDate]);
-    }
+    attachTimestamp(state.dates[state.currentDate]);
     saveLocalMirror();
 
     if(typeof oldSave === "function"){
@@ -6463,47 +6465,24 @@ window.saveState = function(){
 };
 
 /* =====================================================
-   FIREBASE LISTENER OVERRIDE (REPLACES OLD LOGIC)
+   FIREBASE LISTENER OVERRIDE
 ===================================================== */
 
-// Completely overwrite the old listener instead of appending to it
+const oldListener = window.setupDataListener;
 window.setupDataListener = function(){
+    if(typeof oldListener === "function") oldListener();
+
     if(!firebaseDB || !REMOTE_DB_PATH) return;
 
-    // Use child-level listeners passing through the gatekeeper
-    const datesRef = firebaseDB.ref(`${REMOTE_DB_PATH}/dates`);
+    firebaseDB.ref(`${REMOTE_DB_PATH}/dates`).on("value", snap => {
+        const dates = snap.val();
+        if(!dates) return;
 
-    datesRef.on('child_added', async snap => {
-        await resolveDateConflict(snap.key, snap.val());
-    });
+        Object.keys(dates).forEach(async date => {
+            await resolveDateConflict(date, dates[date]);
+        });
 
-    datesRef.on('child_changed', async snap => {
-        await resolveDateConflict(snap.key, snap.val());
-    });
-
-    datesRef.on('child_removed', snap => {
-        if(state.dates[snap.key]) {
-            delete state.dates[snap.key];
-            saveLocalMirror();
-            if (snap.key === state.currentDate) {
-                renderAll();
-            }
-        }
-    });
-
-    // Handle Current Date navigation separately without breaking conflict logic
-    firebaseDB.ref(`${REMOTE_DB_PATH}/currentDate`).on('value', snap => {
-        let newDate = snap.val();
-        if (!newDate) {
-            newDate = new Date().toISOString().split('T')[0];
-            firebaseDB.ref(`${REMOTE_DB_PATH}/currentDate`).set(newDate);
-            if(typeof ensureDateExists === 'function') ensureDateExists(newDate);
-        }
-        if (newDate !== state.currentDate) {
-            state.currentDate = newDate;
-            if(typeof ensureDateExists === 'function') ensureDateExists(state.currentDate);
-            renderAll();
-        }
+        saveLocalMirror();
     });
 };
 
@@ -6512,21 +6491,18 @@ window.setupDataListener = function(){
 ===================================================== */
 
 window.addEventListener("online", async () => {
-    console.log("Network Restored: Initializing Background Sync");
+    console.log("ONLINE - running conflict resolver");
 
     if(!firebaseDB || !REMOTE_DB_PATH) return;
 
-    try {
-        const snap = await firebaseDB.ref(`${REMOTE_DB_PATH}/dates`).once("value");
-        const remote = snap.val() || {};
+    const snap = await firebaseDB.ref(`${REMOTE_DB_PATH}/dates`).once("value");
+    const remote = snap.val() || {};
 
-        for(const d in remote){
-            await resolveDateConflict(d, remote[d]);
-        }
-    } catch (e) {
-        console.error("Background sync failed", e);
+    for(const d in remote){
+        await resolveDateConflict(d, remote[d]);
     }
 });
+
 
 document.addEventListener("DOMContentLoaded", loadLocalMirror);
 
