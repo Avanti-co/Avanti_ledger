@@ -3353,30 +3353,54 @@ function deleteItemFromDateAndFuture(itemId, fromDateKey){
     }
 }
 
+
 function persistItemChange(itemId){
     const dateKey = state.currentDate;
     const item = state.dates[dateKey]?.items?.[itemId];
     if(!item) return;
 
+    // 1. Sanitize input types immediately in the local state object
     item.opening = Number(item.opening || 0);
     item.orders  = Number(item.orders || 0);
     item.closing = Number(item.closing || 0);
     item.price   = Number(item.price || 0);
 
+    // 2. Propagate closing stock locally down the timeline chain
     propagateClosingToNext(itemId);
 
-    // 🟢 OFFLINE BLOCK (prevents Firebase SDK queueing)
-    if (!isOnline) {
-        updateRow(itemId); // only local UI update
-        return;
+    // 3. Increment timestamps and flush down to localStorage mirror immediately
+    if (typeof window.saveState === "function") {
+        window.saveState();
+    } else {
+        // Fallback safety if saveState wrapper isn't ready
+        if (!state.dates[dateKey]._meta) state.dates[dateKey]._meta = {};
+        state.dates[dateKey]._meta.lastUpdated = Date.now();
+        saveLocalMirror();
     }
 
+    // 4. Handle Network Isolation
+    if (!isOnline) {
+        
+        // Target specifically the modified row to protect keyboard focus state
+        if (typeof updateRow === 'function') {
+            updateRow(itemId);
+        } else {
+            renderTable(); // Fallback if granular row updater isn't defined
+        }
+        return; 
+    }
+
+    // 5. App is online: Write safely to Firebase
     const path = `${REMOTE_DB_PATH}/dates/${dateKey}/items/${itemId}`;
     firebaseDB.ref(path).update(item)
         .catch(err => console.error('Firebase update failed', err));
 
-    // ONLY update this row (no full table render)
-    updateRow(itemId);
+    // 6. Refresh UI row without causing global input blur events
+    if (typeof updateRow === 'function') {
+        updateRow(itemId);
+    } else {
+        renderTable();
+    }
 }
 
 function saveDateImmediately(dateKey){
@@ -6413,7 +6437,7 @@ function injectTimestampToDateRoot(ref) {
             }
 
             // Trigger a non-blocking background update to the Firebase _meta node
-            if (!isMetaUpdate && typeof isOnline !== "undefined" && isOnline) {
+            if (!isMetaUpdate) {
                 dateRef.child('_meta/lastUpdated').set(Date.now()).catch(err => {
                     console.warn("Background timestamp update failed", err);
                 });
@@ -6426,30 +6450,26 @@ function injectTimestampToDateRoot(ref) {
 
 const originalRef = firebase.database.Reference.prototype.set;
 firebase.database.Reference.prototype.set = function(value){
-    // 1. Force the local state timestamp bump immediately so data integrity is tracked offline
-    injectTimestampToDateRoot(this);
-
-    // 2. Intercept and isolate execution if the device is currently offline
     if(typeof isOnline !== "undefined" && !isOnline){
-        console.warn("Blocked offline Firebase set; local timestamp successfully updated.", this.path);
-        saveLocalMirror(); // Force internal cache to lock in the new timestamp
+        console.warn("Blocked offline Firebase set", this.path);
         return Promise.resolve();
     }
+
+    // NON-BLOCKING TIMESTAMP INJECTION
+    injectTimestampToDateRoot(this);
 
     return originalRef.call(this, value);
 };
 
 const originalUpdate = firebase.database.Reference.prototype.update;
 firebase.database.Reference.prototype.update = function(value){
-    // 1. Force the local state timestamp bump immediately so data integrity is tracked offline
-    injectTimestampToDateRoot(this);
-
-    // 2. Intercept and isolate execution if the device is currently offline
     if(typeof isOnline !== "undefined" && !isOnline){
-        console.warn("Blocked offline Firebase update; local timestamp successfully updated.", this.path);
-        saveLocalMirror(); // Force internal cache to lock in the new timestamp
+        console.warn("Blocked offline Firebase update", this.path);
         return Promise.resolve();
     }
+
+    // NON-BLOCKING TIMESTAMP INJECTION
+    injectTimestampToDateRoot(this);
 
     return originalUpdate.call(this, value);
 };
@@ -6460,9 +6480,7 @@ firebase.database.Reference.prototype.update = function(value){
 
 const oldSave = window.saveState;
 window.saveState = function(){
-    if(state.dates && state.currentDate && state.dates[state.currentDate]) {
-        attachTimestamp(state.dates[state.currentDate]);
-    }
+    attachTimestamp(state.dates[state.currentDate]);
     saveLocalMirror();
 
     if(typeof oldSave === "function"){
@@ -6508,6 +6526,7 @@ window.addEventListener("online", async () => {
         await resolveDateConflict(d, remote[d]);
     }
 });
+
 
 document.addEventListener("DOMContentLoaded", loadLocalMirror);
 
