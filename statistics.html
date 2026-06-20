@@ -3324,35 +3324,35 @@ function addRow() {
  * UNLESS the target date has the 'balanced' status set to true.
  */
 function deleteItemFromDateAndFuture(itemId, fromDateKey){
-    // 🟢 Guard: Block remote updates if offline
-    if (!isOnline) {
-        
-        return;
-    }
 
     const updates = {};
 
     for(let i=0;i<=state.futureWindowDays;i++){
+
         const dKey = addDays(fromDateKey,i);
+
         const dateData = state.dates[dKey];
 
         if(!dateData) continue;
+
         if(dateData.balanced === true){
             continue;
         }
 
         if(dateData.items && dateData.items[itemId]){
+
             delete dateData.items[itemId];
-            updates[`dates/${dKey}/items/${itemId}`] = null;
+
+            updates[
+                `dates/${dKey}/items/${itemId}`
+            ] = null;
         }
     }
 
-    if(firebaseDB && Object.keys(updates).length){
-        firebaseDB.ref(REMOTE_DB_PATH).update(updates)
-            .catch(err => console.error("Firebase sync deletion failed", err));
+    if(firebaseDB && isOnline && Object.keys(updates).length){
+        firebaseDB.ref(REMOTE_DB_PATH).update(updates);
     }
 }
-
 function persistItemChange(itemId){
     const dateKey = state.currentDate;
     const item = state.dates[dateKey]?.items?.[itemId];
@@ -3401,15 +3401,11 @@ function saveDateImmediately(dateKey){
 } 
 
 function propagateNameAcrossDates(itemId, newName){
-    // 🟢 Guard: Block remote updates if offline
-    if (!isOnline) {
-        
-        return;
-    }
 
     const updates = {};
 
     for(let i=0;i<=state.futureWindowDays;i++){
+
         const dKey = addDays(state.currentDate,i);
         const dateData = state.dates[dKey];
 
@@ -3417,61 +3413,68 @@ function propagateNameAcrossDates(itemId, newName){
         if(dateData.balanced === true) continue;
 
         if(dateData.items && dateData.items[itemId]){
+
             dateData.items[itemId].name = newName;
-            updates[`dates/${dKey}/items/${itemId}/name`] = newName;
+
+            updates[
+                `dates/${dKey}/items/${itemId}/name`
+            ] = newName;
         }
     }
 
-    if(firebaseDB && Object.keys(updates).length){
-        firebaseDB.ref(REMOTE_DB_PATH).update(updates)
-            .catch(err => console.error("Firebase name propagation failed", err));
+    if(firebaseDB && isOnline && Object.keys(updates).length){
+        firebaseDB.ref(REMOTE_DB_PATH).update(updates);
     }
 }
-
 /**
  * Propagates price changes forward from the current date.
  */
 function propagatePriceToFuture(itemId,newPrice){
-    // 🟢 Guard: Block remote updates if offline
-    if (!isOnline) {
-        
-        return;
-    }
 
     const updates = {};
 
     for(let i=0;i<=state.futureWindowDays;i++){
+
         const dKey = addDays(state.currentDate,i);
+
         ensureDateExists(dKey);
+
         const dateData = state.dates[dKey];
 
         if(dateData.balanced === true) continue;
 
         if(dateData.items && dateData.items[itemId]){
+
             const price = Number(newPrice);
+
             dateData.items[itemId].price = price;
-            updates[`dates/${dKey}/items/${itemId}/price`] = price;
+
+            updates[
+                `dates/${dKey}/items/${itemId}/price`
+            ] = price;
         }
     }
 
-    if(firebaseDB && Object.keys(updates).length){
-        firebaseDB.ref(REMOTE_DB_PATH).update(updates)
-            .catch(err => console.error("Firebase price propagation failed", err));
+    if(firebaseDB && isOnline && Object.keys(updates).length){
+        firebaseDB.ref(REMOTE_DB_PATH).update(updates);
     }
 }
-
 
 /**
  * Propagates closing stock to the immediate next day's opening stock.
  */
 function propagateClosingToNext(itemId){
+
     const thisDate = state.currentDate;
     const nextDate = addDays(thisDate,1);
 
-    const thisItem = state.dates[thisDate]?.items?.[itemId];
+    const thisItem =
+        state.dates[thisDate]?.items?.[itemId];
+
     if(!thisItem) return;
 
     ensureDateExists(nextDate);
+
     const nextDateData = state.dates[nextDate];
 
     if(nextDateData.balanced === true){
@@ -3481,6 +3484,7 @@ function propagateClosingToNext(itemId){
     const updates = {};
 
     if(!nextDateData.items[itemId]){
+
         const copy = makeItem(
             itemId,
             thisItem.name,
@@ -3492,17 +3496,25 @@ function propagateClosingToNext(itemId){
         );
 
         copy.batches = clone(thisItem.batches || []);
+
         nextDateData.items[itemId] = copy;
-        updates[`dates/${nextDate}/items/${itemId}`] = copy;
+
+        updates[
+            `dates/${nextDate}/items/${itemId}`
+        ] = copy;
+
     }else{
-        nextDateData.items[itemId].opening = Number(thisItem.closing || 0);
-        updates[`dates/${nextDate}/items/${itemId}/opening`] = Number(thisItem.closing || 0);
+
+        nextDateData.items[itemId].opening =
+            Number(thisItem.closing || 0);
+
+        updates[
+            `dates/${nextDate}/items/${itemId}/opening`
+        ] = Number(thisItem.closing || 0);
     }
 
-    // 🟢 Guard: Only commit propagation to Firebase if network is active
     if(firebaseDB && isOnline){
-        firebaseDB.ref(REMOTE_DB_PATH).update(updates)
-            .catch(err => console.error("Replication propagation failed", err));
+        firebaseDB.ref(REMOTE_DB_PATH).update(updates);
     }
 }
 
