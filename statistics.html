@@ -3069,7 +3069,7 @@ function exitSelectMode() {
  */
 function openDuplicateSheet() {
     // Fail-safe protection: Block execution immediately if app flipped offline
-    if (typeof isOnline !== 'undefined' && !isOnline) {
+    if (typeof isOnline !== 'undefined' && !isOnline && isOnline) {
         alert("You are currently offline. Item duplication requires an active connection to sync data.");
         return;
     }
@@ -5584,7 +5584,7 @@ body.select-mode-active #statsTableBody tr {
             bottom: 5.5em;
             left: 0;
             right: 0;
-            z-index: 99999;
+            z-index: 9;
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -5650,29 +5650,18 @@ body.select-mode-active #statsTableBody tr {
         
         // UI Customization: Setup with 'translate-y-32' and 'opacity-0' to slide elegantly upwards from the bottom
         bannerElement.className = 'transform translate-y-32 opacity-0 transition-all duration-400 cubic-bezier(0.16, 1, 0.3, 1) w-full max-w-5xl bg-neutral-950/95 text-white rounded-2xl pointer-events-auto flex flex-col overflow-hidden backdrop-blur-md border border-neutral-800/80 cursor-pointer';
-        bannerElement.style.boxShadow = '0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.03)';
+        bannerElement.style.boxShadow = '';
         
         bannerElement.innerHTML = `
             <!-- Expanded Meta Header Layout -->
-            <div class="flex items-center justify-between px-5 py-3 border-b border-neutral-900 select-none">
-                <div class="flex items-center space-x-2.5">
-                    <div class="flex items-center justify-center h-6 w-6 rounded-md border text-xs ${theme.icon.split(' ').slice(1).join(' ')}">
+            <div class="flex items-center justify-between px-5 py-3 border-b border-neutral-900 select-none"> <div class="flex items-center justify-center h-10 w-10 rounded-md border text-s ${theme.icon.split(' ').slice(1).join(' ')}">
                         <i class="fas ${theme.icon.split(' ')[0]}"></i>
                     </div>
-                    <span class="text-[20px] font-black text-neutral-100 tracking-tight text-white">Avanti<span class="text-blue-300">.ledger</span></span>
-                    <span class="text-[15px] text-neutral-400 font-medium">· &nbsp;${theme.subtitle}</span>
-                </div>
-                <div class="flex items-center space-x-4">
-                    <span class="text-[15px] text-neutral-400 font-normal">now</span>
-                    <button class="text-neutral-400 hover:text-neutral-200 transition-colors duration-150 focus:outline-none p-1" id="close-trigger">
-                        <i class="fas fa-times text-sm"></i>
-                    </button>
-                </div>
-            </div>
+             
             <!-- Scaled Push Body Content -->
-            <div class="px-5 pb-4 pt-3.5">
+            <div class="pr-5 pb-4 pt-3.5">
                 <div class="message-viewport transition-all duration-300 ease-out overflow-hidden" style="max-height: ${needsTruncation ? '4.5em' : 'none'};">
-                    <p class="text-[16px] leading-relaxed font-sans text-neutral-200 antialiased break-words message-body" style="padding: 5px; font-weight: 300;">${formattedMessage}</p>
+                    <p class="text-[16px] leading-relaxed font-sans text-neutral-200 antialiased break-words message-body" style="padding: 5px; font-weight: 500;">${formattedMessage}</p>
                 </div>
                 ${needsTruncation ? `
                     <div class="mt-2.5 flex justify-end toggle-container">
@@ -5681,6 +5670,14 @@ body.select-mode-active #statsTableBody tr {
                         </button>
                     </div>
                 ` : ''}
+            </div>
+   <div class="flex items-center space-x-2.5">
+                    <div class="flex items-center justify-center h-6 w-6 rounded-md border text-xs ${theme.icon.split(' ').slice(1).join(' ')}">
+                        
+                    <button class="text-neutral-400 hover:text-neutral-200 transition-colors duration-150 focus:outline-none p-1" id="close-trigger">
+                        <i class="fas fa-times text-sm"></i>
+                    </button>
+                </div>
             </div>
         `;
 
@@ -6213,57 +6210,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
 
-<script>
-document.addEventListener("DOMContentLoaded", () => {
-    // Select the specific buttons by their IDs
-    const actionButtons = [
-        document.getElementById('optTransfer'),
-        document.getElementById('optDuplicate'),
-        document.getElementById('optClear')
-    ];
 
-    function updateButtonStatus() {
-        const isOffline = !navigator.onLine;
-
-        actionButtons.forEach(button => {
-            if (!button) return; // Guard clause in case a button doesn't exist on the page
-
-            if (isOffline) {
-                button.disabled = true;
-                // Add a visual cue (optional but helpful for user experience)
-                button.style.opacity = "0.5";
-                button.style.cursor = "not-allowed";
-            } else {
-                button.disabled = false;
-                button.style.opacity = "1";
-                button.style.cursor = "pointer";
-            }
-        });
-    }
-
-    // Intercept clicks to log the message if offline
-    actionButtons.forEach(button => {
-        if (!button) return;
-
-        button.addEventListener('click', (event) => {
-            if (!navigator.onLine) {
-                // Prevent the inline onclick="selectLedgerAction(...)" from firing
-                event.stopImmediatePropagation(); 
-                event.preventDefault();
-                
-                console.log("Page actions are unavailable in offline mode.");
-            }
-        }, true); // Use capturing phase (true) to intercept the click before inline onclick fires
-    });
-
-    // Listen for live network status changes
-    window.addEventListener('online', updateButtonStatus);
-    window.addEventListener('offline', updateButtonStatus);
-
-    // Run initial check on page load
-    updateButtonStatus();
-});
-</script>
 
 <script>
 (function(){
@@ -6319,7 +6266,7 @@ function loadLocalMirror(){
         console.log("Rendered instantly from isolated local mirror:", CACHE_KEY);
 
     } catch(err){
-        console.error("Failed to load local mirror", err);
+        
     }
 }
 
@@ -6432,7 +6379,7 @@ function setupConflictResolution() {
 
                     // LOGIC: If Local timestamp is strictly greater, reject Firebase's stale overwrite
                     if (lDate && lTime > rTime) {
-                        console.warn(`[Cache Sync] Conflict resolved for ${dateKey}: Local is newer (${lTime} > ${rTime}). Reverting state & pushing to DB.`);
+                        
                         
                         // Restore the newer local state in memory
                         if(typeof state !== 'undefined') state.dates[dateKey] = lDate;
