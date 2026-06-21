@@ -493,108 +493,6 @@ overflow-wrap: break-word;
 .stats-table td:nth-child(2), th:nth-child(2){
   width: 20%;
 
-/* ==========================================================================
-   Responsive Adaptations for Tablets and Laptops (Screens 1024px and wider)
-   ========================================================================== */
-@media (min-width: 1024px) {
-  html, body {
-    background: #f2f6fb !important;
-    padding-top: 90px !important;    /* Creates safe headroom below compact fixed header */
-    padding-bottom: 100px !important; /* Prevents bottom navigation overlap */
-    overflow-x: hidden !important;
-    overflow-y: auto !important;     /* Directs document scroll context to the right-hand cards */
-  }
-
-  /* 1. COMPACT HORIZONTAL HEADER */
-  #header {
-    position: fixed !important;
-    top: 0 !important;
-    left: 0 !important;
-    width: 100vw !important;
-    height: 75px !important;
-    padding: 0 24px !important;
-    display: flex !important;
-    flex-direction: row !important;
-    align-items: center !important;
-    justify-content: space-between !important;
-    gap: 20px !important;
-    box-sizing: border-box !important;
-  }
-  
-  /* Flatten stacked mobile container blocks into clean horizontal row items */
-  #header > div:nth-child(1) {
-    margin-bottom: 0 !important;
-    padding: 0 !important;
-    flex: 1 !important;
-  }
-  #header > div:nth-child(1) h1 {
-    font-size: 1.4rem !important;
-  }
-
-  /* Centralizing and downsizing Reporting period */
-  .date-nav-row {
-    flex: 1.2 !important;
-    padding: 6px 14px !important;
-    margin: 0 !important;
-    border-radius: 10px !important;
-    justify-content: center !important;
-  }
-
-  /* Compacting search box & sliders action bar alignment */
-  #header > div:nth-child(3) {
-    padding: 0 !important;
-    flex: 1.5 !important;
-  }
-  #header > div:nth-child(3) > div {
-    margin-bottom: 0 !important;
-  }
-  .search-pill {
-    width: 100% !important;
-    margin: 0 !important;
-  }
-
-  /* 2. FIXED STATIC VIEWPORT TABLE (Left 50%) */
-  .stats-table-container {
-    position: fixed !important;
-    left: 0 !important;
-    top: 75px !important;
-    width: 50vw !important;
-    height: calc(100vh - 175px) !important; /* Constrains container height to screen window */
-    max-height: none !important;
-    overflow-y: auto !important;            /* Internal scrolling mechanism for long lists */
-    margin: 0 !important;
-    padding: 24px 16px 24px 24px !important;
-    box-sizing: border-box !important;
-  }
-
-  /* 3. SCROLLABLE DATA SHEET CARDS CONTAINER (Right 50%) */
-  .dashboard-wrapper, 
-  .section-container {
-    margin-left: 50vw !important;  /* Displaces layout cleanly onto right side track */
-    width: 50vw !important;
-    padding: 24px 24px 24px 16px !important;
-    box-sizing: border-box !important;
-  }
-  
-  .section-container {
-    padding-top: 0 !important;     /* Eliminates unnecessary gap space between stacked modules */
-  }
-
-  /* 4. FINANCIAL LEDGER RE-GRIDDING (From 2 Columns to 2 Stacked Rows) */
-  .ledger-split-view {
-    display: grid !important;
-    grid-template-columns: 1fr !important;      /* Destroys horizontal column layout */
-    grid-template-rows: auto auto auto !important; /* Maps layout components down standard vertical track */
-    gap: 1.2rem !important;
-  }
-
-  /* Rotates the split divider border vector from vertical line to horizontal rule line */
-  .ledger-divider {
-    width: 100% !important;
-    height: 1px !important;
-    align-self: center !important;
-  }
-}
 
 
 </style>
@@ -2636,6 +2534,19 @@ function directOrderEntry(itemId) {
 function renderTable() {
     const tbody = document.getElementById('statsTableBody');
     if (!tbody) return;
+
+    // --- STRATEGY 2a: CAPTURE ACTIVE ELEMENT TO PREVENT KEYBOARD COLLAPSE ---
+    const activeEl = document.activeElement;
+    let restoreFocusSelector = null;
+
+    if (activeEl && tbody.contains(activeEl)) {
+        const tr = activeEl.closest('tr');
+        const col = activeEl.dataset.col;
+        if (tr && tr.dataset.itemId && col) {
+            restoreFocusSelector = `tr[data-item-id="${tr.dataset.itemId}"] td[data-col="${col}"]`;
+        }
+    }
+
     tbody.innerHTML = '';
 
     const dateObj = state.dates[state.currentDate] || makeEmptyDate();
@@ -2692,15 +2603,11 @@ function renderTable() {
             updateSelectionUI(); 
         };
 
-        // --- NEW: ROW CLICK LOGIC FOR SELECT MODE ---
+        // --- ROW CLICK LOGIC FOR SELECT MODE ---
         tr.addEventListener('click', (e) => {
-            // Only apply this behavior when we are actually in select mode
             if (!state.selectMode) return;
-
-            // Prevent double-firing if the user clicks the exact checkbox itself
             if (e.target === cb) return; 
 
-            // Toggle the selection state and visually update the checkbox
             if (state.selectedForDelete.has(item.id)) {
                 state.selectedForDelete.delete(item.id);
                 cb.checked = false;
@@ -2708,18 +2615,14 @@ function renderTable() {
                 state.selectedForDelete.add(item.id);
                 cb.checked = true;
             }
-
-            // Update the selection counter pill
             updateSelectionUI(); 
         });
 
-        // Add a pointer cursor to the whole row in select mode for better UX
         if (state.selectMode) {
             tr.style.cursor = 'pointer';
         } else {
             tr.style.cursor = 'default';
         }
-        // ---------------------------------------------
 
         controlWrapper.appendChild(cb);
         tdSelect.appendChild(controlWrapper);
@@ -2729,7 +2632,7 @@ function renderTable() {
         const tdItem = document.createElement('td'); 
         tdItem.className = 'editable'; 
         tdItem.dataset.col = 'item'; 
-        tdItem.contentEditable = !state.selectMode; // Locked in select mode
+        tdItem.contentEditable = !state.selectMode; 
         tdItem.spellcheck = false;
         tdItem.textContent = item.name;
         tdItem.onblur = () => {
@@ -2738,7 +2641,8 @@ function renderTable() {
                 state.dates[state.currentDate].items[item.id].name = newName;
             }
             propagateNameAcrossDates(item.id, newName);
-            persistItemChange(item.id);
+            // --- STRATEGY 1: Defer re-rendering until focus transitions ---
+            setTimeout(() => persistItemChange(item.id), 0);
         };
         tdItem.onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); tdItem.blur(); } };
         tr.appendChild(tdItem);
@@ -2751,7 +2655,8 @@ function renderTable() {
         tdOpening.textContent = item.opening;
         tdOpening.onblur = () => { 
             item.opening = sanitizeNumber(tdOpening.textContent); 
-            persistItemChange(item.id); 
+            // --- STRATEGY 1: Defer re-rendering ---
+            setTimeout(() => persistItemChange(item.id), 0); 
         };
         tdOpening.onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); tdOpening.blur(); } };
         tr.appendChild(tdOpening);
@@ -2781,7 +2686,8 @@ function renderTable() {
             const old = item.price; 
             item.price = sanitizeNumber(tdPrice.textContent); 
             if (item.price !== old) propagatePriceToFuture(item.id, item.price); 
-            persistItemChange(item.id); 
+            // --- STRATEGY 1: Defer re-rendering ---
+            setTimeout(() => persistItemChange(item.id), 0); 
         };
         tdPrice.onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); tdPrice.blur(); } };
         tr.appendChild(tdPrice);
@@ -2794,8 +2700,11 @@ function renderTable() {
         tdClosing.textContent = item.closing;
         tdClosing.onblur = () => { 
             item.closing = sanitizeNumber(tdClosing.textContent); 
-            persistItemChange(item.id); 
-            propagateClosingToNext(item.id); 
+            // --- STRATEGY 1: Defer re-rendering ---
+            setTimeout(() => {
+                persistItemChange(item.id); 
+                propagateClosingToNext(item.id); 
+            }, 0);
         };
         tdClosing.onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); tdClosing.blur(); } };
         tr.appendChild(tdClosing);
@@ -2826,6 +2735,22 @@ function renderTable() {
     if (totEl2) totEl2.textContent = "K" + totalSales.toLocaleString();
     
     updateTotalsNumbers();
+
+    // --- STRATEGY 2b: RESTORE FOCUS AND TEXT CARET POSITION ---
+    if (restoreFocusSelector) {
+        const elToFocus = tbody.querySelector(restoreFocusSelector);
+        if (elToFocus) {
+            elToFocus.focus();
+            
+            // Move text caret to the end of the text string within the editable element
+            const range = document.createRange();
+            const sel = window.getSelection();
+            range.selectNodeContents(elToFocus);
+            range.collapse(false); // false collapses the selection range to the end
+            sel.removeAllRanges();
+            sel.addRange(range);
+        }
+    }
 }
 
 
