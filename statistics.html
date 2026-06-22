@@ -6325,7 +6325,7 @@ function setupInterceptors() {
         };
     }
 
-    // Intercept persistItemChange (CRUCIAL FIX: catches field edits & amends)
+    // Intercept persistItemChange (catches field edits & amends)
     if (typeof window.persistItemChange === 'function') {
         const origPersistItemChange = window.persistItemChange;
         window.persistItemChange = function(itemId) {
@@ -6360,6 +6360,78 @@ function setupInterceptors() {
             origPropagate.apply(this, arguments);
         };
     }
+
+    // Intercept multi-day deletions from date forward
+    if (typeof window.deleteItemFromDateAndFuture === 'function') {
+        const origDeleteFuture = window.deleteItemFromDateAndFuture;
+        window.deleteItemFromDateAndFuture = function(itemId, fromDateKey) {
+            if (typeof state !== 'undefined' && typeof addDays === 'function') {
+                for (let i = 0; i <= state.futureWindowDays; i++) {
+                    stampDate(addDays(fromDateKey, i));
+                }
+                saveLocalMirror();
+            }
+
+            origDeleteFuture.apply(this, arguments);
+
+            if (typeof firebaseDB !== 'undefined' && firebaseDB && isOnline && typeof REMOTE_DB_PATH !== 'undefined' && REMOTE_DB_PATH !== 'avanti_stats_default') {
+                for (let i = 0; i <= state.futureWindowDays; i++) {
+                    const dKey = addDays(fromDateKey, i);
+                    if (state.dates && state.dates[dKey]) {
+                        firebaseDB.ref(`${REMOTE_DB_PATH}/dates/${dKey}/_lastUpdated`).set(state.dates[dKey]._lastUpdated);
+                    }
+                }
+            }
+        };
+    }
+
+    // Intercept multi-day item name updates
+    if (typeof window.propagateNameAcrossDates === 'function') {
+        const origPropName = window.propagateNameAcrossDates;
+        window.propagateNameAcrossDates = function(itemId, newName) {
+            if (typeof state !== 'undefined' && typeof addDays === 'function') {
+                for (let i = 0; i <= state.futureWindowDays; i++) {
+                    stampDate(addDays(state.currentDate, i));
+                }
+                saveLocalMirror();
+            }
+
+            origPropName.apply(this, arguments);
+
+            if (typeof firebaseDB !== 'undefined' && firebaseDB && isOnline && typeof REMOTE_DB_PATH !== 'undefined' && REMOTE_DB_PATH !== 'avanti_stats_default') {
+                for (let i = 0; i <= state.futureWindowDays; i++) {
+                    const dKey = addDays(state.currentDate, i);
+                    if (state.dates && state.dates[dKey]) {
+                        firebaseDB.ref(`${REMOTE_DB_PATH}/dates/${dKey}/_lastUpdated`).set(state.dates[dKey]._lastUpdated);
+                    }
+                }
+            }
+        };
+    }
+
+    // Intercept multi-day price changes forward
+    if (typeof window.propagatePriceToFuture === 'function') {
+        const origPropPrice = window.propagatePriceToFuture;
+        window.propagatePriceToFuture = function(itemId, newPrice) {
+            if (typeof state !== 'undefined' && typeof addDays === 'function') {
+                for (let i = 0; i <= state.futureWindowDays; i++) {
+                    stampDate(addDays(state.currentDate, i));
+                }
+                saveLocalMirror();
+            }
+
+            origPropPrice.apply(this, arguments);
+
+            if (typeof firebaseDB !== 'undefined' && firebaseDB && isOnline && typeof REMOTE_DB_PATH !== 'undefined' && REMOTE_DB_PATH !== 'avanti_stats_default') {
+                for (let i = 0; i <= state.futureWindowDays; i++) {
+                    const dKey = addDays(state.currentDate, i);
+                    if (state.dates && state.dates[dKey]) {
+                        firebaseDB.ref(`${REMOTE_DB_PATH}/dates/${dKey}/_lastUpdated`).set(state.dates[dKey]._lastUpdated);
+                    }
+                }
+            }
+        };
+    }
 }
 
 /* =========================================================
@@ -6376,7 +6448,7 @@ function setupConflictResolution() {
             if (typeof firebaseDB === 'undefined' || !firebaseDB || typeof REMOTE_DB_PATH === 'undefined' || REMOTE_DB_PATH === 'avanti_stats_default') return;
 
             // This 'value' listener runs directly *after* child events, allowing us to inspect 
-            // the final state and revert any stale overrides the main code blindly accepted.
+            // the final state and revert any stale overrides or force-render multi-day synchronization loops.
             firebaseDB.ref(REMOTE_DB_PATH).child('dates').on('value', snap => {
                 const remoteDates = snap.val() || {};
                 const CACHE_KEY = getCacheKey();
@@ -6392,18 +6464,23 @@ function setupConflictResolution() {
                     const rTime = rDate._lastUpdated || 0;
                     const lTime = lDate ? (lDate._lastUpdated || 0) : 0;
 
-                    // LOGIC: If Local timestamp is strictly greater, reject Firebase's stale overwrite
+                    // CASE A: If Local timestamp is strictly greater, reject Firebase's stale overwrite
                     if (lDate && lTime > rTime) {
-                        
-                        
                         // Restore the newer local state in memory
                         if(typeof state !== 'undefined') state.dates[dateKey] = lDate;
                         
                         // Push corrected, newer state up to Firebase
                         firebaseDB.ref(`${REMOTE_DB_PATH}/dates/${dateKey}`).update(lDate);
                         conflictResolved = true;
-                    } else {
-                        // Remote is newer or equal, safe to accept into our cache mirror
+                    } 
+                    // CASE B: Remote is distinctly newer (e.g., propagation processing finished from another device)
+                    else if (rTime > lTime) {
+                        cachedDates[dateKey] = rDate;
+                        if(typeof state !== 'undefined') state.dates[dateKey] = rDate;
+                        conflictResolved = true;
+                    } 
+                    // CASE C: Timestamps match perfectly
+                    else {
                         cachedDates[dateKey] = rDate;
                     }
                 }
@@ -6413,7 +6490,7 @@ function setupConflictResolution() {
                 if (typeof state !== 'undefined' && state.currentDate) cachedMirror.currentDate = state.currentDate;
                 localStorage.setItem(CACHE_KEY, JSON.stringify(cachedMirror));
 
-                // Only re-render if we actually reverted a conflict to prevent UI flickering
+                // Re-render if state was realigned (prevents UI skipping on multi-date modifications)
                 if (conflictResolved && typeof renderAll === 'function') {
                     renderAll();
                 }
@@ -6436,7 +6513,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
 })();
 </script>
-
 
 </body>
 </html>
