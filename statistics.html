@@ -2464,6 +2464,106 @@ async function checkProfileAndSyncSettings() {
         TARGET_PROFILE_USERNAME = AV_LEDGER_USERNAME;
     }
 }
+
+function loadDateWindow(centerDate){
+
+    const startDate = addDays(centerDate,-7);
+    const endDate = addDays(centerDate,7);
+
+
+    firebaseDB
+    .ref(`${REMOTE_DB_PATH}/dates`)
+    .orderByKey()
+    .startAt(startDate)
+    .endAt(endDate)
+    .once('value')
+    .then(snapshot=>{
+
+
+        snapshot.forEach(child=>{
+
+            state.dates[child.key] = child.val();
+
+        });
+
+
+        window.loadedDateStart = startDate;
+        window.loadedDateEnd = endDate;
+
+
+        renderAll();
+
+    });
+
+}
+function checkWindowExpansion(){
+
+    if(!window.loadedDateStart || !window.loadedDateEnd) return;
+
+
+    const current = new Date(state.currentDate);
+    const start = new Date(window.loadedDateStart);
+    const end = new Date(window.loadedDateEnd);
+
+
+    const daysFromEnd =
+    Math.round((end-current)/86400000);
+
+
+    const daysFromStart =
+    Math.round((current-start)/86400000);
+
+
+
+    if(daysFromEnd <= 2){
+
+        const newEnd = addDays(window.loadedDateEnd,7);
+
+        firebaseDB
+        .ref(`${REMOTE_DB_PATH}/dates`)
+        .orderByKey()
+        .startAt(window.loadedDateEnd)
+        .endAt(newEnd)
+        .once('value')
+        .then(snapshot=>{
+
+            snapshot.forEach(child=>{
+                state.dates[child.key]=child.val();
+            });
+
+            window.loadedDateEnd=newEnd;
+
+        });
+
+    }
+
+
+
+    if(daysFromStart <= 2){
+
+        const newStart = addDays(window.loadedDateStart,-7);
+
+
+        firebaseDB
+        .ref(`${REMOTE_DB_PATH}/dates`)
+        .orderByKey()
+        .startAt(newStart)
+        .endAt(window.loadedDateStart)
+        .once('value')
+        .then(snapshot=>{
+
+            snapshot.forEach(child=>{
+                state.dates[child.key]=child.val();
+            });
+
+
+            window.loadedDateStart=newStart;
+
+        });
+
+    }
+
+}
 /* ---------- Persistence: Firebase Real-time Listener ---------- */
 
 /**
@@ -2471,12 +2571,11 @@ async function checkProfileAndSyncSettings() {
  * Ensures that if no current date is set in the DB, it defaults to today.
  */
 function setupDataListener() {
-    // 1. Guard clauses for initialization safety
+
     if (!firebaseDB || REMOTE_DB_PATH === DEFAULT_FALLBACK_PATH || dataListenerActive) {
         return;
     }
 
-    // 2. Cleanup existing listeners to prevent memory leaks/duplicate triggers
     if (currentDataRef) {
         currentDataRef.off();
     }
@@ -2484,59 +2583,32 @@ function setupDataListener() {
     currentDataRef = firebaseDB.ref(REMOTE_DB_PATH);
     dataListenerActive = true;
 
-    // 3. Listen to the 'dates' collection for real-time ledger updates
-    const datesRef = currentDataRef.child('dates');
 
-    // Handle new date entries added to the database
-    datesRef.on('child_added', snap => {
-        const dateKey = snap.key;
-        state.dates[dateKey] = snap.val();
-    });
+    loadDateWindow(state.currentDate);
 
-    // Handle updates to existing ledger entries
-    datesRef.on('child_changed', snap => {
-        const dateKey = snap.key;
-        state.dates[dateKey] = snap.val();
-        
-        // Only re-render the UI if the modified date is the one currently being viewed
-        if (dateKey === state.currentDate) {
-            renderTable();
-            renderExpensesIncomes();
-            updateTotalsNumbers();
-        }
-    });
 
-    // Handle deletion of date entries
-    datesRef.on('child_removed', snap => {
-        delete state.dates[snap.key];
-        if (snap.key === state.currentDate) {
-            renderAll();
-        }
-    });
-
-    // 4. Current Selected Date Listener with Auto-Initialization
     currentDataRef.child('currentDate').on('value', snap => {
+
         let newDate = snap.val();
 
-        // LOGIC: If current date doesn’t exist in DB, set it as today's date (YYYY-MM-DD)
         if (!newDate) {
             newDate = new Date().toISOString().split('T')[0];
-            
-            // Persist this default to the remote database immediately
             currentDataRef.child('currentDate').set(newDate);
-            
-            // Ensure the data structure for this specific date exists in the 'dates' node
-            ensureDateExists(newDate);
         }
 
-        // Trigger UI update only if the date has changed or was just initialized
         if (newDate !== state.currentDate) {
+
             state.currentDate = newDate;
-            ensureDateExists(state.currentDate);
+
+            loadDateWindow(newDate);
+
             renderAll();
         }
+
     });
+
 }
+
 
 async function loadState(){
     // 1. Determine the correct data source path (Admin Priority handled here)
@@ -3851,8 +3923,7 @@ function prevDate(){
     // 3. Sync to Firebase (updates 'currentDate' and the date's object)
     saveState(); 
     
-    // Note: renderAll() is handled by the real-time listener in setupDataListener,
-    // but calling it here ensures the UI feels snappy even on slow connections.
+checkWindowExpansion();
     renderAll(); 
 }
 
@@ -3881,6 +3952,7 @@ function nextDate(){
     
     // 3. Sync to Firebase (Corrected the 'savaState' typo)
     saveState();
+checkWindowExpansion();
     
     // 4. Update UI
     renderAll();
