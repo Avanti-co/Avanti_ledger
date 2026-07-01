@@ -1916,14 +1916,17 @@ function executeConfirmedAction() {
 </style>
 
 <script>
+/* ==========================================================================
+   AVANTI LEDGER: CORE DATABASE INTERCEPTOR ENGINE
+   ========================================================================== */
 (function() {
     /**
-     * Avanti Ledger - Targeted Interceptor Guard
-     * Exclusively manages 'avanti_stats' traffic; ignores all other paths.
+     * Selectively manages data reads to optimize bandwidth and catch structural shifts,
+     * while leaving all remote write mutations completely uninhibited.
      */
-    function initAvantiInterceptor() {
+    function setupAvantiReadInterceptor() {
         if (typeof firebase === 'undefined' || !firebase.database || !firebase.database.Query) {
-            setTimeout(initAvantiInterceptor, 30); // Poll until Firebase is fully loaded
+            setTimeout(setupAvantiReadInterceptor, 30); // Poll safely until Firebase core loads
             return;
         }
 
@@ -1931,105 +1934,104 @@ function executeConfirmedAction() {
         const Reference = Database.Reference;
         const Query = Database.Query;
 
-        if (Reference.prototype.__avantiIntercepted) return;
-        Reference.prototype.__avantiIntercepted = true;
+        if (Query.prototype.__avantiReadIntercepted) return;
+        Query.prototype.__avantiReadIntercepted = true;
 
-        let isInternalSyncWrite = false;
-
-        /**
-         * Resolves current storage keys and precise pathing context.
-         */
-        function getSyncContext() {
-            const accountKey = localStorage.getItem('AV_ledger_account_key') || 'default_account';
-            const username = localStorage.getItem('AV_ledger_username') || 'default_user';
-            
-            return {
-                localKey: `AV_ts_${accountKey}_${username}`,
-                firebasePath: `accounts/${accountKey}/profiles/${username}/avanti_stats/timestamp`
-            };
-        }
+        let isInternalTimestampWrite = false;
 
         /**
-         * Updates synchronization tracking tokens.
+         * Validates, decodes, and categorizes paths to isolate Global and Profile branches.
          */
-        function refreshSyncTimestamps() {
-            if (isInternalSyncWrite) return;
-            isInternalSyncWrite = true;
-
-            const { localKey, firebasePath } = getSyncContext();
-            const currentTimestamp = Date.now().toString();
-
-            localStorage.setItem(localKey, currentTimestamp);
-
+        function getLedgerContext(ref) {
             try {
-                const targetRef = Database().ref(firebasePath);
-                origSet.call(targetRef, currentTimestamp)
-                    .catch(err => console.warn("[Avanti Guard] Timestamp update deferred:", err))
-                    .finally(() => { isInternalSyncWrite = false; });
+                const fullUrl = ref.toString();
+                const urlObj = new URL(fullUrl);
+                const decodedPath = decodeURIComponent(urlObj.pathname).replace(/^\/|\/$/g, '');
+                
+                // Explicitly isolates Profile paths, Global Ledger paths, and Fallback domains
+                const match = decodedPath.match(/(accounts\/[^/]+\/global_ledger\/avanti_stats|accounts\/[^/]+\/profiles\/[^/]+\/avanti_stats|avanti_stats_default)/i);
+                if (!match) return null;
+
+                const rootPath = match[0];
+                return {
+                    rootPath: rootPath,
+                    localKey: `AV_ts_${rootPath.toLowerCase().replace(/\//g, '_')}`, // Safe unique local tracking token
+                    firebaseTSPath: `${rootPath}/timestamp`
+                };
             } catch (e) {
-                isInternalSyncWrite = false;
+                return null;
             }
         }
 
-        /* =======================================================
-           1. WRITE INTERCEPTION (Only tracks updates to avanti_stats)
-           ======================================================= */
+        /**
+         * Background synchronization utility for validation tokens.
+         */
+        const refreshTimestampToken = (ctx) => {
+            if (isInternalTimestampWrite) return;
+            isInternalTimestampWrite = true;
+            const currentTS = Date.now().toString();
+            localStorage.setItem(ctx.localKey, currentTS);
+            try {
+                Database().ref(ctx.firebaseTSPath).set(currentTS).finally(() => {
+                    isInternalTimestampWrite = false;
+                });
+            } catch(e) { isInternalTimestampWrite = false; }
+        };
+
+        /* --- 1. WRITE COUPLING INTERFACE (100% Unrestricted Operations) --- */
         const origSet = Reference.prototype.set;
         Reference.prototype.set = function(...args) {
-            const pathStr = this.toString();
-            const ctx = getSyncContext();
-            if (!isInternalSyncWrite && pathStr.includes('avanti_stats') && !pathStr.includes(ctx.firebasePath)) {
-                refreshSyncTimestamps();
+            const ctx = getLedgerContext(this);
+            if (ctx && !isInternalTimestampWrite && !this.toString().includes(ctx.firebaseTSPath)) {
+                refreshTimestampToken(ctx);
             }
             return origSet.apply(this, args);
         };
 
         const origUpdate = Reference.prototype.update;
         Reference.prototype.update = function(...args) {
-            if (!isInternalSyncWrite && this.toString().includes('avanti_stats')) {
-                refreshSyncTimestamps();
+            const ctx = getLedgerContext(this);
+            if (ctx && !isInternalTimestampWrite && !this.toString().includes(ctx.firebaseTSPath)) {
+                refreshTimestampToken(ctx);
             }
             return origUpdate.apply(this, args);
         };
 
         const origPush = Reference.prototype.push;
         Reference.prototype.push = function(...args) {
-            if (!isInternalSyncWrite && this.toString().includes('avanti_stats')) {
-                refreshSyncTimestamps();
+            const ctx = getLedgerContext(this);
+            if (ctx && !isInternalTimestampWrite) {
+                refreshTimestampToken(ctx);
             }
             return origPush.apply(this, args);
         };
 
         const origRemove = Reference.prototype.remove;
         Reference.prototype.remove = function(...args) {
-            if (!isInternalSyncWrite && this.toString().includes('avanti_stats')) {
-                refreshSyncTimestamps();
+            const ctx = getLedgerContext(this);
+            if (ctx && !isInternalTimestampWrite && !this.toString().includes(ctx.firebaseTSPath)) {
+                refreshTimestampToken(ctx);
             }
             return origRemove.apply(this, args);
         };
 
-        /* =======================================================
-           2. READ INTERCEPTION (SUPPRESSES DOWNLOADS ONLY FOR avanti_stats)
-           ======================================================= */
+        /* --- 2. READ INTERCEPTION INTERFACE (Selective Gating Engine) --- */
         const origOnce = Query.prototype.once;
         Query.prototype.once = function(eventType, successCallback, failureCallback, context) {
-            const currentQuery = this;
-            const queryUrl = currentQuery.toString();
-            const ctx = getSyncContext();
-
-            // Scope Check: If NOT avanti_stats, or if it IS the tracker path itself, read instantly.
-            if (!queryUrl.includes('avanti_stats') || queryUrl.includes(ctx.firebasePath)) {
-                return origOnce.call(currentQuery, eventType, successCallback, failureCallback, context);
+            const ctx = getLedgerContext(this);
+            if (!ctx || this.toString().includes(ctx.firebaseTSPath)) {
+                return origOnce.call(this, eventType, successCallback, failureCallback, context);
             }
 
+            const currentQuery = this;
             return new Promise((resolve, reject) => {
-                const checkRef = Database().ref(ctx.firebasePath);
-                origOnce.call(checkRef, 'value').then(snapshot => {
-                    const remoteTS = snapshot.val();
+                const tsRef = Database().ref(ctx.firebaseTSPath);
+                origOnce.call(tsRef, 'value').then(snap => {
+                    const remoteTS = snap.val();
                     const localTS = localStorage.getItem(ctx.localKey);
 
                     if (remoteTS && localTS && remoteTS === localTS) {
-                        console.log(`[Avanti Guard] Suppressed 'once' download for avanti_stats. Cache is matching (${remoteTS}).`);
+                        
                         if (successCallback) successCallback(null);
                         resolve(null);
                     } else {
@@ -2042,8 +2044,7 @@ function executeConfirmedAction() {
                             reject(err);
                         }, context);
                     }
-                }).catch(err => {
-                    // Safety Fallback
+                }).catch(() => {
                     origOnce.call(currentQuery, eventType, successCallback, failureCallback, context).then(resolve).catch(reject);
                 });
             });
@@ -2051,45 +2052,49 @@ function executeConfirmedAction() {
 
         const origOn = Query.prototype.on;
         Query.prototype.on = function(eventType, callback, cancelCallbackOrContext, context) {
-            const currentQuery = this;
-            const queryUrl = currentQuery.toString();
-            const ctx = getSyncContext();
-
-            // Scope Check: Open access path check
-            if (!queryUrl.includes('avanti_stats') || queryUrl.includes(ctx.firebasePath)) {
-                return origOn.call(currentQuery, eventType, callback, cancelCallbackOrContext, context);
+            const ctx = getLedgerContext(this);
+            if (!ctx || this.toString().includes(ctx.firebaseTSPath)) {
+                return origOn.call(this, eventType, callback, cancelCallbackOrContext, context);
             }
 
-            const wrappedRealtimeCallback = function(snapshot) {
-                const checkRef = Database().ref(ctx.firebasePath);
-                origOnce.call(checkRef, 'value').then(tsSnap => {
-                    const remoteTS = tsSnap.val();
-                    const localTS = localStorage.getItem(ctx.localKey);
+            const currentQuery = this;
+            const tsRef = Database().ref(ctx.firebaseTSPath);
+            if (!this._avantiPendingListeners) this._avantiPendingListeners = new Map();
 
-                    if (remoteTS && localTS && remoteTS === localTS) {
-                        
-                        return; 
-                    } else {
-                        if (remoteTS) localStorage.setItem(ctx.localKey, remoteTS);
-                        if (callback) callback(snapshot);
-                    }
-                }).catch(() => {
-                    if (callback) callback(snapshot);
-                });
-            };
+            origOnce.call(tsRef, 'value').then(snap => {
+                const remoteTS = snap.val();
+                const localTS = localStorage.getItem(ctx.localKey);
 
-            if (!this._avantiWrappedListeners) this._avantiWrappedListeners = new Map();
-            this._avantiWrappedListeners.set(callback, wrappedRealtimeCallback);
-
-            return origOn.call(currentQuery, eventType, wrappedRealtimeCallback, cancelCallbackOrContext, context);
+                if (remoteTS && localTS && remoteTS === localTS) {
+                    
+                    const liveWatcher = (tsSnap) => {
+                        const nextRemoteTS = tsSnap.val();
+                        if (nextRemoteTS !== localStorage.getItem(ctx.localKey)) {
+                            if (nextRemoteTS) localStorage.setItem(ctx.localKey, nextRemoteTS);
+                            origOff.call(tsRef, 'value', liveWatcher);
+                            currentQuery._avantiPendingListeners.delete(callback);
+                            origOn.call(currentQuery, eventType, callback, cancelCallbackOrContext, context);
+                        }
+                    };
+                    this._avantiPendingListeners.set(callback, { watcher: liveWatcher, targetRef: tsRef });
+                    origOn.call(tsRef, 'value', liveWatcher);
+                } else {
+                    if (remoteTS) localStorage.setItem(ctx.localKey, remoteTS);
+                    origOn.call(currentQuery, eventType, callback, cancelCallbackOrContext, context);
+                }
+            }).catch(() => {
+                origOn.call(currentQuery, eventType, callback, cancelCallbackOrContext, context);
+            });
+            return callback;
         };
 
         const origOff = Query.prototype.off;
         Query.prototype.off = function(eventType, callback, context) {
-            if (callback && this._avantiWrappedListeners && this._avantiWrappedListeners.has(callback)) {
-                const wrapped = this._avantiWrappedListeners.get(callback);
-                this._avantiWrappedListeners.delete(callback);
-                return origOff.call(this, eventType, wrapped, context);
+            if (callback && this._avantiPendingListeners && this._avantiPendingListeners.has(callback)) {
+                const pending = this._avantiPendingListeners.get(callback);
+                origOff.call(pending.targetRef, 'value', pending.watcher);
+                this._avantiPendingListeners.delete(callback);
+                return;
             }
             return origOff.call(this, eventType, callback, context);
         };
@@ -2098,12 +2103,14 @@ function executeConfirmedAction() {
     }
 
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', initAvantiInterceptor);
+        document.addEventListener('DOMContentLoaded', setupAvantiReadInterceptor);
     } else {
-        initAvantiInterceptor();
+        setupAvantiReadInterceptor();
     }
 })();
+
 </script>
+
 
 
 <script>
