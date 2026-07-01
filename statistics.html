@@ -1915,6 +1915,195 @@ function executeConfirmedAction() {
 }
 </style>
 
+<script>
+(function() {
+    /**
+     * Avanti Ledger - Targeted Interceptor Guard
+     * Exclusively manages 'avanti_stats' traffic; ignores all other paths.
+     */
+    function initAvantiInterceptor() {
+        if (typeof firebase === 'undefined' || !firebase.database || !firebase.database.Query) {
+            setTimeout(initAvantiInterceptor, 30); // Poll until Firebase is fully loaded
+            return;
+        }
+
+        const Database = firebase.database;
+        const Reference = Database.Reference;
+        const Query = Database.Query;
+
+        if (Reference.prototype.__avantiIntercepted) return;
+        Reference.prototype.__avantiIntercepted = true;
+
+        let isInternalSyncWrite = false;
+
+        /**
+         * Resolves current storage keys and precise pathing context.
+         */
+        function getSyncContext() {
+            const accountKey = localStorage.getItem('AV_ledger_account_key') || 'default_account';
+            const username = localStorage.getItem('AV_ledger_username') || 'default_user';
+            
+            return {
+                localKey: `AV_ts_${accountKey}_${username}`,
+                firebasePath: `accounts/${accountKey}/profiles/${username}/avanti_stats/timestamp`
+            };
+        }
+
+        /**
+         * Updates synchronization tracking tokens.
+         */
+        function refreshSyncTimestamps() {
+            if (isInternalSyncWrite) return;
+            isInternalSyncWrite = true;
+
+            const { localKey, firebasePath } = getSyncContext();
+            const currentTimestamp = Date.now().toString();
+
+            localStorage.setItem(localKey, currentTimestamp);
+
+            try {
+                const targetRef = Database().ref(firebasePath);
+                origSet.call(targetRef, currentTimestamp)
+                    .catch(err => console.warn("[Avanti Guard] Timestamp update deferred:", err))
+                    .finally(() => { isInternalSyncWrite = false; });
+            } catch (e) {
+                isInternalSyncWrite = false;
+            }
+        }
+
+        /* =======================================================
+           1. WRITE INTERCEPTION (Only tracks updates to avanti_stats)
+           ======================================================= */
+        const origSet = Reference.prototype.set;
+        Reference.prototype.set = function(...args) {
+            const pathStr = this.toString();
+            const ctx = getSyncContext();
+            if (!isInternalSyncWrite && pathStr.includes('avanti_stats') && !pathStr.includes(ctx.firebasePath)) {
+                refreshSyncTimestamps();
+            }
+            return origSet.apply(this, args);
+        };
+
+        const origUpdate = Reference.prototype.update;
+        Reference.prototype.update = function(...args) {
+            if (!isInternalSyncWrite && this.toString().includes('avanti_stats')) {
+                refreshSyncTimestamps();
+            }
+            return origUpdate.apply(this, args);
+        };
+
+        const origPush = Reference.prototype.push;
+        Reference.prototype.push = function(...args) {
+            if (!isInternalSyncWrite && this.toString().includes('avanti_stats')) {
+                refreshSyncTimestamps();
+            }
+            return origPush.apply(this, args);
+        };
+
+        const origRemove = Reference.prototype.remove;
+        Reference.prototype.remove = function(...args) {
+            if (!isInternalSyncWrite && this.toString().includes('avanti_stats')) {
+                refreshSyncTimestamps();
+            }
+            return origRemove.apply(this, args);
+        };
+
+        /* =======================================================
+           2. READ INTERCEPTION (SUPPRESSES DOWNLOADS ONLY FOR avanti_stats)
+           ======================================================= */
+        const origOnce = Query.prototype.once;
+        Query.prototype.once = function(eventType, successCallback, failureCallback, context) {
+            const currentQuery = this;
+            const queryUrl = currentQuery.toString();
+            const ctx = getSyncContext();
+
+            // Scope Check: If NOT avanti_stats, or if it IS the tracker path itself, read instantly.
+            if (!queryUrl.includes('avanti_stats') || queryUrl.includes(ctx.firebasePath)) {
+                return origOnce.call(currentQuery, eventType, successCallback, failureCallback, context);
+            }
+
+            return new Promise((resolve, reject) => {
+                const checkRef = Database().ref(ctx.firebasePath);
+                origOnce.call(checkRef, 'value').then(snapshot => {
+                    const remoteTS = snapshot.val();
+                    const localTS = localStorage.getItem(ctx.localKey);
+
+                    if (remoteTS && localTS && remoteTS === localTS) {
+                        console.log(`[Avanti Guard] Suppressed 'once' download for avanti_stats. Cache is matching (${remoteTS}).`);
+                        if (successCallback) successCallback(null);
+                        resolve(null);
+                    } else {
+                        if (remoteTS) localStorage.setItem(ctx.localKey, remoteTS);
+                        origOnce.call(currentQuery, eventType, (resSnap) => {
+                            if (successCallback) successCallback(resSnap);
+                            resolve(resSnap);
+                        }, (err) => {
+                            if (failureCallback) failureCallback(err);
+                            reject(err);
+                        }, context);
+                    }
+                }).catch(err => {
+                    // Safety Fallback
+                    origOnce.call(currentQuery, eventType, successCallback, failureCallback, context).then(resolve).catch(reject);
+                });
+            });
+        };
+
+        const origOn = Query.prototype.on;
+        Query.prototype.on = function(eventType, callback, cancelCallbackOrContext, context) {
+            const currentQuery = this;
+            const queryUrl = currentQuery.toString();
+            const ctx = getSyncContext();
+
+            // Scope Check: Open access path check
+            if (!queryUrl.includes('avanti_stats') || queryUrl.includes(ctx.firebasePath)) {
+                return origOn.call(currentQuery, eventType, callback, cancelCallbackOrContext, context);
+            }
+
+            const wrappedRealtimeCallback = function(snapshot) {
+                const checkRef = Database().ref(ctx.firebasePath);
+                origOnce.call(checkRef, 'value').then(tsSnap => {
+                    const remoteTS = tsSnap.val();
+                    const localTS = localStorage.getItem(ctx.localKey);
+
+                    if (remoteTS && localTS && remoteTS === localTS) {
+                        
+                        return; 
+                    } else {
+                        if (remoteTS) localStorage.setItem(ctx.localKey, remoteTS);
+                        if (callback) callback(snapshot);
+                    }
+                }).catch(() => {
+                    if (callback) callback(snapshot);
+                });
+            };
+
+            if (!this._avantiWrappedListeners) this._avantiWrappedListeners = new Map();
+            this._avantiWrappedListeners.set(callback, wrappedRealtimeCallback);
+
+            return origOn.call(currentQuery, eventType, wrappedRealtimeCallback, cancelCallbackOrContext, context);
+        };
+
+        const origOff = Query.prototype.off;
+        Query.prototype.off = function(eventType, callback, context) {
+            if (callback && this._avantiWrappedListeners && this._avantiWrappedListeners.has(callback)) {
+                const wrapped = this._avantiWrappedListeners.get(callback);
+                this._avantiWrappedListeners.delete(callback);
+                return origOff.call(this, eventType, wrapped, context);
+            }
+            return origOff.call(this, eventType, callback, context);
+        };
+
+        
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initAvantiInterceptor);
+    } else {
+        initAvantiInterceptor();
+    }
+})();
+</script>
 
 
 <script>
@@ -6433,6 +6622,324 @@ document.addEventListener("DOMContentLoaded", () => {
     setupInterceptors();
     setupConflictResolution();
 });
+
+})();
+</script>
+<script>
+(function () {
+"use strict";
+
+/* ==========================================================
+   FIREBASE BANDWIDTH LOGGER
+   Groups all reads and writes together
+========================================================== */
+
+const stats = {
+    reads: {
+        operations: 0,
+        bytes: 0
+    },
+    writes: {
+        operations: 0,
+        bytes: 0
+    }
+};
+
+let flushScheduled = false;
+
+function estimateSize(data){
+
+    try{
+        return new Blob([JSON.stringify(data)]).size;
+    }catch(e){
+        return 0;
+    }
+
+}
+
+function human(bytes){
+
+    if(bytes < 1024) return bytes + " B";
+    if(bytes < 1024 * 1024) return (bytes/1024).toFixed(2)+" KB";
+    return (bytes/1024/1024).toFixed(2)+" MB";
+
+}
+
+function scheduleFlush(){
+
+    if(flushScheduled) return;
+
+    flushScheduled = true;
+
+    setTimeout(function(){
+
+        flushScheduled = false;
+
+        if(stats.reads.operations){
+
+            console.groupCollapsed(
+                "📥 Firebase Reads"
+            );
+
+            console.log("Operations :", stats.reads.operations);
+            console.log("Downloaded :", human(stats.reads.bytes));
+
+            console.groupEnd();
+
+        }
+
+        if(stats.writes.operations){
+
+            console.groupCollapsed(
+                "📤 Firebase Writes"
+            );
+
+            console.log("Operations :", stats.writes.operations);
+            console.log("Uploaded :", human(stats.writes.bytes));
+
+            console.groupEnd();
+
+        }
+
+        stats.reads.operations = 0;
+        stats.reads.bytes = 0;
+
+        stats.writes.operations = 0;
+        stats.writes.bytes = 0;
+
+    },0);
+
+}
+
+function recordRead(data){
+
+    stats.reads.operations++;
+    stats.reads.bytes += estimateSize(data);
+
+    scheduleFlush();
+
+}
+
+function recordWrite(data){
+
+    stats.writes.operations++;
+    stats.writes.bytes += estimateSize(data);
+
+    scheduleFlush();
+
+}
+
+/* ==========================================================
+   Patch Reference methods
+========================================================== */
+
+function patchMethod(proto,name,handler){
+
+    if(!proto || !proto[name]) return;
+
+    const original = proto[name];
+
+    proto[name] = handler(original);
+
+}
+
+/* ==========================================================
+   Wait until Firebase exists
+========================================================== */
+
+function install(){
+
+    if(!window.firebase) return false;
+
+    const refProto =
+        firebase.database.Reference.prototype;
+
+    /* ---------------- SET ---------------- */
+
+    patchMethod(refProto,"set",function(original){
+
+        return function(value){
+
+            recordWrite(value);
+
+            return original.apply(this,arguments);
+
+        };
+
+    });
+
+    /* ---------------- UPDATE ---------------- */
+
+    patchMethod(refProto,"update",function(original){
+
+        return function(value){
+
+            recordWrite(value);
+
+            return original.apply(this,arguments);
+
+        };
+
+    });
+
+    /* ---------------- REMOVE ---------------- */
+
+    patchMethod(refProto,"remove",function(original){
+
+        return function(){
+
+            recordWrite({deleted:true});
+
+            return original.apply(this,arguments);
+
+        };
+
+    });
+
+    /* ---------------- PUSH ---------------- */
+
+    patchMethod(refProto,"push",function(original){
+
+        return function(value){
+
+            if(arguments.length){
+
+                recordWrite(value);
+            }
+
+            return original.apply(this,arguments);
+
+        };
+
+    });
+
+    /* ---------------- SET PRIORITY ---------------- */
+
+    if(refProto.setPriority){
+
+        patchMethod(refProto,"setPriority",function(original){
+
+            return function(priority){
+
+                recordWrite(priority);
+
+                return original.apply(this,arguments);
+
+            };
+
+        });
+
+    }
+
+    /* ---------------- TRANSACTION ---------------- */
+
+    if(refProto.transaction){
+
+        patchMethod(refProto,"transaction",function(original){
+
+            return function(updateFn){
+
+                const wrapped=function(current){
+
+                    const result=updateFn(current);
+
+                    recordWrite(result);
+
+                    return result;
+
+                };
+
+                arguments[0]=wrapped;
+
+                return original.apply(this,arguments);
+
+            };
+
+        });
+
+    }
+
+    /* ---------------- ONCE ---------------- */
+
+    patchMethod(refProto,"once",function(original){
+
+        return function(){
+
+            return original.apply(this,arguments).then(function(snapshot){
+
+                recordRead(snapshot.val());
+
+                return snapshot;
+
+            });
+
+        };
+
+    });
+
+    /* ---------------- GET ---------------- */
+
+    if(refProto.get){
+
+        patchMethod(refProto,"get",function(original){
+
+            return function(){
+
+                return original.apply(this,arguments).then(function(snapshot){
+
+                    recordRead(snapshot.val());
+
+                    return snapshot;
+
+                });
+
+            };
+
+        });
+
+    }
+
+    /* ---------------- ON ---------------- */
+
+    patchMethod(refProto,"on",function(original){
+
+        return function(eventType,callback){
+
+            const wrapped=function(snapshot){
+
+                recordRead(snapshot.val());
+
+                return callback.apply(this,arguments);
+
+            };
+
+            arguments[1]=wrapped;
+
+            return original.apply(this,arguments);
+
+        };
+
+    });
+
+    console.log("✅ Firebase bandwidth logger installed.");
+
+    return true;
+
+}
+
+/* ==========================================================
+   Wait until Firebase loads
+========================================================== */
+
+const timer=setInterval(function(){
+
+    if(install()){
+
+        clearInterval(timer);
+
+    }
+
+},100);
 
 })();
 </script>
