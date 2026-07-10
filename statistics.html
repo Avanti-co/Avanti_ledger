@@ -1919,7 +1919,7 @@ function executeConfirmedAction() {
 <script>
 /* ==========================================================================
    AVANTI LEDGER: CORE DATABASE INTERCEPTOR ENGINE
-   ========================================================================= */
+   ========================================================================== */
 (function() {
     /**
      * Selectively manages data reads to optimize bandwidth and catch structural shifts,
@@ -2020,14 +2020,7 @@ function executeConfirmedAction() {
         const origOnce = Query.prototype.once;
         Query.prototype.once = function(eventType, successCallback, failureCallback, context) {
             const ctx = getLedgerContext(this);
-            
-            // Check if download interception is enabled for this specific path or globally
-            const isReady = ctx && (
-                localStorage.getItem(`${ctx.rootPath}/downloadIntercept`) === 'ready' || 
-                localStorage.getItem('downloadIntercept') === 'ready'
-            );
-
-            if (!ctx || !isReady || this.toString().includes(ctx.firebaseTSPath)) {
+            if (!ctx || this.toString().includes(ctx.firebaseTSPath)) {
                 return origOnce.call(this, eventType, successCallback, failureCallback, context);
             }
 
@@ -2039,6 +2032,7 @@ function executeConfirmedAction() {
                     const localTS = localStorage.getItem(ctx.localKey);
 
                     if (remoteTS && localTS && remoteTS === localTS) {
+                        
                         if (successCallback) successCallback(null);
                         resolve(null);
                     } else {
@@ -2060,14 +2054,7 @@ function executeConfirmedAction() {
         const origOn = Query.prototype.on;
         Query.prototype.on = function(eventType, callback, cancelCallbackOrContext, context) {
             const ctx = getLedgerContext(this);
-
-            // Check if download interception is enabled for this specific path or globally
-            const isReady = ctx && (
-                localStorage.getItem(`${ctx.rootPath}/downloadIntercept`) === 'ready' || 
-                localStorage.getItem('downloadIntercept') === 'ready'
-            );
-
-            if (!ctx || !isReady || this.toString().includes(ctx.firebaseTSPath)) {
+            if (!ctx || this.toString().includes(ctx.firebaseTSPath)) {
                 return origOn.call(this, eventType, callback, cancelCallbackOrContext, context);
             }
 
@@ -2080,6 +2067,7 @@ function executeConfirmedAction() {
                 const localTS = localStorage.getItem(ctx.localKey);
 
                 if (remoteTS && localTS && remoteTS === localTS) {
+                    
                     const liveWatcher = (tsSnap) => {
                         const nextRemoteTS = tsSnap.val();
                         if (nextRemoteTS !== localStorage.getItem(ctx.localKey)) {
@@ -2111,6 +2099,8 @@ function executeConfirmedAction() {
             }
             return origOff.call(this, eventType, callback, context);
         };
+
+        
     }
 
     if (document.readyState === 'loading') {
@@ -2119,7 +2109,9 @@ function executeConfirmedAction() {
         setupAvantiReadInterceptor();
     }
 })();
+
 </script>
+
 
 
 <script>
@@ -2140,7 +2132,6 @@ const FIREBASE_CONFIG = {
   messagingSenderId: "262165456072",
   appId: "1:262165456072:web:40926b87a0eb513cc971fd",
   measurementId: "G-LVWW6PJ0P0"
-
 };
 
 let firebaseApp = null;
@@ -2163,7 +2154,6 @@ if (FIREBASE_CONFIG) {
     } catch (e) {
         console.warn('Firebase init failed', e);
     }
-
 }
 
 window.addEventListener('online', () => { 
@@ -2184,12 +2174,9 @@ let AV_LEDGER_ACCOUNT_KEY = localStorage.getItem('AV_ledger_account_key');
 let AV_LEDGER_USERNAME = localStorage.getItem('AV_ledger_username');
 const DEFAULT_FALLBACK_PATH = 'avanti_stats_default'; 
 
-
 let TARGET_PROFILE_USERNAME = AV_LEDGER_USERNAME; 
-// REMOTE_DB_PATH is the path where data is READ FROM and WRITTEN TO.
-let REMOTE_DB_PATH = AV_LEDGER_ACCOUNT_KEY && AV_LEDGER_USERNAME
-    ? `accounts/${AV_LEDGER_ACCOUNT_KEY}/profiles/${AV_LEDGER_USERNAME}/avanti_stats`
-    : DEFAULT_FALLBACK_PATH; 
+// REMOTE_DB_PATH is now initialized immediately from localStorage, falling back to a default if empty.
+let REMOTE_DB_PATH = localStorage.getItem('AV_remote_db_path') || DEFAULT_FALLBACK_PATH; 
 
 let USER_SETTINGS = {
     GFA: true, 
@@ -2242,7 +2229,6 @@ function updateSyncDisplay() {
 
     if (syncSpan) syncSpan.textContent = "Loading...";
 
-
     const settingsRef    = firebaseDB.ref(`accounts/${accountName}/settings`);
     const syncingToRef   = firebaseDB.ref(`accounts/${accountName}/profiles/${username}/syncingTo`);
     const syncingWithRef = firebaseDB.ref(`accounts/${accountName}/profiles/${username}/syncingWith`);
@@ -2253,7 +2239,6 @@ function updateSyncDisplay() {
         syncingWithRef.once("value")
     ])
     .then(([settingsSnap, syncingToSnap, syncingWithSnap]) => {
-
         const settings    = settingsSnap.val() || {};
         const syncMode    = settings.synchronization;
         const syncingTo   = syncingToSnap.val() || {}; 
@@ -2264,7 +2249,6 @@ function updateSyncDisplay() {
         if (syncMode === "all") {
             newSource = "all";
             if (syncSpan) syncSpan.textContent = "Syncing All Profiles";
-
         } else {
             const sourceTarget = getTarget(syncingWith);
             const sendTarget   = getTarget(syncingTo);
@@ -2281,7 +2265,6 @@ function updateSyncDisplay() {
                 newSource = "none";
                 if (syncSpan) syncSpan.textContent = "Not syncing";
             }
-
         }
 
         // 🔁 Reload page ONLY if the source changed
@@ -2296,7 +2279,6 @@ function updateSyncDisplay() {
 
         // Save current source for next check
         localStorage.setItem("AV_last_sync_source", newSource);
-
     })
     .catch(err => {
         console.error("Error loading sync state:", err);
@@ -2323,11 +2305,8 @@ function setupSyncListeners() {
     syncingToRef.on("value", updateSyncDisplay);
     syncingWithRef.on("value", updateSyncDisplay);
 
-renderAll();
-
-
+    renderAll();
 }
-
 
 /* ---------- Helpers ---------- */
 function formatDateLabel(dateKey) {
@@ -2350,7 +2329,7 @@ function formatDateLabel(dateKey) {
 
     return `${weekdays[d.getDay()]}, ${day}${daySuffix} ${months[d.getMonth()]}, ${d.getFullYear()}`;
 }
-function todayKey(){ const d=new Date(); return  }
+function todayKey(){ const d=new Date(); return d.toISOString().slice(0, 10); }
 function addDays(yyyy_mm_dd, n) {
     const d = new Date(yyyy_mm_dd);
     d.setDate(d.getDate() + n);
@@ -2364,14 +2343,13 @@ function sanitizeNumber(value){
 }
 
 /* ---------- Settings and Synchronization Logic (Admin Priority) ---------- */
-
 async function checkProfileAndSyncSettings() {
     AV_LEDGER_ACCOUNT_KEY = localStorage.getItem('AV_ledger_account_key');
     AV_LEDGER_USERNAME = localStorage.getItem('AV_ledger_username');
     
     if (!firebaseDB || !AV_LEDGER_ACCOUNT_KEY || !AV_LEDGER_USERNAME) {
         TARGET_PROFILE_USERNAME = AV_LEDGER_USERNAME;
-        REMOTE_DB_PATH = DEFAULT_FALLBACK_PATH;
+        REMOTE_DB_PATH = localStorage.getItem('AV_remote_db_path') || DEFAULT_FALLBACK_PATH;
         console.warn("Firebase or user keys not available. Using default path. App will not save data.");
         return;
     }
@@ -2414,8 +2392,6 @@ async function checkProfileAndSyncSettings() {
                 const val = snapshot.val();
                 if (typeof val === 'boolean') {
                     USER_SETTINGS.GFA = val;
-                    
-
                     // Optional: update UI
                     const gfaToggle = document.getElementById('gfaToggle');
                     if (gfaToggle) gfaToggle.checked = USER_SETTINGS.GFA;
@@ -2430,9 +2406,6 @@ async function checkProfileAndSyncSettings() {
 
         if (USER_SETTINGS.synchronization === 'all') {
             syncSourceUsername = 'GLOBAL_LEDGER';
-            
-
-
         } else if (profileData.syncingWith && typeof profileData.syncingWith === 'object') {
             const targets = Object.keys(profileData.syncingWith).filter(
                 t => profileData.syncingWith[t] === true
@@ -2466,26 +2439,22 @@ async function checkProfileAndSyncSettings() {
         } else {
             REMOTE_DB_PATH = `accounts/${AV_LEDGER_ACCOUNT_KEY}/profiles/${TARGET_PROFILE_USERNAME}/avanti_stats`;
         }
+        // Save the resolved path into localStorage
+        localStorage.setItem('AV_remote_db_path', REMOTE_DB_PATH);
 
     } catch (e) {
         console.error('Failed to check user settings/sync. Proceeding with defaults.', e);
-        REMOTE_DB_PATH = `accounts/${AV_LEDGER_ACCOUNT_KEY}/profiles/${AV_LEDGER_USERNAME}/avanti_stats`;
+        REMOTE_DB_PATH = localStorage.getItem('AV_remote_db_path') || `accounts/${AV_LEDGER_ACCOUNT_KEY}/profiles/${AV_LEDGER_USERNAME}/avanti_stats`;
         TARGET_PROFILE_USERNAME = AV_LEDGER_USERNAME;
     }
 }
-/* ---------- Persistence: Firebase Real-time Listener ---------- */
 
-/**
- * Sets up Firebase listeners for the Avanti ledger data.
- * Ensures that if no current date is set in the DB, it defaults to today.
- */
+/* ---------- Persistence: Firebase Real-time Listener ---------- */
 function setupDataListener() {
-    // 1. Guard clauses for initialization safety
     if (!firebaseDB || REMOTE_DB_PATH === DEFAULT_FALLBACK_PATH || dataListenerActive) {
         return;
     }
 
-    // 2. Cleanup existing listeners to prevent memory leaks/duplicate triggers
     if (currentDataRef) {
         currentDataRef.off();
     }
@@ -2493,21 +2462,17 @@ function setupDataListener() {
     currentDataRef = firebaseDB.ref(REMOTE_DB_PATH);
     dataListenerActive = true;
 
-    // 3. Listen to the 'dates' collection for real-time ledger updates
     const datesRef = currentDataRef.child('dates');
 
-    // Handle new date entries added to the database
     datesRef.on('child_added', snap => {
         const dateKey = snap.key;
         state.dates[dateKey] = snap.val();
     });
 
-    // Handle updates to existing ledger entries
     datesRef.on('child_changed', snap => {
         const dateKey = snap.key;
         state.dates[dateKey] = snap.val();
         
-        // Only re-render the UI if the modified date is the one currently being viewed
         if (dateKey === state.currentDate) {
             renderTable();
             renderExpensesIncomes();
@@ -2515,7 +2480,6 @@ function setupDataListener() {
         }
     });
 
-    // Handle deletion of date entries
     datesRef.on('child_removed', snap => {
         delete state.dates[snap.key];
         if (snap.key === state.currentDate) {
@@ -2523,22 +2487,15 @@ function setupDataListener() {
         }
     });
 
-    // 4. Current Selected Date Listener with Auto-Initialization
     currentDataRef.child('currentDate').on('value', snap => {
         let newDate = snap.val();
 
-        // LOGIC: If current date doesn’t exist in DB, set it as today's date (YYYY-MM-DD)
         if (!newDate) {
             newDate = new Date().toISOString().split('T')[0];
-            
-            // Persist this default to the remote database immediately
             currentDataRef.child('currentDate').set(newDate);
-            
-            // Ensure the data structure for this specific date exists in the 'dates' node
             ensureDateExists(newDate);
         }
 
-        // Trigger UI update only if the date has changed or was just initialized
         if (newDate !== state.currentDate) {
             state.currentDate = newDate;
             ensureDateExists(state.currentDate);
@@ -2548,15 +2505,11 @@ function setupDataListener() {
 }
 
 async function loadState(){
-    // 1. Determine the correct data source path (Admin Priority handled here)
     await checkProfileAndSyncSettings();
     
     if(firebaseDB && isOnline && REMOTE_DB_PATH !== DEFAULT_FALLBACK_PATH){
-        // 2. Setup the real-time listener to handle the data fetching and subsequent updates
         setupDataListener();
-        
     } else {
-        // Offline or Fallback Case
         initializeDefault();
         console.warn('Offline or Missing User Keys. Data operations disabled.');
         if(!state.currentDate) state.currentDate = todayKey();
@@ -2568,16 +2521,12 @@ async function loadState(){
 }
 
 /* ---------- Save ---------- */
-/**
- * Triggers a save of the local state to the determined remote path.
- */
 function saveState(){
     const toSave = { currentDate: state.currentDate, dates: state.dates };
     saveToDatabase(toSave);
 }
 
 function saveToDatabase(data){
-    // 🟢 Handled beautifully here already by your architecture
     if(!firebaseDB || !isOnline || REMOTE_DB_PATH === DEFAULT_FALLBACK_PATH) return;
 
     const updates = {};
@@ -2613,13 +2562,12 @@ function makeItem(idHint, name='new item', opening=0, orders=0, price=0, closing
         orders: Number(orders||0),
         price: Number(price||0),
         closing: Number(closing||0),
-        position: position, // Added position property
+        position: position,
         batches: []
     };
 }
 
-
-/* ---------- Ensure date exists + bootstrap from nearest neighbor (FORWARD ONLY) ---------- */
+/* ---------- Ensure date exists + bootstrap from nearest neighbor ---------- */
 function ensureDateExists(dateKey){
     if(!dateKey) return;
     if(!state.dates) state.dates = {};
@@ -2628,7 +2576,6 @@ function ensureDateExists(dateKey){
         const searchRange = 30;
         let foundKey = null;
         
-        // Look only FORWARD first 
         for(let i=1;i<=searchRange;i++){
             const k = addDays(dateKey, i);
             if(state.dates[k] && state.dates[k].items && Object.keys(state.dates[k].items).length>0){
@@ -2636,11 +2583,9 @@ function ensureDateExists(dateKey){
                 break;
             }
         }
-        // If not found forward, look backward 
         if(!foundKey){
             for(let i=1;i<=searchRange;i++){
                 const k = addDays(dateKey, -i);
-                // ONLY copy from previous if dateKey is TODAY or LATER
                 if(dateKey >= todayKey()){ 
                     if(state.dates[k] && state.dates[k].items && Object.keys(state.dates[k].items).length>0){
                         foundKey = k;
@@ -2650,20 +2595,14 @@ function ensureDateExists(dateKey){
             }
         }
 
-
         if(foundKey){
-            // copy items but keep opening/closes sensible:
             Object.values(state.dates[foundKey].items).forEach(it => {
-            // Inside the loop that copies items:
-const copy = makeItem(it.id, it.name, it.opening || it.closing || 0, 0, it.price || 0, 0, it.position || 0);
-
-
+                const copy = makeItem(it.id, it.name, it.opening || it.closing || 0, 0, it.price || 0, 0, it.position || 0);
                 copy.batches = clone(it.batches || []);
                 state.dates[dateKey].items[copy.id] = copy;
             });
         }
     } else {
-        // Defensive: ensure proper shape
         if(!state.dates[dateKey].items) state.dates[dateKey].items = {};
         if(!Array.isArray(state.dates[dateKey].expenses)) state.dates[dateKey].expenses = [];
         if(!Array.isArray(state.dates[dateKey].incomes)) state.dates[dateKey].incomes = [];
@@ -2735,12 +2674,10 @@ function directOrderEntry(itemId) {
     };
 }
 
-
 function renderTable() {
     const tbody = document.getElementById('statsTableBody');
     if (!tbody) return;
 
-    // --- STRATEGY 2a: CAPTURE ACTIVE ELEMENT TO PREVENT KEYBOARD COLLAPSE ---
     const activeEl = document.activeElement;
     let restoreFocusSelector = null;
 
@@ -2755,35 +2692,28 @@ function renderTable() {
     tbody.innerHTML = '';
 
     const dateObj = state.dates[state.currentDate] || makeEmptyDate();
-    
-    // 1. Convert items object to an array
     let items = Object.values(dateObj.items || {});
 
-    // 2. Legacy Support: Assign positions if they don't exist yet
     items.forEach((it, idx) => {
         if (it.position === undefined || it.position === null) {
             it.position = idx + 1;
-            // Persist to Firebase for future consistency
             if (firebaseDB && isOnline && REMOTE_DB_PATH !== DEFAULT_FALLBACK_PATH) {
                 firebaseDB.ref(`${REMOTE_DB_PATH}/dates/${state.currentDate}/items/${it.id}/position`).set(it.position);
             }
         }
     });
 
-    // 3. Sort by position for a consistent user-defined order
     items.sort((a, b) => (a.position || 0) - (b.position || 0));
 
     const filter = (document.getElementById('searchItemInput') || { value: '' }).value.trim().toUpperCase();
     let totalSales = 0;
 
     items.forEach(item => {
-        // Search filter logic
         if (filter && !item.name.toUpperCase().includes(filter)) return;
 
         const tr = document.createElement('tr');
         tr.dataset.itemId = item.id;
 
-        // --- Column 0: Selection & Drag Handle ---
         const tdSelect = document.createElement('td'); 
         tdSelect.className = 'select-col';
         if (state.selectMode) tdSelect.classList.remove('hidden'); else tdSelect.classList.add('hidden');
@@ -2808,7 +2738,6 @@ function renderTable() {
             updateSelectionUI(); 
         };
 
-        // --- ROW CLICK LOGIC FOR SELECT MODE ---
         tr.addEventListener('click', (e) => {
             if (!state.selectMode) return;
             if (e.target === cb) return; 
@@ -2833,7 +2762,6 @@ function renderTable() {
         tdSelect.appendChild(controlWrapper);
         tr.appendChild(tdSelect);
 
-        // --- Column 1: Item Name (Editable) ---
         const tdItem = document.createElement('td'); 
         tdItem.className = 'editable'; 
         tdItem.dataset.col = 'item'; 
@@ -2846,13 +2774,11 @@ function renderTable() {
                 state.dates[state.currentDate].items[item.id].name = newName;
             }
             propagateNameAcrossDates(item.id, newName);
-            // --- STRATEGY 1: Defer re-rendering until focus transitions ---
             setTimeout(() => persistItemChange(item.id), 0);
         };
         tdItem.onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); tdItem.blur(); } };
         tr.appendChild(tdItem);
 
-        // --- Column 2: Opening Stock (Editable) ---
         const tdOpening = document.createElement('td'); 
         tdOpening.className = 'editable'; 
         tdOpening.dataset.col = 'openingStock'; 
@@ -2860,13 +2786,11 @@ function renderTable() {
         tdOpening.textContent = item.opening;
         tdOpening.onblur = () => { 
             item.opening = sanitizeNumber(tdOpening.textContent); 
-            // --- STRATEGY 1: Defer re-rendering ---
             setTimeout(() => persistItemChange(item.id), 0); 
         };
         tdOpening.onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); tdOpening.blur(); } };
         tr.appendChild(tdOpening);
 
-        // --- Column 3: Orders (Clickable / Modal) ---
         const tdOrders = document.createElement('td'); 
         tdOrders.dataset.col = 'orders'; 
         tdOrders.style.cursor = 'pointer'; 
@@ -2874,14 +2798,12 @@ function renderTable() {
         tdOrders.textContent = item.orders;
         tr.appendChild(tdOrders);
 
-        // --- Column 4: Total Stock (Calculated) ---
         const totalStock = Number(item.opening) + Number(item.orders);
         const tdTotalStock = document.createElement('td'); 
         tdTotalStock.dataset.col = 'totalStock'; 
         tdTotalStock.textContent = totalStock;
         tr.appendChild(tdTotalStock);
 
-        // --- Column 5: Price (Editable) ---
         const tdPrice = document.createElement('td'); 
         tdPrice.className = 'editable'; 
         tdPrice.dataset.col = 'price'; 
@@ -2891,13 +2813,11 @@ function renderTable() {
             const old = item.price; 
             item.price = sanitizeNumber(tdPrice.textContent); 
             if (item.price !== old) propagatePriceToFuture(item.id, item.price); 
-            // --- STRATEGY 1: Defer re-rendering ---
             setTimeout(() => persistItemChange(item.id), 0); 
         };
         tdPrice.onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); tdPrice.blur(); } };
         tr.appendChild(tdPrice);
 
-        // --- Column 6: Closing Stock (Editable) ---
         const tdClosing = document.createElement('td'); 
         tdClosing.className = 'editable'; 
         tdClosing.dataset.col = 'closingStock'; 
@@ -2905,7 +2825,6 @@ function renderTable() {
         tdClosing.textContent = item.closing;
         tdClosing.onblur = () => { 
             item.closing = sanitizeNumber(tdClosing.textContent); 
-            // --- STRATEGY 1: Defer re-rendering ---
             setTimeout(() => {
                 persistItemChange(item.id); 
                 propagateClosingToNext(item.id); 
@@ -2914,14 +2833,12 @@ function renderTable() {
         tdClosing.onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); tdClosing.blur(); } };
         tr.appendChild(tdClosing);
 
-        // --- Column 7: Sales Quantity (Calculated) ---
         const sales = Math.max(0, totalStock - Number(item.closing));
         const tdSales = document.createElement('td'); 
         tdSales.dataset.col = 'sales'; 
         tdSales.textContent = sales;
         tr.appendChild(tdSales);
 
-        // --- Column 8: Total Revenue (Calculated) ---
         const total = sales * Number(item.price);
         const tdTotal = document.createElement('td'); 
         tdTotal.dataset.col = 'total'; 
@@ -2932,7 +2849,6 @@ function renderTable() {
         totalSales += Number(total);
     });
 
-    // Update Bottom Summary Display with Zambian Kwacha Formatting
     const totEl = document.getElementById('totalSalesAmount');
     if (totEl) totEl.textContent = "K" + totalSales.toLocaleString();
 
@@ -2941,23 +2857,19 @@ function renderTable() {
     
     updateTotalsNumbers();
 
-    // --- STRATEGY 2b: RESTORE FOCUS AND TEXT CARET POSITION ---
     if (restoreFocusSelector) {
         const elToFocus = tbody.querySelector(restoreFocusSelector);
         if (elToFocus) {
             elToFocus.focus();
-            
-            // Move text caret to the end of the text string within the editable element
             const range = document.createRange();
             const sel = window.getSelection();
             range.selectNodeContents(elToFocus);
-            range.collapse(false); // false collapses the selection range to the end
+            range.collapse(false);
             sel.removeAllRanges();
             sel.addRange(range);
         }
     }
 }
-
 
 /* ---------- Utility render helpers ---------- */
 function updateTotalsNumbers(){
@@ -2976,9 +2888,9 @@ function updateTotalsNumbers(){
     if(netExpensesEl) netExpensesEl.textContent = `K${netExpenses}`;
     const saleRevenueEl = document.getElementById('saleRevenueAmount');
     if(saleRevenueEl) saleRevenueEl.textContent = `K${saleRevenue}`;
-const saleRevenueEl2 = document.getElementById('saleRevenueAmount2');
+    const saleRevenueEl2 = document.getElementById('saleRevenueAmount2');
     if(saleRevenueEl2) saleRevenueEl2.textContent = `Revenue K${saleRevenue}`;
-const netSalesEl2 = document.getElementById('netSalesAmount2');
+    const netSalesEl2 = document.getElementById('netSalesAmount2');
     if(netSalesEl2) netSalesEl2.textContent = `K${netSales}`;
     const netIncomeEl2 = document.getElementById('netIncomeAmount2');
     if(netIncomeEl2) netIncomeEl2.textContent = `K${netIncome}`;
@@ -2986,7 +2898,7 @@ const netSalesEl2 = document.getElementById('netSalesAmount2');
     if(netExpensesEl2) netExpensesEl2.textContent = `K${netExpenses}`;
 }
 
-/* ---------- Expenses/Incomes render (With Far-Right Trash Anchors) ---------- */
+/* ---------- Expenses/Incomes render ---------- */
 function renderExpensesIncomes(){
     const dateObj = state.dates[state.currentDate] || makeEmptyDate();
     const exEl = document.getElementById('expensesList'); 
@@ -2995,7 +2907,6 @@ function renderExpensesIncomes(){
     if(exEl) exEl.innerHTML = '';
     if(inEl) inEl.innerHTML = '';
 
-    // Render Expenses
     (dateObj.expenses || []).forEach(e => {
         const row = document.createElement('div'); 
         row.className = 'finance-item';
@@ -3015,12 +2926,11 @@ function renderExpensesIncomes(){
         details.appendChild(desc);
         row.appendChild(details);
 
-        // Far-right Trash Can Anchor
         const trashAnchor = document.createElement('a');
         trashAnchor.className = 'finance-delete-anchor';
-        trashAnchor.style.marginLeft = 'auto'; // Pushes anchor cleanly to the far right
+        trashAnchor.style.marginLeft = 'auto'; 
         trashAnchor.style.cursor = 'pointer';
-        trashAnchor.style.color = '#ff453a';   // Red highlight accent color
+        trashAnchor.style.color = '#ff453a';   
         trashAnchor.style.padding = '4px 8px';
         trashAnchor.innerHTML = '<i class="fas fa-trash-alt"></i>';
         
@@ -3033,7 +2943,6 @@ function renderExpensesIncomes(){
         exEl && exEl.appendChild(row);
     });
 
-    // Render Incomes
     (dateObj.incomes || []).forEach(e => {
         const row = document.createElement('div'); 
         row.className = 'finance-item';
@@ -3053,12 +2962,11 @@ function renderExpensesIncomes(){
         details.appendChild(desc);
         row.appendChild(details);
 
-        // Far-right Trash Can Anchor
         const trashAnchor = document.createElement('a');
         trashAnchor.className = 'finance-delete-anchor';
-        trashAnchor.style.marginLeft = 'auto'; // Pushes anchor cleanly to the far right
+        trashAnchor.style.marginLeft = 'auto'; 
         trashAnchor.style.cursor = 'pointer';
-        trashAnchor.style.color = '#ff453a';   // Red highlight accent color
+        trashAnchor.style.color = '#ff453a';   
         trashAnchor.style.padding = '4px 8px';
         trashAnchor.innerHTML = '<i class="fas fa-trash"></i>';
         
@@ -3091,10 +2999,8 @@ function enterSelectMode() {
 
     document.querySelectorAll('.select-col').forEach(td => td.classList.remove('hidden'));
 
-    // --- RESTORE LABELS & INJECT PILL ACTIONS SIDE-BY-SIDE ---
     const pill = document.getElementById('dateNavPill');
     if (pill) {
-        // Override any conflicting background properties cleanly
         pill.style.background = 'rgba(255, 255, 255, 0.15)';
         pill.style.backdropFilter = 'blur(10px)';
         pill.style.border = '1px solid rgba(255, 255, 255, 0.2)';
@@ -3113,17 +3019,9 @@ function enterSelectMode() {
             </div>
             
             <div style="display: flex; background: rgba(0, 0, 0, 0.2); padding: 3px; border-radius: 30px; gap: 2px; align-items: center;">
-                <button id="selectAllBtn" onclick="selectAllItems()" title="Select All" style="background: transparent; border: none; color: #ffffff; padding: 6px 12px; font-size: 12px; font-weight: 600; cursor: pointer; border-radius: 20px; transition: background 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.1)'" onmouseout="this.style.background='transparent'"><i class="fa-solid fa-check-double"></i>
-                    All
-                </button>
-                
-<button id="duplicateBtn" onclick="openDuplicateSheet()" title="Duplicate Selected" style="background: transparent; border: none; color: #30b0ff; padding: 6px 12px; font-size: 12px; font-weight: 600; cursor: pointer; border-radius: 20px; transition: background 0.2s;" onmouseover="this.style.background='rgba(48,176,255,0.15)'" onmouseout="this.style.background='transparent'"><i class="fa-regular fa-copy"></i> 
-    Duplicate
-</button>
-
-                <button id="deleteBtn" onclick="deleteSelectedItems()" title="Delete Selected" style="background: transparent; border: none; color: #ff453a; padding: 6px 12px; font-size: 12px; font-weight: 600; cursor: pointer; border-radius: 20px; transition: background 0.2s;" onmouseover="this.style.background='rgba(255,69,58,0.2)'" onmouseout="this.style.background='transparent'"><i class="fa-regular fa-trash"></i> 
-                    Delete
-                </button>
+                <button id="selectAllBtn" onclick="selectAllItems()" title="Select All" style="background: transparent; border: none; color: #ffffff; padding: 6px 12px; font-size: 12px; font-weight: 600; cursor: pointer; border-radius: 20px; transition: background 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.1)'" onmouseout="this.style.background='transparent'"><i class="fa-solid fa-check-double"></i> All</button>
+                <button id="duplicateBtn" onclick="openDuplicateSheet()" title="Duplicate Selected" style="background: transparent; border: none; color: #30b0ff; padding: 6px 12px; font-size: 12px; font-weight: 600; cursor: pointer; border-radius: 20px; transition: background 0.2s;" onmouseover="this.style.background='rgba(48,176,255,0.15)'" onmouseout="this.style.background='transparent'"><i class="fa-regular fa-copy"></i> Duplicate</button>
+                <button id="deleteBtn" onclick="deleteSelectedItems()" title="Delete Selected" style="background: transparent; border: none; color: #ff453a; padding: 6px 12px; font-size: 12px; font-weight: 600; cursor: pointer; border-radius: 20px; transition: background 0.2s;" onmouseover="this.style.background='rgba(255,69,58,0.2)'" onmouseout="this.style.background='transparent'"><i class="fa-regular fa-trash"></i> Delete</button>
             </div>
         `;
     }
@@ -3175,7 +3073,6 @@ function exitSelectMode() {
         nextBtn.onclick = nextDate;
     }
 
-    // Completely strip select-mode styling rules back to default setup
     const pill = document.getElementById('dateNavPill');
     if (pill) {
         pill.style.background = '';
@@ -3220,7 +3117,6 @@ function exitSelectMode() {
     renderAll();
 }
 
-// Ensure the counter targets the correct string element safely
 function updateSelectionUI() {
     const count = state.selectedForDelete.size;
     const disp = document.getElementById('dateDisplaySmall');
@@ -3229,83 +3125,10 @@ function updateSelectionUI() {
     }
 }
 
-
-
-function exitSelectMode() {
-    state.selectMode = false;
-    state.selectedForDelete.clear();
-
-    // 1. Restore Left Arrow visibility and actions
-    const prevBtn = document.getElementById('prevDateBtn');
-    if (prevBtn) {
-        prevBtn.style.visibility = 'visible';
-        prevBtn.innerHTML = '<i class="fas fa-chevron-left"></i>';
-        prevBtn.onclick = prevDate;
-        prevBtn.title = "Previous date";
-    }
-
-    // 2. Restore Right Arrow visibility and actions
-    const nextBtn = document.getElementById('nextDateBtn');
-    if (nextBtn) {
-        nextBtn.style.visibility = 'visible';
-        nextBtn.innerHTML = '<i class="fas fa-chevron-right"></i>';
-        nextBtn.onclick = nextDate;
-        nextBtn.title = "Next date";
-    }
-
-    // 3. Reset the Central Reporting Period Pill
-    const pill = document.getElementById('dateNavPill');
-    if (pill) {
-        pill.style.background = '';
-        pill.style.backdropFilter = '';
-        pill.style.border = '';
-        pill.style.padding = '';
-        pill.style.borderRadius = '';
-        pill.style.display = '';
-        pill.style.gap = '';
-
-        pill.innerHTML = `
-            <div class="date-display" id="dateDisplay" style="font-size: 16px !important; font-weight: 600 !important; color: #ffffff !important; letter-spacing: 0.2px !important;"></div>
-            <div style="font-size: 11px !important; color: rgba(255,255,255,0.5) !important; text-transform: uppercase !important; font-weight: 700 !important; letter-spacing: 0.8px !important; margin-top: 3px !important;">Reporting Period</div>
-        `;
-    }
-
-    // 4. Restore the Configuration Dropdown Sliders icon
-    const disabledBtn = document.getElementById('ledgerDropdownBtn_disabled');
-    if (disabledBtn) {
-        const originalButtonHTML = `
-            <button id="ledgerDropdownBtn" onclick="toggleLedgerDropdown(event)" style="padding: 12px; width: 48px; height: 48px; justify-content: center; border-radius: 12px; border: none; background-color: rgba(255, 255, 255, 0.15); color: #ffffff; font-size: 18px; cursor: pointer; display: flex; align-items: center; position: relative; backdrop-filter: blur(5px); transition: background-color 0.2s;" onmouseover="this.style.backgroundColor='rgba(255, 255, 255, 0.25)'" onmouseout="this.style.backgroundColor='rgba(255, 255, 255, 0.15)'">
-                <i id="moreIcon" class="fas fa-sliders-h"></i> 
-            </button>
-        `;
-        disabledBtn.insertAdjacentHTML('afterend', originalButtonHTML);
-        disabledBtn.remove();
-    }
-
-    document.querySelectorAll('.select-col').forEach(td => td.classList.add('hidden'));
-    
-    const tableControls = document.querySelector('.table-controls');
-    const tableControls2 = document.querySelector('.table-controls2');
-    const tableControls3 = document.querySelector('.table-controls3');
-   
-    if (tableControls) {
-        if (tableControls2) tableControls2.setAttribute('colspan', '3');
-        if (tableControls3) tableControls3.setAttribute('colspan', '2');
-        tableControls.hidden = false;
-    }
-
-    renderAll();
-}
-
 /* =======================================================
     AVANTI LEDGER - NATIVE BOTTOM SHEET CONTROLLER ENGINE
    ======================================================= */
-
-/**
- * Maps duplication context metadata and slides the sheet modal upward.
- */
 function openDuplicateSheet() {
-    // Fail-safe protection: Block execution immediately if app flipped offline
     if (typeof isOnline !== 'undefined' && !isOnline && isOnline) {
         alert("You are currently offline. Item duplication requires an active connection to sync data.");
         return;
@@ -3337,9 +3160,6 @@ function openDuplicateSheet() {
     if (modal) modal.classList.add('show');
 }
 
-/**
- * Process duplication modifications across memory states and sync to Firebase.
- */
 function confirmDuplicateAction() {
     const targetDate = document.getElementById('bottomSheetTargetDate1').value;
     if (!targetDate) {
@@ -3350,7 +3170,6 @@ function confirmDuplicateAction() {
     ensureDateExists(targetDate);
     const targetDateData = state.dates[targetDate];
 
-    // Safety Verification Rule: Terminate workflows if destination date is balanced
     if (targetDateData && (targetDateData.balanced === true || String(targetDateData.balanced).toLowerCase() === 'true')) {
         alert("Cannot duplicate items to a balanced day. Please uncheck 'balanced' on the destination day first.");
         return;
@@ -3363,47 +3182,37 @@ function confirmDuplicateAction() {
     selectedIds.forEach(id => {
         const sourceItem = currentDayItems[id];
         if (sourceItem) {
-            // Build cloned structural snapshot conforming with data model mapping architecture
             const copy = makeItem(
                 sourceItem.id,
                 sourceItem.name,
                 sourceItem.opening || sourceItem.closing || 0,
-                0, // Reset orders parameter on copy action
+                0, 
                 sourceItem.price || 0,
-                0, // Reset closing counts
+                0, 
                 sourceItem.position || 0
             );
             copy.batches = clone(sourceItem.batches || []);
-
-            // Commit record transformations directly onto local states
             targetDateData.items[id] = copy;
-
-            // Prepare real-time network payloads
             updates[`dates/${targetDate}/items/${id}`] = copy;
         }
     });
 
-    // Fire network batch payload execution request up to Remote Firebase Server
     if (firebaseDB && isOnline && Object.keys(updates).length > 0) {
         firebaseDB.ref(REMOTE_DB_PATH).update(updates)
             .then(() => console.log(`Data Pipeline: Duplicated ${selectedIds.length} items to ${targetDate}`))
             .catch(err => console.error("Firebase batch duplication push error:", err));
     }
 
-    // Exit workflows and reset operational parameters
     closeBottomSheet();
     exitSelectMode();
     renderAll();
 }
 
-
 function deleteSelectedItems() {
-    // Check if the current day is balanced before allowing deletion
     const currentDateData = state.dates[state.currentDate];
     const isActuallyBalanced = currentDateData && (currentDateData.balanced === true || String(currentDateData.balanced).toLowerCase() === 'true');
 
     if (isActuallyBalanced) {
-        // Dispatched to the push notification engine as a System Warning
         console.warn("Action blocked: You cannot delete items from a balanced ledger.");
         return;
     }
@@ -3417,7 +3226,6 @@ function deleteSelectedItems() {
     const toDel = Array.from(state.selectedForDelete);
     const dateObj = state.dates[state.currentDate] || { items: {} };
     
-    // Resolve names for the confirmation prompt
     let itemDisplay = "";
     if (selectedCount === Object.keys(dateObj.items).length && selectedCount > 0) {
         itemDisplay = "all items";
@@ -3428,17 +3236,14 @@ function deleteSelectedItems() {
         itemDisplay = `${selectedCount} items`;
     }
 
-    // Native confirmation window stays to ensure explicit user consent before destructive actions
     if (!window.confirm(`Are you sure you want to delete ${itemDisplay}? This will affect future dates.`)) {
         return;
     }
 
-    // Execute Deletion across this date and future dates
     toDel.forEach(id => {
         deleteItemFromDateAndFuture(id, state.currentDate);
     });
 
-    // Dispatched to the push notification engine as a successful System Notification
     console.log(`Successfully deleted ${itemDisplay}. Ledger balances updated across future timeline states.`);
 
     state.selectedForDelete.clear();
@@ -3446,7 +3251,6 @@ function deleteSelectedItems() {
     renderAll();
     exitSelectMode();
 }
-
 
 /* ---------- Add New Row ---------- */
 function addRow() {
@@ -3458,11 +3262,10 @@ function addRow() {
         return;
     }
 
-    // Calculate the next logical position number
     const itemsArray = Object.values(dateObj.items || {});
     const nextPos = itemsArray.length > 0 
-        ? Math.max(...itemsArray.map(i => i.position || 0)) + 10000 
-        : 10000;
+        ? Math.max(...itemsArray.map(i => i.position || 0)) + 1 
+        : 1;
 
     const id = `itm${Date.now()}`;
     const item = makeItem(id, 'new item', 0, 0, 0, 0, nextPos);
@@ -3475,36 +3278,23 @@ function addRow() {
     renderAll();
 }
 
-
-
-
-
-
 function selectAllItems(){
     const dateObj = state.dates[state.currentDate] || makeEmptyDate();
     const itemIds = Object.keys(dateObj.items || {});
-    
-    // Determine if all items are already selected
     const allSelected = itemIds.length > 0 && itemIds.every(id => state.selectedForDelete.has(id));
-
     const tbody = document.getElementById('statsTableBody');
     const disp = document.getElementById('dateDisplaySmall');
 
     if (allSelected) {
-        // --- UNSELECT ALL ---
         state.selectedForDelete.clear();
-        
         if (tbody) {
             tbody.querySelectorAll('.select-col input[type="checkbox"]').forEach(cb => {
                 cb.checked = false;
             });
         }
         if (disp) disp.textContent = 'Select items';
-
     } else {
-        // --- SELECT ALL ---
         itemIds.forEach(id => state.selectedForDelete.add(id));
-        
         if (tbody) {
             tbody.querySelectorAll('.select-col input[type="checkbox"]').forEach(cb => {
                 cb.checked = true;
@@ -3516,73 +3306,22 @@ function selectAllItems(){
     }
 }
 
-
-
-function updateSelectionUI(){
-    const count = state.selectedForDelete.size;
-    const disp = document.querySelector('#dateDisplaySmall');
-    if(disp) disp.textContent = count>0 ? `${count} selected` : 'Select items';
-}
-
 /* ---------- CRUD: Add / Delete / Persist ---------- */
-/* ---------- Add New Row (Last Position Logic) ---------- */
-function addRow() {
-    ensureDateExists(state.currentDate);
-    const dateObj = state.dates[state.currentDate];
-    
-    // Safety check for balanced days
-    if (dateObj && (dateObj.balanced === true || String(dateObj.balanced).toLowerCase() === 'true')) {
-        alert("Cannot add items to a balanced day. Please uncheck 'balanced' first.");
-        return;
-    }
-
-    // 1. Calculate the next logical position number
-    const itemsArray = Object.values(dateObj.items || {});
-    const nextPos = itemsArray.length > 0 
-        ? Math.max(...itemsArray.map(i => i.position || 0)) + 1 
-        : 1;
-
-    // 2. Create the item with the new position
-    const id = `itm${Date.now()}`;
-    const item = makeItem(id, 'new item', 0, 0, 0, 0, nextPos);
-    
-    if (!state.dates[state.currentDate].items) state.dates[state.currentDate].items = {};
-    state.dates[state.currentDate].items[item.id] = item;
-    
-    // 3. Sync and Save
-    propagateItemToFuture(item, state.currentDate);
-    saveState(); 
-    renderAll();
-}
-
-
-/**
- * Deletes an item from the starting date and all future dates, 
- * UNLESS the target date has the 'balanced' status set to true.
- */
 function deleteItemFromDateAndFuture(itemId, fromDateKey){
-
     const updates = {};
 
     for(let i=0;i<=state.futureWindowDays;i++){
-
         const dKey = addDays(fromDateKey,i);
-
         const dateData = state.dates[dKey];
 
         if(!dateData) continue;
-
         if(dateData.balanced === true){
             continue;
         }
 
         if(dateData.items && dateData.items[itemId]){
-
             delete dateData.items[itemId];
-
-            updates[
-                `dates/${dKey}/items/${itemId}`
-            ] = null;
+            updates[`dates/${dKey}/items/${itemId}`] = null;
         }
     }
 
@@ -3590,16 +3329,13 @@ function deleteItemFromDateAndFuture(itemId, fromDateKey){
         firebaseDB.ref(REMOTE_DB_PATH).update(updates);
     }
 }
+
 function persistItemChange(itemId){
     const dateKey = state.currentDate;
     const item = state.dates[dateKey]?.items?.[itemId];
     if(!item) return;
 
-    // 🟢 Guard: Block the update if the app state is offline
     if (!isOnline) {
-        
-        // If you have a specific updateRow(itemId) function, call it here. 
-        // Otherwise, renderTable() keeps the UI matching the state.
         if (typeof updateRow === 'function') {
             updateRow(itemId);
         } else {
@@ -3613,10 +3349,8 @@ function persistItemChange(itemId){
     item.closing = Number(item.closing||0);
     item.price   = Number(item.price||0);
 
-    // Propagate closing stock locally/remotely
     propagateClosingToNext(itemId);
 
-    // Write to Firebase safely
     const path = `${REMOTE_DB_PATH}/dates/${dateKey}/items/${itemId}`;
     firebaseDB.ref(path).update(item)
         .catch(err => console.error('Firebase update failed', err));
@@ -3628,7 +3362,6 @@ function persistItemChange(itemId){
     }
 }
 
-
 function saveDateImmediately(dateKey){
     if(!firebaseDB || !isOnline) return;
 
@@ -3638,11 +3371,9 @@ function saveDateImmediately(dateKey){
 } 
 
 function propagateNameAcrossDates(itemId, newName){
-
     const updates = {};
 
     for(let i=0;i<=state.futureWindowDays;i++){
-
         const dKey = addDays(state.currentDate,i);
         const dateData = state.dates[dKey];
 
@@ -3650,12 +3381,8 @@ function propagateNameAcrossDates(itemId, newName){
         if(dateData.balanced === true) continue;
 
         if(dateData.items && dateData.items[itemId]){
-
             dateData.items[itemId].name = newName;
-
-            updates[
-                `dates/${dKey}/items/${itemId}/name`
-            ] = newName;
+            updates[`dates/${dKey}/items/${itemId}/name`] = newName;
         }
     }
 
@@ -3663,32 +3390,21 @@ function propagateNameAcrossDates(itemId, newName){
         firebaseDB.ref(REMOTE_DB_PATH).update(updates);
     }
 }
-/**
- * Propagates price changes forward from the current date.
- */
-function propagatePriceToFuture(itemId,newPrice){
 
+function propagatePriceToFuture(itemId,newPrice){
     const updates = {};
 
     for(let i=0;i<=state.futureWindowDays;i++){
-
         const dKey = addDays(state.currentDate,i);
-
         ensureDateExists(dKey);
-
         const dateData = state.dates[dKey];
 
         if(dateData.balanced === true) continue;
 
         if(dateData.items && dateData.items[itemId]){
-
             const price = Number(newPrice);
-
             dateData.items[itemId].price = price;
-
-            updates[
-                `dates/${dKey}/items/${itemId}/price`
-            ] = price;
+            updates[`dates/${dKey}/items/${itemId}/price`] = price;
         }
     }
 
@@ -3697,21 +3413,14 @@ function propagatePriceToFuture(itemId,newPrice){
     }
 }
 
-/**
- * Propagates closing stock to the immediate next day's opening stock.
- */
 function propagateClosingToNext(itemId){
-
     const thisDate = state.currentDate;
     const nextDate = addDays(thisDate,1);
-
-    const thisItem =
-        state.dates[thisDate]?.items?.[itemId];
+    const thisItem = state.dates[thisDate]?.items?.[itemId];
 
     if(!thisItem) return;
 
     ensureDateExists(nextDate);
-
     const nextDateData = state.dates[nextDate];
 
     if(nextDateData.balanced === true){
@@ -3721,7 +3430,6 @@ function propagateClosingToNext(itemId){
     const updates = {};
 
     if(!nextDateData.items[itemId]){
-
         const copy = makeItem(
             itemId,
             thisItem.name,
@@ -3731,23 +3439,12 @@ function propagateClosingToNext(itemId){
             0,
             thisItem.position || 0
         );
-
         copy.batches = clone(thisItem.batches || []);
-
         nextDateData.items[itemId] = copy;
-
-        updates[
-            `dates/${nextDate}/items/${itemId}`
-        ] = copy;
-
+        updates[`dates/${nextDate}/items/${itemId}`] = copy;
     }else{
-
-        nextDateData.items[itemId].opening =
-            Number(thisItem.closing || 0);
-
-        updates[
-            `dates/${nextDate}/items/${itemId}/opening`
-        ] = Number(thisItem.closing || 0);
+        nextDateData.items[itemId].opening = Number(thisItem.closing || 0);
+        updates[`dates/${nextDate}/items/${itemId}/opening`] = Number(thisItem.closing || 0);
     }
 
     if(firebaseDB && isOnline){
@@ -3755,19 +3452,12 @@ function propagateClosingToNext(itemId){
     }
 }
 
-/**
- * Propagates item creation (add new row) to future dates.
- */
 function propagateItemToFuture(item, fromDateKey){
-
     const updates = {};
 
     for(let i=1;i<=state.futureWindowDays;i++){
-
         const dKey = addDays(fromDateKey,i);
-
         ensureDateExists(dKey);
-
         const dateData = state.dates[dKey];
 
         if(dateData.balanced === true){
@@ -3775,7 +3465,6 @@ function propagateItemToFuture(item, fromDateKey){
         }
 
         if(!dateData.items[item.id]){
-
             const copy = makeItem(
                 item.id,
                 item.name,
@@ -3785,14 +3474,9 @@ function propagateItemToFuture(item, fromDateKey){
                 0,
                 item.position || 0
             );
-
             copy.batches = clone(item.batches || []);
-
             dateData.items[item.id] = copy;
-
-            updates[
-                `dates/${dKey}/items/${item.id}`
-            ] = copy;
+            updates[`dates/${dKey}/items/${item.id}`] = copy;
         }
     }
 
@@ -3813,7 +3497,6 @@ function openOrdersModal(itemId){
     if(!item) return;
     document.getElementById('modalItemName').textContent = item.name;
     document.getElementById('orderQuantity').value = item.orders || 0;
-    // Check for last order cost, falling back to batch cost if necessary
     let lastCost = item.lastOrderCost || 0;
     if (lastCost === 0 && item.batches && item.batches.length > 0) {
         lastCost = item.batches[item.batches.length - 1].cost || 0;
@@ -3833,7 +3516,6 @@ function saveOrders(){
     if(!id) { closeOrdersModal(); return; }
     const item = state.dates[state.currentDate].items[id];
     
-    // Manage batches
     item.batches = item.batches ? item.batches.filter(b => b.date !== state.currentDate) : [];
     if(q > 0) {
         item.batches.push({ qty: q, cost: cost, date: state.currentDate });
@@ -3842,37 +3524,25 @@ function saveOrders(){
     item.orders = item.batches.filter(b => b.date === state.currentDate).reduce((sum, b) => sum + b.qty, 0);
     item.lastOrderCost = cost;
     
-closeOrdersModal();
+    closeOrdersModal();
     persistItemChange(id);
     saveState();
-    
-renderAll()
+    renderAll();
 }
 
 /* ---------- Date Navigation ---------- */
 function prevDate(){
-    // 1. Calculate the new date locally
     state.currentDate = addDays(state.currentDate, -1);
-    
-    // 2. Ensure the data structure exists for the new date
     ensureDateExists(state.currentDate);
-    
-    // 3. Sync to Firebase (updates 'currentDate' and the date's object)
     saveState(); 
-    
-    // Note: renderAll() is handled by the real-time listener in setupDataListener,
-    // but calling it here ensures the UI feels snappy even on slow connections.
     renderAll(); 
 }
 
 function nextDate(){
     const oldDate = state.currentDate;
-    
-    // 1. Calculate the new date locally
     state.currentDate = addDays(state.currentDate, 1);
     ensureDateExists(state.currentDate);
     
-    // 2. Bootstrap data if the next date is empty (Existing Logic)
     if(!state.dates[state.currentDate] || Object.keys(state.dates[state.currentDate].items || {}).length === 0){
         const prev = state.dates[oldDate];
         if(prev){
@@ -3888,13 +3558,9 @@ function nextDate(){
         }
     }
     
-    // 3. Sync to Firebase (Corrected the 'savaState' typo)
     saveState();
-    
-    // 4. Update UI
     renderAll();
 }
-
 
 /* ---------- Balancing Switch ---------- */
 function saveBalancingStatus(){
@@ -3934,9 +3600,7 @@ function saveIncomeFromModal(){
     saveState(); renderExpensesIncomes(); closeIncomeModal();
 }
 
-/* finance selection handlers */
 function handleFinanceSelection(type){
-
     const sel = document.querySelector(`input[name="${type}-radio"]:checked`);
     const btn = document.getElementById(type==='expense' ? 'edit-btn' : 'edit-btn-inc');
     if(sel){
@@ -3944,36 +3608,28 @@ function handleFinanceSelection(type){
         <i class="more1-btn fas fa-check-double" title="Select All" style="margin-right:6px;" onclick="selectAllFinance('${type}')"></i>
         <i class="more1-btn fas fa-times" title="Cancel" onclick="cancelFinanceSelection('${type}')"></i>`;
         btn.onclick = null;
-
     } else {
-
         btn.innerHTML = `<button class="more1-btn" ><i class="fas fa-plus"></i></button>`;
         btn.onclick = type==='expense' ? addExpense : addIncome;
     }
 }
-/**
- * Directly removes an income or expense item following user confirmation.
- */
+
 function deleteFinanceItemDirect(type, id, description) {
-    // 1. Guard check against balanced tracking states
     const currentDateData = state.dates[state.currentDate];
     if (currentDateData && currentDateData.balanced) {
         alert(`Cannot delete entries on a balanced day. Please turn off balancing to make updates.`);
         return;
     }
 
-    // 2. Interactive verification prompt overlay
     const displayDesc = description ? `"${description}"` : 'this unnumbered item';
     if (!window.confirm(`Are you sure you want to delete this ${type}: ${displayDesc}?`)) {
         return;
     }
 
-    // 3. Extract the item target array
     const arrName = type === 'expense' ? 'expenses' : 'incomes';
     const targetArr = state.dates[state.currentDate][arrName] || [];
     const itemIndex = targetArr.findIndex(item => item.id === id);
 
-    // 4. Update the storage arrays and fire sync pipeline
     if (itemIndex >= 0) {
         targetArr.splice(itemIndex, 1);
         saveState();
@@ -3989,20 +3645,16 @@ function selectAllFinance(type){
 function cancelFinanceSelection(type){
     document.querySelectorAll(`input[name="${type}-radio"]`).forEach(r=>r.checked=false);
     handleFinanceSelection(type);
-
 }
 
 /* ---------- Init ---------- */
 window.switchUser = async function(newAccountKey, newUsername) {
-    // 1. Update local storage
     localStorage.setItem('AV_ledger_account_key', newAccountKey);
     localStorage.setItem('AV_ledger_username', newUsername);
     
-    // 2. Reset state
     state.dates = {};
     state.currentDate = null;
     
-    // 3. Re-initialize
     console.log(`Switching user to ${newUsername}. Reloading data from Firebase...`);
     await init();
 }
@@ -4039,7 +3691,6 @@ function sendToWhatsApp() {
         const subtotal = salesQty * price;
         totalSalesVal += subtotal;
 
-        // Fetch cost price from the latest batch or lastOrderCost
         let costPriceDisplay = "";
         if (item.lastOrderCost && item.lastOrderCost > 0) {
             costPriceDisplay = ` (Cost: K${item.lastOrderCost})`;
@@ -4058,7 +3709,6 @@ function sendToWhatsApp() {
         message += `-------------------------------\n`;
     });
 
-    // Totals Calculation
     const netIncome = incomes.reduce((s, i) => s + Number(i.amount || 0), 0);
     const netExpenses = expenses.reduce((s, i) => s + Number(i.amount || 0), 0);
     const finalRevenue = totalSalesVal + netIncome - netExpenses;
@@ -4074,10 +3724,7 @@ function sendToWhatsApp() {
     window.open(`https://wa.me/?text=${encodedMessage}`, '_blank');
 }
 
-
-
 async function init(){
-    // 1. Setup UI event listeners IMMEDIATELY so navigation/buttons work offline right away
     const prevBtn = document.getElementById('prevDateBtn'); if(prevBtn) prevBtn.onclick = prevDate;
     const nextBtn = document.getElementById('nextDateBtn'); if(nextBtn) nextBtn.onclick = nextDate;
     const moreBtn = document.getElementById('ledgerDropdownBtn');
@@ -4089,10 +3736,8 @@ async function init(){
     const searchItemInput = document.getElementById('searchItemInput'); if(searchItemInput) searchItemInput.oninput = searchTable;
     const enterSelectModeBtn = document.getElementById('enterSelectModeBtn'); if(enterSelectModeBtn) enterSelectModeBtn.onclick = enterSelectMode;
 
-    // 2. Load remote state and settings asynchronously without blocking UI interactivity
     await loadState(); 
 
-    // 3. Setup sync status listeners and initial display update once network/Firebase handles resolve
     setupSyncListeners(); 
     updateSyncDisplay(); 
 }
@@ -4103,12 +3748,10 @@ function setupModalCloseOnBackdropClick() {
         modal.addEventListener('click', function(event) {
             if (event.target === modal) {
                 const modalId = modal.id;
-                // Attempt to call a specific close function if it exists (e.g., closeOrdersModal)
                 const closeFunctionName = `close${modalId.charAt(0).toUpperCase() + modalId.slice(1)}`;
                 if (typeof window[closeFunctionName] === 'function') {
                     window[closeFunctionName]();
                 } else {
-                    // Fallback close
                     modal.classList.remove('show');
                 }
             }
@@ -4119,7 +3762,6 @@ function setupModalCloseOnBackdropClick() {
 document.addEventListener('DOMContentLoaded', setupModalCloseOnBackdropClick);
 document.addEventListener('DOMContentLoaded', init);
 renderAll();
-
 </script>
 
 
@@ -6435,22 +6077,25 @@ document.addEventListener('DOMContentLoaded', () => {
 <script>
 (function(){
 
+// Runtime state tracking to prevent overlapping listeners and cache misalignment
+let currentFirebaseRef = null;
+let currentFirebaseCallback = null;
+let currentlyRenderedCacheKey = ""; 
+
 /* =========================================================
-   1. DYNAMIC CACHE KEY (CRITICAL FIX)
+   1. DYNAMIC CACHE KEY
    - Prevents cross-profile & cross-account data leakage
 ========================================================= */
 function getCacheKey(){
     const accountKey = localStorage.getItem("AV_ledger_account_key") || "default_acc";
     const username = localStorage.getItem("AV_ledger_username") || "default_user";
-    // Grabs global path if available, mapping exactly to the active user
-    const dbPath = typeof REMOTE_DB_PATH !== 'undefined' ? REMOTE_DB_PATH : "default_db";
+    const dbPath = localStorage.getItem('AV_remote_db_path') || "default_db"; 
 
     return `AVANTI_LEDGER_LOCAL_MIRROR_${accountKey}_${username}_${dbPath}`;
 }
 
 /* =========================================================
    2. TIMESTAMP GENERATOR
-   - Adds last updated timestamps per individual date
 ========================================================= */
 function stampDate(dateKey) {
     if(typeof state !== 'undefined' && state.dates && state.dates[dateKey]) {
@@ -6460,20 +6105,29 @@ function stampDate(dateKey) {
 
 /* =========================================================
    3. LOAD LOCAL CACHE FIRST
-   - Renders immediately on page load
+   - Flushes memory completely and updates instantly
 ========================================================= */
 function loadLocalMirror(){
     try{
         const CACHE_KEY = getCacheKey();
+        
+        // CRITICAL: Lock the active key immediately to prevent loop races
+        currentlyRenderedCacheKey = CACHE_KEY; 
+        
         const cached = JSON.parse(localStorage.getItem(CACHE_KEY) || "{}");
 
-        // Only apply if it's a valid data structure
         if(cached && typeof cached === "object"){
             if(cached.currentDate && typeof state !== 'undefined'){
                 state.currentDate = cached.currentDate;
             }
-            if(cached.dates && typeof cached.dates === "object" && typeof state !== 'undefined'){
-                state.dates = cached.dates;
+            // Overwrite memory completely to prevent stale data lingering
+            if(typeof state !== 'undefined') {
+                state.dates = (cached.dates && typeof cached.dates === "object") ? cached.dates : {};
+            }
+        } else {
+            // Hard flush memory if no cache exists for this specific path
+            if(typeof state !== 'undefined') {
+                state.dates = {};
             }
         }
 
@@ -6486,7 +6140,7 @@ function loadLocalMirror(){
         console.log("Rendered instantly from isolated local mirror:", CACHE_KEY);
 
     } catch(err){
-        
+        console.error("Mirror read failed", err);
     }
 }
 
@@ -6504,7 +6158,7 @@ function saveLocalMirror(){
             _meta: {
                 accountKey: localStorage.getItem("AV_ledger_account_key"),
                 username: localStorage.getItem("AV_ledger_username"),
-                dbPath: typeof REMOTE_DB_PATH !== 'undefined' ? REMOTE_DB_PATH : "default_db",
+                dbPath: localStorage.getItem('AV_remote_db_path') || "default_db",
                 savedAt: Date.now()
             }
         };
@@ -6517,10 +6171,8 @@ function saveLocalMirror(){
 
 /* =========================================================
    5. INTERCEPTORS: AMENDS, ADDS, & PROPAGATIONS
-   - Non-intrusively wraps main functions to trigger cache & stamps
 ========================================================= */
 function setupInterceptors() {
-    // Intercept standard saves (catches check boxes, adding rows, etc.)
     if (typeof window.saveToDatabase === 'function') {
         const origSaveToDb = window.saveToDatabase;
         window.saveToDatabase = function(data) {
@@ -6530,35 +6182,33 @@ function setupInterceptors() {
         };
     }
 
-    // Intercept persistItemChange (CRUCIAL FIX: catches field edits & amends)
     if (typeof window.persistItemChange === 'function') {
         const origPersistItemChange = window.persistItemChange;
         window.persistItemChange = function(itemId) {
             if(typeof state !== 'undefined' && state.currentDate) stampDate(state.currentDate);
             saveLocalMirror();
             
-            // Let the main code execute its normal update workflow
             origPersistItemChange.apply(this, arguments);
 
-            // Force push the new timestamp to Firebase for conflict resolution
-            if (typeof firebaseDB !== 'undefined' && firebaseDB && isOnline && typeof REMOTE_DB_PATH !== 'undefined' && REMOTE_DB_PATH !== 'avanti_stats_default') {
-                firebaseDB.ref(`${REMOTE_DB_PATH}/dates/${state.currentDate}/_lastUpdated`).set(state.dates[state.currentDate]._lastUpdated);
+            const activePath = localStorage.getItem('AV_remote_db_path') || "default_db";
+            if (typeof firebaseDB !== 'undefined' && firebaseDB && isOnline && activePath !== 'avanti_stats_default') {
+                firebaseDB.ref(`${activePath}/dates/${state.currentDate}/_lastUpdated`).set(state.dates[state.currentDate]._lastUpdated);
             }
         };
     }
 
-    // Intercept closing propagation (handles tomorrow's stock rollover)
     if (typeof window.propagateClosingToNext === 'function') {
         const origPropagate = window.propagateClosingToNext;
         window.propagateClosingToNext = function(itemId) {
             if(typeof state !== 'undefined' && typeof addDays === 'function'){
                 const nextDate = addDays(state.currentDate, 1);
-                stampDate(nextDate); // Stamp tomorrow's date
+                stampDate(nextDate); 
                 saveLocalMirror();
                 
-                if (typeof firebaseDB !== 'undefined' && firebaseDB && isOnline && typeof REMOTE_DB_PATH !== 'undefined' && REMOTE_DB_PATH !== 'avanti_stats_default') {
+                const activePath = localStorage.getItem('AV_remote_db_path') || "default_db";
+                if (typeof firebaseDB !== 'undefined' && firebaseDB && isOnline && activePath !== 'avanti_stats_default') {
                     if(state.dates[nextDate]) {
-                        firebaseDB.ref(`${REMOTE_DB_PATH}/dates/${nextDate}/_lastUpdated`).set(state.dates[nextDate]._lastUpdated);
+                        firebaseDB.ref(`${activePath}/dates/${nextDate}/_lastUpdated`).set(state.dates[nextDate]._lastUpdated);
                     }
                 }
             }
@@ -6568,75 +6218,118 @@ function setupInterceptors() {
 }
 
 /* =========================================================
-   6. FIREBASE SYNC & CONFLICT RESOLUTION
-   - Audits Firebase data and prevents stale overwrites
+   6. FIREBASE SYNC ROUTER & CONFLICT RESOLUTION
 ========================================================= */
+function syncFirebaseForPath(dbPath) {
+    if (typeof firebaseDB === 'undefined' || !firebaseDB || !dbPath || dbPath === 'avanti_stats_default') return;
+
+    // Detach any previous subscription nodes to stop background pollution
+    if (currentFirebaseRef && currentFirebaseCallback) {
+        currentFirebaseRef.off('value', currentFirebaseCallback);
+    }
+
+    currentFirebaseRef = firebaseDB.ref(dbPath).child('dates');
+    currentFirebaseCallback = currentFirebaseRef.on('value', snap => {
+        const remoteDates = snap.val() || {};
+        const CACHE_KEY = getCacheKey();
+        
+        // Security check: Reject updates if the Firebase payload arrives after the path has shifted
+        if (CACHE_KEY !== currentlyRenderedCacheKey) return;
+
+        const cachedMirror = JSON.parse(localStorage.getItem(CACHE_KEY) || "{}");
+        const cachedDates = cachedMirror.dates || {};
+        
+        let conflictResolved = false;
+
+        for (const dateKey in remoteDates) {
+            const rDate = remoteDates[dateKey];
+            const lDate = cachedDates[dateKey];
+
+            const rTime = rDate._lastUpdated || 0;
+            const lTime = lDate ? (lDate._lastUpdated || 0) : 0;
+
+            if (lDate && lTime > rTime) {
+                if(typeof state !== 'undefined') state.dates[dateKey] = lDate;
+                firebaseDB.ref(`${dbPath}/dates/${dateKey}`).update(lDate);
+                conflictResolved = true;
+            } else {
+                cachedDates[dateKey] = rDate;
+            }
+        }
+
+        cachedMirror.dates = cachedDates;
+        if (typeof state !== 'undefined' && state.currentDate) cachedMirror.currentDate = state.currentDate;
+        localStorage.setItem(CACHE_KEY, JSON.stringify(cachedMirror));
+
+        if (conflictResolved && typeof renderAll === 'function') {
+            renderAll();
+        }
+    });
+}
+
 function setupConflictResolution() {
     if (typeof window.setupDataListener === 'function') {
         const origSetupDataListener = window.setupDataListener;
         window.setupDataListener = function() {
-            // Execute main listener first so it can bind its native events
             origSetupDataListener.apply(this, arguments);
-
-            if (typeof firebaseDB === 'undefined' || !firebaseDB || typeof REMOTE_DB_PATH === 'undefined' || REMOTE_DB_PATH === 'avanti_stats_default') return;
-
-            // This 'value' listener runs directly *after* child events, allowing us to inspect 
-            // the final state and revert any stale overrides the main code blindly accepted.
-            firebaseDB.ref(REMOTE_DB_PATH).child('dates').on('value', snap => {
-                const remoteDates = snap.val() || {};
-                const CACHE_KEY = getCacheKey();
-                const cachedMirror = JSON.parse(localStorage.getItem(CACHE_KEY) || "{}");
-                const cachedDates = cachedMirror.dates || {};
-                
-                let conflictResolved = false;
-
-                for (const dateKey in remoteDates) {
-                    const rDate = remoteDates[dateKey];
-                    const lDate = cachedDates[dateKey];
-
-                    const rTime = rDate._lastUpdated || 0;
-                    const lTime = lDate ? (lDate._lastUpdated || 0) : 0;
-
-                    // LOGIC: If Local timestamp is strictly greater, reject Firebase's stale overwrite
-                    if (lDate && lTime > rTime) {
-                        
-                        
-                        // Restore the newer local state in memory
-                        if(typeof state !== 'undefined') state.dates[dateKey] = lDate;
-                        
-                        // Push corrected, newer state up to Firebase
-                        firebaseDB.ref(`${REMOTE_DB_PATH}/dates/${dateKey}`).update(lDate);
-                        conflictResolved = true;
-                    } else {
-                        // Remote is newer or equal, safe to accept into our cache mirror
-                        cachedDates[dateKey] = rDate;
-                    }
-                }
-
-                // Store confirmed latest data back into LocalStorage
-                cachedMirror.dates = cachedDates;
-                if (typeof state !== 'undefined' && state.currentDate) cachedMirror.currentDate = state.currentDate;
-                localStorage.setItem(CACHE_KEY, JSON.stringify(cachedMirror));
-
-                // Only re-render if we actually reverted a conflict to prevent UI flickering
-                if (conflictResolved && typeof renderAll === 'function') {
-                    renderAll();
-                }
-            });
+            const dbPath = localStorage.getItem('AV_remote_db_path') || "default_db";
+            syncFirebaseForPath(dbPath);
         };
     }
 }
 
 /* =========================================================
-   7. INITIALIZATION PIPELINE
+   7. RESILIENT ALIGNMENT ENGINE (THE CONTINUOUS CHECKER)
+   - Eliminates data leaks across tabs and unhooked script changes
+========================================================= */
+function startCacheAlignmentEngine() {
+    // 1. Reactive interceptor for local programmatic mutations
+    const originalSetItem = localStorage.setItem;
+    localStorage.setItem = function(key, value) {
+        originalSetItem.apply(this, arguments);
+        if (['AV_remote_db_path', 'AV_ledger_account_key', 'AV_ledger_username'].includes(key)) {
+            verifyAndForceSwap();
+        }
+    };
+
+    // 2. Cross-tab listener (Fixes path adjustments made in duplicate windows)
+    window.addEventListener('storage', (e) => {
+        if (['AV_remote_db_path', 'AV_ledger_account_key', 'AV_ledger_username'].includes(e.key)) {
+            verifyAndForceSwap();
+        }
+    });
+
+    // 3. Continuous Heartbeat Validation Loop (Runs safely every 150ms)
+    setInterval(verifyAndForceSwap, 150);
+}
+
+function verifyAndForceSwap() {
+    const targetKey = getCacheKey();
+    
+    // If the evaluated real-time path does not align with the screen data, execute an emergency swap
+    if (currentlyRenderedCacheKey !== targetKey) {
+        console.warn("⚠️ Cache misalignment caught! Swapping layout to prevent leak...");
+        
+        // Sync global execution variable if the app references it directly
+        const targetPath = localStorage.getItem('AV_remote_db_path') || "default_db";
+        if (typeof window.REMOTE_DB_PATH !== 'undefined') {
+            window.REMOTE_DB_PATH = targetPath;
+        }
+
+        // Hot swap state layout and spin listeners down/up
+        loadLocalMirror();
+        syncFirebaseForPath(targetPath);
+    }
+}
+
+/* =========================================================
+   8. INITIALIZATION PIPELINE
 ========================================================= */
 document.addEventListener("DOMContentLoaded", () => {
-    // 1. Instantly load local data visually
     loadLocalMirror();
-    
-    // 2. Setup wrappers and conflict resolvers
     setupInterceptors();
     setupConflictResolution();
+    startCacheAlignmentEngine(); // Keeps a constant lock on active user paths
 });
 
 })();
@@ -6960,81 +6653,7 @@ const timer=setInterval(function(){
 
 })();
 </script>
-<script>
-/* ==========================================================================
-   AVANTI LEDGER: REAL-TIME CACHE MONITOR & DOWNLOAD INTERCEPT TRIGGER
-   ========================================================================== */
-(function() {
-    let lastProcessedPath = null;
 
-    function monitorCacheState() {
-        // 1. Resolve current active environmental variables safely
-        const accountKey = localStorage.getItem("AV_ledger_account_key") || "default_acc";
-        const username = localStorage.getItem("AV_ledger_username") || "default_user";
-        const currentDbPath = typeof REMOTE_DB_PATH !== 'undefined' ? REMOTE_DB_PATH : null;
-
-        // Clean up old flag instantly if the application switches to a different remote path
-        if (currentDbPath !== lastProcessedPath) {
-            if (lastProcessedPath && lastProcessedPath !== 'avanti_stats_default') {
-                localStorage.removeItem(`${lastProcessedPath}/downloadIntercept`);
-            }
-            lastProcessedPath = currentDbPath;
-        }
-
-        // Remain dormant if the remote path is missing, unassigned, or set to the fallback default
-        if (!currentDbPath || currentDbPath === "default_db" || currentDbPath === "avanti_stats_default") {
-            return;
-        }
-
-        // 2. Reconstruct the exact Cache Key blueprint from the core engine
-        const cacheKey = `AVANTI_LEDGER_LOCAL_MIRROR_${accountKey}_${username}_${currentDbPath}`;
-        const interceptKey = `${currentDbPath}/downloadIntercept`;
-
-        try {
-            const rawCache = localStorage.getItem(cacheKey);
-            
-            if (rawCache) {
-                const parsedCache = JSON.parse(rawCache);
-                
-                // Determine if cache exists and contains populated active content
-                const hasDates = parsedCache && parsedCache.dates && Object.keys(parsedCache.dates).length > 0;
-                const hasCurrentDate = parsedCache && parsedCache.currentDate;
-
-                if (hasDates || hasCurrentDate) {
-                    // Cache is confirmed present and populated -> Trigger intercept setup
-                    if (localStorage.getItem(interceptKey) !== 'ready') {
-                        localStorage.setItem(interceptKey, 'ready');
-                        console.log(`[Monitor] Cache established for path [${currentDbPath}]. Intercept set to READY. Reloading page...`);
-                        
-                        // Force an immediate page reload so the main database engine mounts the interceptors
-                        window.location.reload();
-                    }
-                } else {
-                    // Cache field exists but its payload structure is empty -> Wipe flag and wait
-                    if (localStorage.getItem(interceptKey)) {
-                        localStorage.removeItem(interceptKey);
-                        console.log(`[Monitor] Cache payload empty for path [${currentDbPath}]. Intercept flag removed.`);
-                    }
-                }
-            } else {
-                // No cache field detected in local storage yet -> Remain dormant, clean up any stray flags
-                if (localStorage.getItem(interceptKey)) {
-                    localStorage.removeItem(interceptKey);
-                    console.log(`[Monitor] Cache missing for path [${currentDbPath}]. Intercept flag removed.`);
-                }
-            }
-        } catch (e) {
-            // Fallback safety sweep if local storage reading or parsing errors occur
-            if (localStorage.getItem(interceptKey)) {
-                localStorage.removeItem(interceptKey);
-            }
-        }
-    }
-
-    // High-frequency 150ms evaluation interval to provide real-time adjustments
-    setInterval(monitorCacheState, 150);
-})();
-</script>
 
 
 </body>
