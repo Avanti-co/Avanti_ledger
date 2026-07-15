@@ -825,7 +825,7 @@ padding-bottom: env(safe-area-inset-bottom, 50px);
     </div>
 
 
-<a href="notes.html">notes</a>
+
 
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 
@@ -2148,11 +2148,10 @@ function resolveDbPath(preferGlobal = false) {
    - Prevents cross-profile & cross-account data leakage
 ========================================================= */
 function getCacheKey(){
-    const accountKey = localStorage.getItem("AV_ledger_account_key") || "default_acc";
-    const username = localStorage.getItem("AV_ledger_username") || "default_user";
+    
     const dbPath = resolveDbPath(false);
 
-    return `AVANTI_LEDGER_LOCAL_MIRROR_${accountKey}_${username}_${dbPath}`;
+    return `AVANTI_LEDGER_LOCAL_MIRROR_${dbPath}`;
 }
 
 /* =========================================================
