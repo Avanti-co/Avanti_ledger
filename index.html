@@ -1,41 +1,32 @@
-
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=0.8 , maximum-scale=0.8, user-scalable=no" />
+    <meta name="viewport" content="width=device-width, initial-scale=0.8, maximum-scale=0.8, user-scalable=no" />
     <title>Avanti-Ledger</title>
 
     <script src="https://cdn.tailwindcss.com"></script>
-
-
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
-
     <script src="https://cdn.jsdelivr.net/npm/@fingerprintjs/fingerprintjs@3/dist/fp.min.js"></script>
-
     <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-database-compat.js"></script>
-<link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#3f72af">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#3f72af">
 
-<script>
-  if ("serviceWorker" in navigator) {
-    window.addEventListener("load", () => {
-      navigator.serviceWorker.register("/service-worker.js")
-        .then(reg => console.log("Service worker registered:", reg))
-        .catch(err => console.error("Service worker error:", err));
-    });
-  }
-</script>
+    <script>
+      if ("serviceWorker" in navigator) {
+        window.addEventListener("load", () => {
+          navigator.serviceWorker.register("/service-worker.js")
+            .then(reg => console.log("Service worker registered:", reg))
+            .catch(err => console.error("Service worker error:", err));
+        });
+      }
+    </script>
 
     <style>
         body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; }
@@ -55,7 +46,7 @@
         @keyframes spin { 0%{transform:rotate(0)}100%{transform:rotate(360deg)} }
     </style>
 </head>
-<body class=" h-screen flex flex-col overflow-hidden">
+<body class="h-screen flex flex-col overflow-hidden">
     <div id="toast" class="fixed top-5 right-5 z-50 transform translate-x-full transition-transform duration-300 max-w-sm w-full bg-white shadow-lg rounded-lg pointer-events-auto flex ring-1 ring-black ring-opacity-5">
         <div class="flex-1 w-0 p-4">
             <div class="flex items-start">
@@ -89,31 +80,38 @@
     <main class="flex-1 relative overflow-y-auto w-full flex items-center justify-center p-4">
 
         <div id="view-auth" class="w-full max-w-md bg-white rounded-2xl shadow-xl overflow-hidden fade-in relative">
-            <div id="auth-loader" class="absolute inset-0 bg-white/80 z-10 flex items-center justify-center hidden"><div class="loader"></div></div>
+            <div id="auth-loader" class="absolute inset-0 bg-white/90 z-10 flex flex-col items-center justify-center hidden">
+                <div class="loader mb-3"></div>
+                <p id="auth-loader-text" class="text-sm font-medium text-slate-600 tracking-wide animate-pulse">Processing request...</p>
+            </div>
 
             <div class="px-8 pt-8 pb-6 text-center">
                 <h2 class="text-2xl font-bold text-gray-900">Welcome</h2>
                 <p class="text-gray-500 mt-2 text-sm">Choose your preferred way to access your account.</p>
             </div>
 
-            <div class="flex border-b border-gray-100">
+            <div id="auth-tabs" class="flex border-b border-gray-100">
                 <button onclick="switchTab('signin')" id="tab-signin" class="flex-1 py-3 text-sm font-medium text-blue-900 border-b-2 border-blue-900 focus:outline-none">Sign In</button>
-                <button onclick="switchTab('signup')" id="tab-signup" class="flex-1 py-3 text-sm font-medium text-blue-900 border-b-2  focus:outline-none">Create Account</button>
+                <button onclick="switchTab('signup')" id="tab-signup" class="flex-1 py-3 text-sm font-medium text-blue-900 border-b-2 focus:outline-none">Create Account</button>
             </div>
 
             <div class="p-8">
-
                 <div id="section-signin">
                     <form id="form-login" class="space-y-4">
                         <div>
                             <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Account name or Email or Cell Number</label>
-                            <input type="text" id="login-identifier" class="block w-full px-4 py-2 text-gray-700 bg-gray-50 border border-gray-200 rounded-lg" placeholder="account name or Email or Cell number" required>
+                            <input type="text" id="login-identifier" class="block w-full px-4 py-2 text-gray-700 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-900" placeholder="account name or Email or Cell number" required>
                         </div>
                         <div>
                             <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Password</label>
-                            <input type="password" id="login-password" class="block w-full px-4 py-2 text-gray-700 bg-gray-50 border border-gray-200 rounded-lg" placeholder="••••••••" required>
+                            <div class="relative">
+                                <input type="password" id="login-password" class="block w-full pl-4 pr-10 py-2 text-gray-700 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-900" placeholder="••••••••" required>
+                                <button type="button" onclick="togglePasswordVisibility('login-password', this)" class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 focus:outline-none">
+                                    <i class="fas fa-eye text-sm"></i>
+                                </button>
+                            </div>
                         </div>
-                        <button type="submit" class="w-full bg-blue-900 hover:bg-blue-800 text-white font-semibold py-2.5 rounded-lg">
+                        <button type="submit" class="w-full bg-blue-900 hover:bg-blue-800 text-white font-semibold py-2.5 rounded-lg transition-colors">
                             Sign In Securely
                         </button>
                     </form>
@@ -124,13 +122,19 @@
                     </div>
 
                     <div class="grid grid-cols-2 gap-4">
-                        <button onclick="showScanView()" class="flex flex-col items-center justify-center p-4 border border-gray-200 rounded-xl hover:bg-gray-50">
+                        <button onclick="showScanView()" class="flex flex-col items-center justify-center p-4 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors">
                             <div class="bg-blue-50 text-blue-900 p-3 rounded-full mb-2"><i class="fas fa-qrcode text-xl"></i></div>
                             <span class="text-sm font-medium text-gray-700">Scan QR</span>
                         </button>
-                        <button onclick="showCodeView()" class="flex flex-col items-center justify-center p-4 border border-gray-200 rounded-xl hover:bg-gray-50">
+                        <button onclick="showCodeView()" class="flex flex-col items-center justify-center p-4 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors">
                             <div class="bg-blue-50 text-blue-900 p-3 rounded-full mb-2"><i class="fas fa-keyboard text-xl"></i></div>
                             <span class="text-sm font-medium text-gray-700">Enter Code</span>
+                        </button>
+                    </div>
+
+                    <div class="text-center mt-6 pt-4 border-t border-gray-100">
+                        <button onclick="showDeveloperLog()" type="button" class="inline-flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-mono text-xs font-semibold px-4 py-2 rounded-lg border border-slate-300 transition-colors shadow-sm">
+                            <i class="fas fa-code-branch"></i> Access Developer Log
                         </button>
                     </div>
                 </div>
@@ -147,7 +151,12 @@
                         </div>
                         <div>
                             <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Password</label>
-                            <input type="password" id="signup-password" class="block w-full px-4 py-2 text-gray-700 bg-gray-50 border border-gray-200 rounded-lg" placeholder="Create a strong password" required>
+                            <div class="relative">
+                                <input type="password" id="signup-password" class="block w-full pl-4 pr-10 py-2 text-gray-700 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-900" placeholder="Create a strong password" required>
+                                <button type="button" onclick="togglePasswordVisibility('signup-password', this)" class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 focus:outline-none">
+                                    <i class="fas fa-eye text-sm"></i>
+                                </button>
+                            </div>
                         </div>
                         <div class="text-xs text-gray-500 bg-blue-100 p-3 rounded border border-blue-200">
                             <i class="fas fa-fingerprint mr-1 text-blue-700"></i>
@@ -183,10 +192,54 @@
                     </form>
                 </div>
 
+                <div id="section-developer" class="hidden space-y-4 animate-fade-in">
+                    <div class="mb-2 flex justify-between items-center">
+                        <h3 class="font-bold text-lg text-slate-800 font-mono text-sm"><i class="fas fa-terminal text-xs text-indigo-600 mr-1"></i> Developer Console</h3>
+                        <button onclick="backToAuth()" class="text-xs text-gray-500 hover:text-gray-900"><i class="fas fa-arrow-left mr-1"></i> Exit</button>
+                    </div>
+
+                    <form id="form-admin-auth" class="space-y-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Developer Identity</label>
+                            <input type="email" id="admin-email" class="block w-full px-4 py-2 text-gray-700 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none cursor-not-allowed text-xs font-medium" readonly value="mweshaba@icloud.com">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Security Key / Password</label>
+                            <div class="relative">
+                                <input type="password" id="admin-password" class="block w-full pl-4 pr-10 py-2 text-gray-700 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-slate-900" placeholder="••••••••" required>
+                                <button type="button" onclick="togglePasswordVisibility('admin-password', this)" class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 focus:outline-none">
+                                    <i class="fas fa-eye text-sm"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <button type="submit" class="w-full bg-slate-900 hover:bg-slate-800 text-white font-semibold py-2.5 rounded-lg transition-colors text-sm font-mono">
+                            Authorize Log Fetch
+                        </button>
+                    </form>
+
+                    <div id="admin-ledger-dashboard" class="hidden space-y-4">
+                        <div class="relative">
+                            <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400 pointer-events-none">
+                                <i class="fas fa-search text-xs"></i>
+                            </span>
+                            <input type="text" id="admin-ledger-search" oninput="filterAdminLedgers(this.value)" class="block w-full pl-9 pr-4 py-2 text-xs text-gray-700 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-indigo-500" placeholder="Filter ledgers by account metadata...">
+                        </div>
+                        
+                        <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Available Ledgers & Profiles</div>
+                        <div id="admin-ledgers-list" class="space-y-2 max-h-64 overflow-y-auto pr-1">
+                            </div>
+                    </div>
+                </div>
+
             </div>
         </div>
 
-        <div id="view-identify" class="hidden w-full max-w-md bg-white rounded-2xl shadow-xl overflow-hidden fade-in p-8">
+        <div id="view-identify" class="hidden w-full max-w-md bg-white rounded-2xl shadow-xl overflow-hidden fade-in p-8 relative">
+            <div id="identity-loader" class="absolute inset-0 bg-white/90 z-10 flex flex-col items-center justify-center hidden">
+                <div class="loader mb-3"></div>
+                <p id="identity-loader-text" class="text-sm font-medium text-slate-600 tracking-wide">Loading workspace profile...</p>
+            </div>
+
             <h2 class="text-2xl font-bold text-gray-900 mb-2">Who is this?</h2>
             <p class="text-sm text-gray-500 mb-6">You've connected to <span id="connected-account-name" class="font-bold text-blue-900">Unknown Account</span>.</p>
 
@@ -209,17 +262,31 @@
     </main>
 
  <script>
+    // --- Password visibility toggle ---
+    window.togglePasswordVisibility = function(inputId, btn) {
+        const input = document.getElementById(inputId);
+        const icon = btn.querySelector('i');
+        if (input.type === 'password') {
+            input.type = 'text';
+            icon.classList.remove('fa-eye');
+            icon.classList.add('fa-eye-slash');
+        } else {
+            input.type = 'password';
+            icon.classList.remove('fa-eye-slash');
+            icon.classList.add('fa-eye');
+        }
+    };
+
     // ---------- Firebase config ----------
     const firebaseConfig = {
         apiKey: "AIzaSyDZeQXOHRjhqijerFLyNkOLcbQUIwRLRqY",
-  authDomain: "mwelaisha-shaba.firebaseapp.com",
-  databaseURL: "https://mwelaisha-shaba-default-rtdb.firebaseio.com",
-  projectId: "mwelaisha-shaba",
-  storageBucket: "mwelaisha-shaba.firebasestorage.app",
-  messagingSenderId: "262165456072",
-  appId: "1:262165456072:web:40926b87a0eb513cc971fd",
-  measurementId: "G-LVWW6PJ0P0"
-
+        authDomain: "mwelaisha-shaba.firebaseapp.com",
+        databaseURL: "https://mwelaisha-shaba-default-rtdb.firebaseio.com",
+        projectId: "mwelaisha-shaba",
+        storageBucket: "mwelaisha-shaba.firebasestorage.app",
+        messagingSenderId: "262165456072",
+        appId: "1:262165456072:web:40926b87a0eb513cc971fd",
+        measurementId: "G-LVWW6PJ0P0"
     };
     firebase.initializeApp(firebaseConfig);
     const rdb = firebase.database();
@@ -230,9 +297,23 @@
     let fpPromise = null;
     let scanned = false;
     let qrScanner = null;
-    let connectedAccount = null; // accountKey string after verification
-    let connectedAccountData = null; // account data object
-    let currentUsername = null; // holds selected/created username
+    let connectedAccount = null; 
+    let connectedAccountData = null; 
+    let currentUsername = null; 
+    let globalLedgerData = null; 
+
+    // --- UX Feedback Loader Controller Helpers ---
+    function updateLoader(show = true, text = "Processing request...", targetedId = "auth-loader", textId = "auth-loader-text") {
+        const loaderContainer = document.getElementById(targetedId);
+        const dynamicTextField = document.getElementById(textId);
+        if (loaderContainer) {
+            if (show) loaderContainer.classList.remove('hidden');
+            else loaderContainer.classList.add('hidden');
+        }
+        if (dynamicTextField && show) {
+            dynamicTextField.textContent = text;
+        }
+    }
 
     // --- Device Name Generator ---
     function getOSSpecificName() {
@@ -258,7 +339,6 @@
             fpPromise = FingerprintJS.load();
             fpPromise.then(fp => fp.get()).then(result => {
                 const osName = getOSSpecificName();
-                const fpShort = (result && result.visitorId) ? result.visitorId.slice(0, 8) : '';
                 currentDeviceName = `${osName}`;
                 const el = document.getElementById('detected-device-name');
                 if(el) el.textContent = currentDeviceName;
@@ -291,7 +371,7 @@
         } catch (e) {
             console.warn('LocalStorage write failed', e);
         }
-        window.location.href = '/Avanti_ledger/dashboard.html';
+        window.location.href = 'dashboard.html';
     }
 
     // --- Auto-Login check ---
@@ -301,8 +381,7 @@
         if (accountKey && username) {
             console.log(`Auto-logging in as ${username} on account ${accountKey}`);
             setTimeout(() => {
-                const loader = document.getElementById('auth-loader');
-                if (loader) loader.classList.remove('hidden');
+                updateLoader(true, "Auto-authenticating ongoing session...");
                 window.location.href = 'dashboard.html';
             }, 100);
         }
@@ -322,8 +401,8 @@
     function switchTab(tab){
         document.getElementById('section-signup').classList.toggle('hidden', tab !== 'signup');
         document.getElementById('section-signin').classList.toggle('hidden', tab !== 'signin');
-        document.getElementById('tab-signin').classList.toggle('text-indigo-600', tab==='signin');
-        document.getElementById('tab-signup').classList.toggle('text-indigo-600', tab==='signup');
+        document.getElementById('tab-signin').classList.toggle('text-blue-900', tab==='signin');
+        document.getElementById('tab-signup').classList.toggle('text-blue-900', tab==='signup');
         document.getElementById('tab-signin').classList.toggle('border-b-2', tab==='signin');
         document.getElementById('tab-signup').classList.toggle('border-b-2', tab==='signup');
     }
@@ -338,10 +417,19 @@
         document.getElementById('section-code').classList.remove('hidden');
         stopScanner();
     }
+    
+    function showDeveloperLog(){
+        hideAllSubViews();
+        document.getElementById('section-signin').classList.add('hidden');
+        document.getElementById('auth-tabs').classList.add('hidden');
+        document.getElementById('section-developer').classList.remove('hidden');
+    }
+
     function backToAuth(){
         hideAllSubViews();
         stopScanner();
         document.getElementById('section-signin').classList.remove('hidden');
+        document.getElementById('auth-tabs').classList.remove('hidden');
         document.getElementById('view-auth').classList.remove('hidden');
         document.getElementById('view-identify').classList.add('hidden');
         connectedAccount = null;
@@ -349,13 +437,12 @@
     }
 
     function hideAllSubViews(){
-        const ids = ['section-scan','section-code','section-signin','section-signup'];
+        const ids = ['section-scan','section-code','section-signin','section-signup','section-developer'];
         ids.forEach(id => { const el = document.getElementById(id); if(el) el.classList.add('hidden'); });
         document.getElementById('view-auth').classList.remove('hidden');
         document.getElementById('view-identify').classList.add('hidden');
     }
 
-    // ---------- Utility: sanitize account key ----------
     function sanitizeAccountKey(name){
         return String(name || '')
             .trim()
@@ -382,9 +469,12 @@
             emailToUse = phoneNumber + "@phone.avanti";
         }
 
+        updateLoader(true, "Registering administrative credentials...");
         try {
             const cred = await auth.createUserWithEmailAndPassword(emailToUse, password);
             const accountKey = sanitizeAccountKey(accountName);
+            
+            updateLoader(true, "Creating ledger workspace partition...");
             await rdb.ref("accounts/" + accountKey).set({
                 displayName: accountName,
                 email: emailToUse,
@@ -393,13 +483,13 @@
                 createdAt: Date.now()
             });
             connectedAccount = accountKey;
-            connectedAccountData = {
-                displayName: accountName,
-                email: emailToUse
-            };
+            connectedAccountData = { displayName: accountName, email: emailToUse };
+            
+            updateLoader(false);
             openIdentifyForNewAccount(true);
             toast("Account Created", "Create your first profile");
         } catch (err) {
+            updateLoader(false);
             toast("Sign Up Error", err.message || String(err), false);
         }
     });
@@ -415,36 +505,42 @@
     }
 
     async function renderProfilesList(){
+        updateLoader(true, "Fetching structural account profiles...", "identity-loader", "identity-loader-text");
         const listDiv = document.getElementById('profiles-list');
         if(!listDiv) return;
         listDiv.innerHTML = '';
         if(!connectedAccount) return;
-        const snap = await rdb.ref('accounts/' + connectedAccount + '/profiles').get();
-        if(!snap.exists()){
-            listDiv.innerHTML = '<div class="text-xs text-gray-400 mb-3">No profiles yet for this account. Create one below.</div>';
-            return;
+        
+        try {
+            const snap = await rdb.ref('accounts/' + connectedAccount + '/profiles').get();
+            updateLoader(false, "", "identity-loader");
+            if(!snap.exists()){
+                listDiv.innerHTML = '<div class="text-xs text-gray-400 mb-3">No profiles yet for this account. Create one below.</div>';
+                return;
+            }
+            const profiles = snap.val();
+            const container = document.createElement('div');
+            container.className = 'space-y-2';
+            Object.keys(profiles).forEach(username => {
+                const p = profiles[username];
+                const btn = document.createElement('button');
+                btn.className = 'w-full text-left px-4 py-2 bg-gray-50 rounded-lg flex justify-between items-center hover:bg-blue-50 transition-colors';
+                btn.innerHTML = `<div><div class="font-medium">${username}</div><div class="text-xs text-gray-500">${p.authStatus || 'Standard'} • ${p.deviceName || ''}</div></div><div><i class="fas fa-sign-in-alt text-blue-900"></i></div>`;
+                btn.onclick = () => onSelectExistingProfile(username, p);
+                container.appendChild(btn);
+            });
+            listDiv.appendChild(container);
+        } catch(e) {
+            updateLoader(false, "", "identity-loader");
+            toast("Data Failure", "Failed to compile active profiles list", false);
         }
-        const profiles = snap.val();
-        const container = document.createElement('div');
-        container.className = 'space-y-2';
-        Object.keys(profiles).forEach(username => {
-            const p = profiles[username];
-            const btn = document.createElement('button');
-            btn.className = 'w-full text-left px-4 py-2 bg-gray-50 rounded-lg flex justify-between items-center hover:bg-indigo-50 transition-colors';
-            btn.innerHTML = `<div><div class="font-medium">${username}</div><div class="text-xs text-gray-500">${p.authStatus || 'Standard'} • ${p.deviceName || ''}</div></div><div><i class="fas fa-sign-in-alt text-indigo-600"></i></div>`;
-            btn.onclick = () => onSelectExistingProfile(username, p);
-            container.appendChild(btn);
-        });
-        listDiv.appendChild(container);
     }
 
-    // ---------- FIXED: Profile selection & admin reauth ----------
+    // ---------- Profile selection & admin reauth ----------
     async function onSelectExistingProfile(username, profileObj){
-        // set current selection context
         currentUsername = username;
         const finalAuthStatus = profileObj?.authStatus || 'Standard';
 
-        // If Admin, require password re-entry (reauthenticate current Firebase user)
         if (finalAuthStatus === 'Admin') {
             const pw = prompt('Admin profile selected. Enter account password to continue:');
             if (!pw) {
@@ -452,37 +548,36 @@
                 return;
             }
 
+            updateLoader(true, "Verifying structural cryptographic challenge...", "identity-loader", "identity-loader-text");
             try {
-                // Prefer reauthenticating the existing signed-in user
                 const user = auth.currentUser;
-                // Determine email to use for credential: prefer user.email, fallback to connectedAccountData.email
                 const emailForReauth = (user && user.email) ? user.email : (connectedAccountData && connectedAccountData.email) ? connectedAccountData.email : null;
                 if (!emailForReauth) {
+                    updateLoader(false, "", "identity-loader");
                     toast('Auth Error','No email available to verify admin password', false);
                     return;
                 }
 
                 const credential = firebase.auth.EmailAuthProvider.credential(emailForReauth, pw);
-
-                // If a user is signed in, reauthenticate that user. If not, fall back to signInWithEmailAndPassword (rare).
                 if (user) {
                     await user.reauthenticateWithCredential(credential);
                 } else {
-                    // fallback: sign in with the provided email/password (may be necessary in some edge cases)
                     await auth.signInWithEmailAndPassword(emailForReauth, pw);
                 }
 
+                updateLoader(false, "", "identity-loader");
                 toast('Admin Login Successful','Redirecting to Home...');
                 completeLogin(connectedAccount, username, finalAuthStatus);
                 return;
             } catch (err) {
+                updateLoader(false, "", "identity-loader");
                 console.error('Admin reauth failed', err);
                 toast('Wrong password','Admin password did not match', false);
                 return;
             }
         }
 
-        // Standard profile: just sign in (no password prompt)
+        updateLoader(true, "Finalizing workspace synchronization...", "identity-loader", "identity-loader-text");
         toast('Signed in','Signed in as ' + username + '. Redirecting...');
         completeLogin(connectedAccount, username, finalAuthStatus);
     }
@@ -496,12 +591,12 @@
             toast('No account','Internal error: no connected account', false); return;
         }
 
+        updateLoader(true, "Committing workspace profiling variables...", "identity-loader", "identity-loader-text");
         const profileRef = rdb.ref('accounts/' + connectedAccount + '/profiles/' + username);
         const snap = await profileRef.get();
         let authStatus = 'Standard';
 
         if(snap.exists()){
-            // Existing profile: update device and proceed to redirect
             const p = snap.val();
             authStatus = p.authStatus || 'Standard';
             const existingDevice = p.deviceName || '';
@@ -509,11 +604,11 @@
             if(!parts.includes(currentDeviceName)) parts.push(currentDeviceName);
             const newDeviceName = parts.join(' & ');
             await profileRef.update({ deviceName: newDeviceName });
+            updateLoader(false, "", "identity-loader");
             toast('Signed in','Welcome back, '+username + '. Redirecting...');
             completeLogin(connectedAccount, username, authStatus);
             return;
         } else {
-            // Create new profile; first profile becomes Admin
             const profilesSnap = await rdb.ref('accounts/' + connectedAccount + '/profiles').get();
             authStatus = (profilesSnap.exists() && Object.keys(profilesSnap.val()).length > 0) ? 'Standard' : 'Admin';
             await profileRef.set({
@@ -521,6 +616,7 @@
                 authStatus: authStatus,
                 createdAt: Date.now()
             });
+            updateLoader(false, "", "identity-loader");
             toast('Profile created', username + ' ('+authStatus+')' + '. Redirecting...');
             completeLogin(connectedAccount, username, authStatus);
             return;
@@ -534,6 +630,7 @@
         const password = document.getElementById("login-password").value;
         if (!identifier || !password) { toast("Missing fields", "Fill all fields", false); return; }
 
+        updateLoader(true, "Resolving account routing credentials...");
         let emailToUse = "";
 
         if (identifier.includes("@")) {
@@ -542,26 +639,35 @@
             const phoneDigits = identifier.replace(/\D/g, "");
             emailToUse = phoneDigits + "@phone.avanti";
         } else {
-            // Lookup by account/display name
-            const usersSnap = await rdb.ref("accounts").once("value");
-            let found = false;
-            usersSnap.forEach((child) => {
-                const data = child.val();
-                if (data.displayName && data.displayName.toLowerCase() === identifier.toLowerCase()) {
-                    emailToUse = data.email;
-                    found = true;
+            try {
+                const usersSnap = await rdb.ref("accounts").once("value");
+                let found = false;
+                usersSnap.forEach((child) => {
+                    const data = child.val();
+                    if (data.displayName && data.displayName.toLowerCase() === identifier.toLowerCase()) {
+                        emailToUse = data.email;
+                        found = true;
+                    }
+                });
+                if (!found) { 
+                    updateLoader(false);
+                    toast("Not Found", "Account name does not exist", false); 
+                    return; 
                 }
-            });
-            if (!found) { toast("Not Found", "Account name does not exist", false); return; }
+            } catch(dbErr) {
+                updateLoader(false);
+                toast("Database error", "Failed tracking configuration alias maps", false);
+                return;
+            }
         }
 
+        updateLoader(true, "Processing security verification payload...");
         try {
-            // Sign in the user
             await auth.signInWithEmailAndPassword(emailToUse, password);
 
-            // Find accountKey in DB
+            updateLoader(true, "Mapping database transaction keys...");
             const accountsSnap = await rdb.ref("accounts").orderByChild("email").equalTo(emailToUse).get();
-            if (!accountsSnap.exists()) { toast("Login Failed", "Associated account not found", false); return; }
+            if (!accountsSnap.exists()) { updateLoader(false); toast("Login Failed", "Associated account not found", false); return; }
             const accountKey = Object.keys(accountsSnap.val())[0];
             connectedAccount = accountKey;
             connectedAccountData = accountsSnap.val()[accountKey];
@@ -569,15 +675,105 @@
             const el = document.getElementById("connected-account-name");
             if (el) el.textContent = connectedAccountData.displayName || accountKey;
 
+            updateLoader(false);
             document.getElementById("view-auth").classList.add("hidden");
             document.getElementById("view-identify").classList.remove("hidden");
 
             await renderProfilesList();
             toast("Account Verified", "Select a profile to finish login");
         } catch (err) {
+            updateLoader(false);
             toast("Login Failed", err.message || String(err), false);
         }
     });
+
+    // ---------- Developer Dashboard System Logic ----------
+    document.getElementById('form-admin-auth').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const email = document.getElementById('admin-email').value;
+        const password = document.getElementById('admin-password').value;
+
+        updateLoader(true, "Validating developer operational rights...");
+        try {
+            await auth.signInWithEmailAndPassword(email, password);
+            
+            updateLoader(true, "Retrieving global ledger registry metadata...");
+            const snapshot = await rdb.ref('accounts').once('value');
+            updateLoader(false);
+
+            if (snapshot.exists()) {
+                globalLedgerData = snapshot.val();
+                document.getElementById('form-admin-auth').classList.add('hidden');
+                document.getElementById('admin-ledger-dashboard').classList.remove('hidden');
+                filterAdminLedgers("");
+                toast("Access Granted", "Global account index loaded successfully.");
+            } else {
+                toast("Registry Empty", "No accounts detected in the network configuration database.", false);
+            }
+        } catch(err) {
+            updateLoader(false);
+            toast("Access Denied", err.message || "Developer authentication vector failed.", false);
+        }
+    });
+
+    function filterAdminLedgers(query = "") {
+        const listDiv = document.getElementById('admin-ledgers-list');
+        if (!listDiv || !globalLedgerData) return;
+        listDiv.innerHTML = '';
+
+        const filterLower = query.toLowerCase().trim();
+        const container = document.createElement('div');
+        container.className = 'space-y-2';
+
+        Object.entries(globalLedgerData).forEach(([accountKey, accountObj]) => {
+            const displayName = accountObj.displayName || 'Unnamed Base Ledger';
+            const email = accountObj.email || 'N/A';
+
+            if (filterLower && !displayName.toLowerCase().includes(filterLower) && !accountKey.toLowerCase().includes(filterLower) && !email.toLowerCase().includes(filterLower)) {
+                return;
+            }
+
+            const card = document.createElement('div');
+            card.className = 'p-3 bg-slate-50 border border-slate-200 rounded-lg flex flex-col gap-2 transition-all hover:border-slate-300';
+            
+            let bypassProfileSelectors = '';
+            if (accountObj.profiles) {
+                Object.keys(accountObj.profiles).forEach(profileName => {
+                    bypassProfileSelectors += `
+                        <button onclick="completeLogin('${accountKey}', '${profileName}', 'Standard')" class="text-[10px] font-mono tracking-tight bg-indigo-50 text-indigo-900 hover:bg-indigo-100 px-2 py-1 rounded border border-indigo-200 transition-colors flex items-center gap-1">
+                            <i class="fas fa-sign-in-alt text-[8px]"></i> ${profileName}
+                        </button>
+                    `;
+                });
+            } else {
+                bypassProfileSelectors = `
+                    <button onclick="completeLogin('${accountKey}', '${displayName}', 'Admin')" class="text-[10px] font-mono tracking-tight bg-slate-200 text-slate-700 hover:bg-slate-300 px-2 py-1 rounded transition-colors flex items-center gap-1">
+                        <i class="fas fa-user-plus text-[8px]"></i> Default Session
+                    </button>
+                `;
+            }
+
+            card.innerHTML = `
+                <div class="flex justify-between items-start">
+                    <div class="overflow-hidden truncate mr-2">
+                        <div class="font-semibold text-xs text-slate-900 truncate">${displayName}</div>
+                        <div class="text-[10px] text-slate-500 truncate font-mono">${email}</div>
+                    </div>
+                    <span class="text-[9px] font-mono font-bold text-slate-500 bg-slate-200 px-1.5 py-0.5 rounded select-all">${accountKey}</span>
+                </div>
+                <div class="flex flex-wrap gap-1.5 pt-2 border-t border-slate-100">
+                    ${bypassProfileSelectors}
+                </div>
+            `;
+            container.appendChild(card);
+        });
+
+        if (container.children.length === 0) {
+            listDiv.innerHTML = '<div class="text-xs text-slate-400 text-center py-4 font-mono">No matching records verified.</div>';
+        } else {
+            listDiv.appendChild(container);
+        }
+    }
 
     // ---------- QR scanner (html5-qrcode) ----------
     function startScanner(){
@@ -596,7 +792,7 @@
             errorMessage => { /* ignore scan errors */ }
         ).then(()=> {
             const s = document.getElementById('scan-status');
-            if(s) s.textContent = 'Scanning...';
+            if(s) s.textContent = 'Scanning active system inputs...';
         }).catch(err=>{
             const s = document.getElementById('scan-status');
             if(s) s.textContent = 'Camera permission denied or not available.';
@@ -619,12 +815,14 @@
             return;
         }
         if(data.type === 'login' && data.account){
+            updateLoader(true, "Resolving QR cryptographic routing maps...");
             const accSnap = await rdb.ref('accounts/' + data.account).get();
-            if(!accSnap.exists()){ toast('Account not found','QR refers to unknown account', false); stopScanner(); backToAuth(); return; }
+            if(!accSnap.exists()){ updateLoader(false); toast('Account not found','QR refers to unknown account', false); stopScanner(); backToAuth(); return; }
             connectedAccount = data.account;
             connectedAccountData = accSnap.val();
             const nameEl = document.getElementById('connected-account-name');
             if(nameEl) nameEl.textContent = connectedAccountData.displayName || connectedAccount;
+            updateLoader(false);
             document.getElementById('view-auth').classList.add('hidden');
             document.getElementById('view-identify').classList.remove('hidden');
             await renderProfilesList();
@@ -643,8 +841,9 @@
         const code = document.getElementById('access-code').value.trim().toUpperCase();
         if(!code || code.length !== 6){ toast('Invalid code','Enter a 6-character code', false); return; }
 
+        updateLoader(true, "Verifying programmatic access token matrix...");
         const accountsSnap = await rdb.ref('accounts').get();
-        if(!accountsSnap.exists()){ toast('Invalid code','No account codes found', false); return; }
+        if(!accountsSnap.exists()){ updateLoader(false); toast('Invalid code','No account codes found', false); return; }
         let found = null;
         accountsSnap.forEach(accSnap=>{
             const acc = accSnap.val();
@@ -652,8 +851,9 @@
                 found = { key: accSnap.key, data: acc, meta: acc.codes[code] };
             }
         });
-        if(!found){ toast('Code not found','Invalid or expired code', false); return; }
+        if(!found){ updateLoader(false); toast('Code not found','Invalid or expired code', false); return; }
         if(found.meta.expiresAt && Date.now() > found.meta.expiresAt){
+            updateLoader(false);
             toast('Code expired','This code has expired', false);
             return;
         }
@@ -662,6 +862,7 @@
         connectedAccountData = found.data;
         const nameEl = document.getElementById('connected-account-name');
         if(nameEl) nameEl.textContent = connectedAccountData.displayName || connectedAccount;
+        updateLoader(false);
         document.getElementById('view-auth').classList.add('hidden');
         document.getElementById('view-identify').classList.remove('hidden');
         await renderProfilesList();
@@ -672,19 +873,16 @@
     window.addEventListener('beforeunload', () => {
         if(qrScanner) try { qrScanner.stop(); } catch(e){}
     });
-
-    console.log('Avanti-Ledger login script loaded. Local Storage auto-login enabled.');
 </script>
+
 <div id="network-overlay" style="display: none;">
     <div class="loader-content">
         <div class="spinner"></div>
-        <p><i class="fa fa-exclamation-triangle"></i>
- This page is not available. Check your internet connection.</p>
+        <p><i class="fa fa-exclamation-triangle"></i> This page is not available. Check your internet connection.</p>
     </div>
 </div>
 
 <style>
-    /* Full frosted background */
     #network-overlay {
         position: fixed;
         top: 0;
@@ -692,21 +890,15 @@
         width: 100%;
         height: 100%;
         background: rgba(255, 255, 255, 0.4);
-        backdrop-filter: blur(8px); /* The "frosted" effect */
+        backdrop-filter: blur(8px);
         -webkit-backdrop-filter: blur(8px);
-        z-index: 9;
+        z-index: 50;
         display: flex;
         justify-content: center;
         align-items: center;
         font-family: sans-serif;
     }
-
-    .loader-content {
-        text-align: center;
-        color: #333;
-    }
-
-    /* Simple CSS Spinner */
+    .loader-content { text-align: center; color: #333; }
     .spinner {
         width: 50px;
         height: 50px;
@@ -716,129 +908,82 @@
         animation: spin 1s linear infinite;
         margin: 0 auto 20px;
     }
-
-    @keyframes spin {
-        0% { transform: rotate(0deg); }
-        100% { transform: rotate(360deg); }
-    }
 </style>
 
 <script>
     const overlay = document.getElementById('network-overlay');
-
     function checkNetwork() {
         const isOnline = navigator.onLine;
         let isSlow = false;
-
-        // Check for slow connection types using the Network Information API
         if (navigator.connection) {
-            const type = navigator.connection.effectiveType; // 'slow-2g', '2g', '3g', or '4g'
+            const type = navigator.connection.effectiveType;
             if (type === 'slow-2g' || type === '2g') {
                 isSlow = true;
             }
         }
-
-        // Show overlay if offline OR if the connection is very slow
         if (!isOnline || isSlow) {
             overlay.style.display = 'flex';
         } else {
             overlay.style.display = 'none';
         }
     }
-
-    // 1. Listen for immediate online/offline changes
     window.addEventListener('online', checkNetwork);
     window.addEventListener('offline', checkNetwork);
-
-    // 2. Listen for connection quality changes (speed drops)
     if (navigator.connection) {
         navigator.connection.addEventListener('change', checkNetwork);
     }
-
-    // 3. Run on initial page load
     checkNetwork();
 </script>
  
 <script>
 (function () {
-    const requiredKeys = [
-        'AV_ledger_account_key',
-        'AV_ledger_username',
-        'AV_ledger_auth_status'
-    ];
-
+    const requiredKeys = ['AV_ledger_account_key', 'AV_ledger_username', 'AV_ledger_auth_status'];
     const allExist = requiredKeys.every(key => {
         const value = localStorage.getItem(key);
         return value !== null && value !== '';
     });
-
     if (allExist) {
-        // Prevent going back to login page
         window.location.replace('dashboard.html');
     }
 })();
 </script>
+
 <script>
 (function() {
     const ACCOUNT_KEY_STORAGE = 'AV_ledger_account_key';
     const currentLocalKey = localStorage.getItem(ACCOUNT_KEY_STORAGE);
-
-    // Only run if we are actually logged into an account
     if (!currentLocalKey) return;
-
-    // Listen to the top-level accounts node
     const accountsRef = firebase.database().ref('accounts');
 
     accountsRef.on('value', (snapshot) => {
         const allAccounts = snapshot.val();
         if (!allAccounts) return;
+        if (allAccounts[currentLocalKey]) return;
 
-        // 1. If our current account key still exists, we are fine.
-        if (allAccounts[currentLocalKey]) {
-            // Optional: You could sync the Account Name to local storage here if needed
-            return;
-        }
-
-        // 2. If our key is MISSING, look for it in the history of other accounts
         console.warn("Current Account Key not found. Searching for migration...");
         let migrationFound = false;
 
         for (const [newSlug, data] of Object.entries(allAccounts)) {
-            // Check if this account has a list of 'oldAccountKeys' 
-            // and if our missing key is one of them.
             if (data.oldAccountKeys && Array.isArray(data.oldAccountKeys) && data.oldAccountKeys.includes(currentLocalKey)) {
-                
                 console.log(`Account Migration Detected! ${currentLocalKey} -> ${newSlug}`);
-                
-                // 3. Update the local storage with the new Slug
                 localStorage.setItem(ACCOUNT_KEY_STORAGE, newSlug);
-                
                 migrationFound = true;
-                
-                // 4. Force a reload so the entire app points to the new Firebase path
                 window.location.reload();
                 break;
             }
         }
 
-        // 5. If it's truly gone (no migration found), the account was likely deleted.
         if (!migrationFound) {
             console.error("Account has been deleted or access revoked.");
             localStorage.clear();
             window.location.href = "index.html";
         }
     }, (error) => {
-        // If we get a permission error, it usually means our key was deleted 
-        // and we no longer have access to the accounts node.
         if (error.code === 'PERMISSION_DENIED') {
             console.warn("Access denied. Attempting global account search...");
-            // In a strict security setup, you might need a dedicated 'migrations' node 
-            // that is publicly readable to find where your account moved to.
         }
     });
 })();
 </script>
-
-
 </body>
 </html>
