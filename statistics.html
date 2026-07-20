@@ -1914,224 +1914,222 @@ function executeConfirmedAction() {
     background-color: #005ecb;
 }
 </style>
-
 <script>
-/* ==========================================================================
-   AVANTI LEDGER: CORE DATABASE INTERCEPTOR ENGINE
-   ========================================================================== */
-(function() {
+/* ====================================================================
+   AVANTI LEDGER - FIREBASE RTDB CACHE & INTERCEPTOR ENGINE
+   - Intercepts writes/updates to add/update remote and local timestamps.
+   - Intercepts `once('value')` reads: fetches ONLY the tiny timestamp node first.
+   - Blocks heavy full downloads if local timestamp matches remote timestamp.
+   - Preserves real-time multi-device listeners (`.on()`).
+   ==================================================================== */
+
+(function () {
+    if (typeof firebase === 'undefined' || !firebase.database) {
+        console.warn('Firebase DB SDK not detected prior to interceptor loading.');
+        return;
+    }
+
+    const Ref = firebase.database.Reference;
+    const origSet = Ref.prototype.set;
+    const origUpdate = Ref.prototype.update;
+    const origOnce = Ref.prototype.once;
+    const origOn = Ref.prototype.on;
+
     /**
-     * Checks whether the current remote path's cache has been created 
-     * in localStorage and loaded into the page's runtime memory state.
+     * Helper: Determines whether a Firebase path pertains to avanti_stats
      */
-    function isCacheCreatedAndLoaded() {
-        // 1. Ensure current remote DB path is defined
-        if (typeof REMOTE_DB_PATH === 'undefined' || !REMOTE_DB_PATH) {
-            return false;
-        }
-
-        // 2. Verify cache entry exists for this specific path
-        const cacheKey = `AVANTI_LEDGER_LOCAL_MIRROR_${REMOTE_DB_PATH}`;
-        const hasCacheInStorage = localStorage.getItem(cacheKey) !== null;
-
-        // 3. Verify local mirror logic has populated runtime state
-        const isStateLoaded = typeof state !== 'undefined';
-
-        return hasCacheInStorage && isStateLoaded;
+    function isAvantiStatsPath(ref) {
+        const pathStr = ref.toString();
+        return pathStr.includes('avanti_stats');
     }
 
     /**
-     * Selectively manages data reads to optimize bandwidth and catch structural shifts,
-     * while leaving all remote write mutations completely uninhibited.
+     * Helper: Gets the root 'avanti_stats' reference path string
      */
-    function setupAvantiReadInterceptor() {
-        // Poll safely until Firebase core loads
-        if (typeof firebase === 'undefined' || !firebase.database || !firebase.database.Query) {
-            setTimeout(setupAvantiReadInterceptor, 30); 
-            return;
+    function getRootAvantiPath(ref) {
+        const fullUrl = ref.toString();
+        const match = fullUrl.match(/(.*avanti_stats)/);
+        return match ? match[1] : fullUrl;
+    }
+
+    /**
+     * Helper: Gets local cache keys based on path
+     */
+    function getCacheStorageKey(rootPathStr) {
+        return `AV_CACHE_DATA_${encodeURIComponent(rootPathStr)}`;
+    }
+    function getTimestampStorageKey(rootPathStr) {
+        return `AV_CACHE_TIMESTAMP_${encodeURIComponent(rootPathStr)}`;
+    }
+
+    /* -----------------------------------------------------------------
+       1. INTERCEPT WRITES: set() & update()
+       ----------------------------------------------------------------- */
+    Ref.prototype.set = function (value, onComplete) {
+        if (isAvantiStatsPath(this)) {
+            const timestamp = Date.now();
+            const rootPath = getRootAvantiPath(this);
+
+            // Update timestamp locally
+            localStorage.setItem(getTimestampStorageKey(rootPath), timestamp.toString());
+
+            // If updating at or near root, merge timestamp into object
+            if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+                value._lastUpdated = timestamp;
+            }
+
+            // Also update the top-level timestamp node in remote DB
+            const db = this.database;
+            db.refFromURL(rootPath).child('_lastUpdated').set(timestamp);
         }
+        return origSet.call(this, value, onComplete);
+    };
 
-        // Poll safely until the local cache for REMOTE_DB_PATH is created and loaded on page
-        if (!isCacheCreatedAndLoaded()) {
-            setTimeout(setupAvantiReadInterceptor, 30);
-            return;
+    Ref.prototype.update = function (values, onComplete) {
+        if (isAvantiStatsPath(this)) {
+            const timestamp = Date.now();
+            const rootPath = getRootAvantiPath(this);
+
+            localStorage.setItem(getTimestampStorageKey(rootPath), timestamp.toString());
+
+            if (typeof values === 'object' && values !== null) {
+                values['_lastUpdated'] = timestamp;
+            }
+
+            const db = this.database;
+            db.refFromURL(rootPath).child('_lastUpdated').set(timestamp);
         }
+        return origUpdate.call(this, values, onComplete);
+    };
 
-        const Database = firebase.database;
-        const Reference = Database.Reference;
-        const Query = Database.Query;
+    /* -----------------------------------------------------------------
+       2. INTERCEPT READS: once('value')
+       ----------------------------------------------------------------- */
+    Ref.prototype.once = function (eventType, successCallback, failureCallback) {
+        // Only target 'value' reads on avanti_stats paths
+        if (eventType === 'value' && isAvantiStatsPath(this)) {
+            const rootPath = getRootAvantiPath(this);
+            const cacheKey = getCacheStorageKey(rootPath);
+            const tsKey = getTimestampStorageKey(rootPath);
 
-        if (Query.prototype.__avantiReadIntercepted) return;
-        Query.prototype.__avantiReadIntercepted = true;
+            const localTimestamp = localStorage.getItem(tsKey);
+            const cachedDataRaw = localStorage.getItem(cacheKey);
 
-        let isInternalTimestampWrite = false;
+            // Fetch ONLY the remote _lastUpdated timestamp node (Minimal payload: ~10-20 bytes)
+            const db = this.database;
+            const timestampRef = db.refFromURL(rootPath).child('_lastUpdated');
 
-        /**
-         * Validates, decodes, and categorizes paths to isolate Global and Profile branches.
-         */
-        function getLedgerContext(ref) {
-            try {
-                const fullUrl = ref.toString();
-                const urlObj = new URL(fullUrl);
-                const decodedPath = decodeURIComponent(urlObj.pathname).replace(/^\/|\/$/g, '');
-                
-                // Explicitly isolates Profile paths, Global Ledger paths, and Fallback domains
-                const match = decodedPath.match(/(accounts\/[^/]+\/global_ledger\/avanti_stats|accounts\/[^/]+\/profiles\/[^/]+\/avanti_stats|avanti_stats_default)/i);
-                if (!match) return null;
+            return origOnce.call(timestampRef, 'value').then((tsSnap) => {
+                const remoteTimestamp = tsSnap.val();
 
-                const rootPath = match[0];
-                return {
-                    rootPath: rootPath,
-                    localKey: `AV_ts_${rootPath.toLowerCase().replace(/\//g, '_')}`, // Safe unique local tracking token
-                    firebaseTSPath: `${rootPath}/timestamp`
-                };
-            } catch (e) {
-                return null;
-            }
-        }
-
-        /**
-         * Background synchronization utility for validation tokens.
-         */
-        const refreshTimestampToken = (ctx) => {
-            if (isInternalTimestampWrite) return;
-            isInternalTimestampWrite = true;
-            const currentTS = Date.now().toString();
-            localStorage.setItem(ctx.localKey, currentTS);
-            try {
-                Database().ref(ctx.firebaseTSPath).set(currentTS).finally(() => {
-                    isInternalTimestampWrite = false;
-                });
-            } catch(e) { isInternalTimestampWrite = false; }
-        };
-
-        /* --- 1. WRITE COUPLING INTERFACE (100% Unrestricted Operations) --- */
-        const origSet = Reference.prototype.set;
-        Reference.prototype.set = function(...args) {
-            const ctx = getLedgerContext(this);
-            if (ctx && !isInternalTimestampWrite && !this.toString().includes(ctx.firebaseTSPath)) {
-                refreshTimestampToken(ctx);
-            }
-            return origSet.apply(this, args);
-        };
-
-        const origUpdate = Reference.prototype.update;
-        Reference.prototype.update = function(...args) {
-            const ctx = getLedgerContext(this);
-            if (ctx && !isInternalTimestampWrite && !this.toString().includes(ctx.firebaseTSPath)) {
-                refreshTimestampToken(ctx);
-            }
-            return origUpdate.apply(this, args);
-        };
-
-        const origPush = Reference.prototype.push;
-        Reference.prototype.push = function(...args) {
-            const ctx = getLedgerContext(this);
-            if (ctx && !isInternalTimestampWrite) {
-                refreshTimestampToken(ctx);
-            }
-            return origPush.apply(this, args);
-        };
-
-        const origRemove = Reference.prototype.remove;
-        Reference.prototype.remove = function(...args) {
-            const ctx = getLedgerContext(this);
-            if (ctx && !isInternalTimestampWrite && !this.toString().includes(ctx.firebaseTSPath)) {
-                refreshTimestampToken(ctx);
-            }
-            return origRemove.apply(this, args);
-        };
-
-        /* --- 2. READ INTERCEPTION INTERFACE (Selective Gating Engine) --- */
-        const origOnce = Query.prototype.once;
-        Query.prototype.once = function(eventType, successCallback, failureCallback, context) {
-            const ctx = getLedgerContext(this);
-            if (!ctx || this.toString().includes(ctx.firebaseTSPath)) {
-                return origOnce.call(this, eventType, successCallback, failureCallback, context);
-            }
-
-            const currentQuery = this;
-            return new Promise((resolve, reject) => {
-                const tsRef = Database().ref(ctx.firebaseTSPath);
-                origOnce.call(tsRef, 'value').then(snap => {
-                    const remoteTS = snap.val();
-                    const localTS = localStorage.getItem(ctx.localKey);
-
-                    if (remoteTS && localTS && remoteTS === localTS) {
-                        if (successCallback) successCallback(null);
-                        resolve(null);
-                    } else {
-                        if (remoteTS) localStorage.setItem(ctx.localKey, remoteTS);
-                        origOnce.call(currentQuery, eventType, (resSnap) => {
-                            if (successCallback) successCallback(resSnap);
-                            resolve(resSnap);
-                        }, (err) => {
-                            if (failureCallback) failureCallback(err);
-                            reject(err);
-                        }, context);
-                    }
-                }).catch(() => {
-                    origOnce.call(currentQuery, eventType, successCallback, failureCallback, context).then(resolve).catch(reject);
-                });
-            });
-        };
-
-        const origOn = Query.prototype.on;
-        Query.prototype.on = function(eventType, callback, cancelCallbackOrContext, context) {
-            const ctx = getLedgerContext(this);
-            if (!ctx || this.toString().includes(ctx.firebaseTSPath)) {
-                return origOn.call(this, eventType, callback, cancelCallbackOrContext, context);
-            }
-
-            const currentQuery = this;
-            const tsRef = Database().ref(ctx.firebaseTSPath);
-            if (!this._avantiPendingListeners) this._avantiPendingListeners = new Map();
-
-            origOnce.call(tsRef, 'value').then(snap => {
-                const remoteTS = snap.val();
-                const localTS = localStorage.getItem(ctx.localKey);
-
-                if (remoteTS && localTS && remoteTS === localTS) {
-                    const liveWatcher = (tsSnap) => {
-                        const nextRemoteTS = tsSnap.val();
-                        if (nextRemoteTS !== localStorage.getItem(ctx.localKey)) {
-                            if (nextRemoteTS) localStorage.setItem(ctx.localKey, nextRemoteTS);
-                            origOff.call(tsRef, 'value', liveWatcher);
-                            currentQuery._avantiPendingListeners.delete(callback);
-                            origOn.call(currentQuery, eventType, callback, cancelCallbackOrContext, context);
+                // If timestamps match and local cache exists -> BLOCK heavy download, use local cache
+                if (
+                    remoteTimestamp &&
+                    localTimestamp &&
+                    String(remoteTimestamp) === String(localTimestamp) &&
+                    cachedDataRaw
+                ) {
+                    console.log(`⚡ [Avanti Interceptor] Timestamps match (${remoteTimestamp}). Download blocked; serving from local cache.`);
+                    
+                    const cachedVal = JSON.parse(cachedDataRaw);
+                    
+                    // Construct a synthetic DataSnapshot matching Firebase interface
+                    const syntheticSnap = {
+                        val: () => cachedVal,
+                        exists: () => cachedVal !== null,
+                        key: this.key,
+                        ref: this,
+                        forEach: (cb) => {
+                            if (typeof cachedVal === 'object' && cachedVal !== null) {
+                                Object.keys(cachedVal).forEach((k) => {
+                                    cb({
+                                        key: k,
+                                        val: () => cachedVal[k],
+                                        exists: () => cachedVal[k] !== null
+                                    });
+                                });
+                            }
                         }
                     };
-                    this._avantiPendingListeners.set(callback, { watcher: liveWatcher, targetRef: tsRef });
-                    origOn.call(tsRef, 'value', liveWatcher);
+
+                    if (typeof successCallback === 'function') {
+                        successCallback(syntheticSnap);
+                    }
+                    return syntheticSnap;
                 } else {
-                    if (remoteTS) localStorage.setItem(ctx.localKey, remoteTS);
-                    origOn.call(currentQuery, eventType, callback, cancelCallbackOrContext, context);
+                    // Timestamps differ or cache is missing -> Allow original full download
+                    console.log(`🔄 [Avanti Interceptor] Timestamps differ or no cache found. Executing full download from Firebase...`);
+                    return origOnce.call(this, 'value', null, failureCallback).then((fullSnap) => {
+                        const val = fullSnap.val();
+                        if (val !== null) {
+                            localStorage.setItem(cacheKey, JSON.stringify(val));
+                            const newTs = (val && val._lastUpdated) ? val._lastUpdated : Date.now();
+                            localStorage.setItem(tsKey, newTs.toString());
+                        }
+                        if (typeof successCallback === 'function') {
+                            successCallback(fullSnap);
+                        }
+                        return fullSnap;
+                    });
                 }
-            }).catch(() => {
-                origOn.call(currentQuery, eventType, callback, cancelCallbackOrContext, context);
+            }).catch((err) => {
+                // Network failure or fallback -> Serve cached data if available
+                if (cachedDataRaw) {
+                    console.warn(`⚠️ [Avanti Interceptor] Network check failed. Serving offline fallback cache.`, err);
+                    const cachedVal = JSON.parse(cachedDataRaw);
+                    const fallbackSnap = {
+                        val: () => cachedVal,
+                        exists: () => cachedVal !== null,
+                        key: this.key,
+                        ref: this
+                    };
+                    if (typeof successCallback === 'function') successCallback(fallbackSnap);
+                    return fallbackSnap;
+                }
+                throw err;
             });
-            return callback;
-        };
+        }
 
-        const origOff = Query.prototype.off;
-        Query.prototype.off = function(eventType, callback, context) {
-            if (callback && this._avantiPendingListeners && this._avantiPendingListeners.has(callback)) {
-                const pending = this._avantiPendingListeners.get(callback);
-                origOff.call(pending.targetRef, 'value', pending.watcher);
-                this._avantiPendingListeners.delete(callback);
-                return;
-            }
-            return origOff.call(this, eventType, callback, context);
-        };
-    }
+        return origOnce.apply(this, arguments);
+    };
 
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', setupAvantiReadInterceptor);
-    } else {
-        setupAvantiReadInterceptor();
-    }
+    /* -----------------------------------------------------------------
+       3. INTERCEPT REALTIME LISTENERS: on()
+       ----------------------------------------------------------------- */
+    Ref.prototype.on = function (eventType, callback, cancelCallbackOrContext, context) {
+        if (isAvantiStatsPath(this)) {
+            const rootPath = getRootAvantiPath(this);
+            const cacheKey = getCacheStorageKey(rootPath);
+            const tsKey = getTimestampStorageKey(rootPath);
+
+            // Wrap original callback to keep cache updated during real-time multi-device sessions
+            const wrappedCallback = (snap) => {
+                if (snap && snap.exists()) {
+                    const val = snap.val();
+                    const newTs = (val && val._lastUpdated) ? val._lastUpdated : Date.now();
+                    
+                    // Update cache silently in background
+                    localStorage.setItem(tsKey, newTs.toString());
+                    if (eventType === 'value') {
+                        localStorage.setItem(cacheKey, JSON.stringify(val));
+                    }
+                }
+                if (typeof callback === 'function') {
+                    callback(snap);
+                }
+            };
+
+            return origOn.call(this, eventType, wrappedCallback, cancelCallbackOrContext, context);
+        }
+
+        return origOn.apply(this, arguments);
+    };
+
+    console.log("🚀 [Avanti Ledger] Firebase Bandwidth Interceptor Initialized Successfully.");
 })();
 </script>
+
+
 
 <script>
 /* =======================================================
@@ -2700,6 +2698,8 @@ function renderAll(){
     renderTable();
     renderExpensesIncomes();
     renderTotals();
+    
+
     const dd = document.getElementById('moreDropdown');
     if(dd) dd.classList.remove('active');
 }
@@ -6473,8 +6473,7 @@ function getCacheKey(){
     // Grabs global path if available, mapping exactly to the active user
     const dbPath = typeof REMOTE_DB_PATH !== 'undefined' ? REMOTE_DB_PATH : "default_db";
 
-    return `AVANTI_LEDGER_LOCAL_MIRROR_${dbPath}`;
-
+    return `AVANTI_LEDGER_LOCAL_MIRROR_${accountKey}_${username}_${dbPath}`;
 }
 
 /* =========================================================
