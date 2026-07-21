@@ -191,9 +191,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600&display=swap" rel="stylesheet">
 <body class="font-sans antialiased select-none bg-ios-bg text-black">
   
-  <!-- BRAND TOP FIXED HEADER -->
   <header class="fixed top-0 left-0 right-0 z-50 flex h-16 w-full items-center justify-between px-4 shadow-sm backdrop-blur-md transition-all duration-300 border-b border-black/5" style="background-color: #3f72af;">
-    <!-- Left Section: Logo & Branding -->
     <div class="flex items-center ">
       <img 
         src="https://ik.imagekit.io/3mtmeexff/IMG_8590_E6Ai7mKZx.jpeg?" 
@@ -205,13 +203,8 @@
       </h1>
     </div>
 
-    <!-- Center Section: Navigation (Hidden on Mobile) -->
-  
-
-    <!-- Right Section: Actions / Profile -->
     <div class="flex items-center gap-4">
       
-      <!-- User Profile Dropdown Trigger -->
       <div class="h-8 w-8 cursor-pointer rounded-full bg-blue-300/30 ring-2 ring-white/50 transition-transform hover:scale-105">
         <div class="flex h-full w-full items-center justify-center text-xs font-bold text-white">AV</div>
       </div>
@@ -220,18 +213,12 @@
 
  
 
-  <!-- ROOT INTERFACE CONTAINER -->
-  <!-- FIXED: Added pt-20 (clear top header), pb-28 (clear bottom nav), and px-4 for uniform side margins -->
   <div id="root" class="min-h-screen flex flex-col justify-between pb-28 px-4 max-w-md mx-auto pt-20">
   <h4 class="flex items-center gap-2 text-4xl font-semibold tracking-tight text-gray-900 mb-5 mt-2">
                         <svg class="text-[#3f72af]" xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
                         Dashboard
                     </h4>
 
-    <!-- USER APP HEADER -->
- 
-
-    <!-- WEEK PICKER -->
     <div class="w-full p-1.5 rounded-ios bg-ios-card border border-black/5 flex items-center justify-between mb-4 shadow-sm">
         <button id="prev-week-btn" class="w-9 h-9 flex items-center justify-center rounded-lg text-[#3f72af] hover:bg-black/5 active:scale-90 transition-transform">
             <i class="fas fa-chevron-left text-sm"></i>
@@ -247,7 +234,6 @@
 
     <div id="unbalanced-alert-container" class="mb-5"></div>
 
-    <!-- STREAK TRACKER -->
     <section class="w-full p-4 rounded-ios-lg bg-ios-card border border-black/5 mb-5 flex flex-col space-y-3.5 shadow-sm">
         <div class="flex items-center justify-between">
             <div class="flex items-center space-x-2">
@@ -297,9 +283,7 @@
         </div>
     </section>
 
-    <!-- METRICS CAROUSEL -->
     <div class="w-full mb-6">
-        <!-- FIXED: Removed negative margins (-mx-4) to contain cards strictly within screen padding limits -->
         <div id="metrics-carousel" class="px-0 overflow-x-auto flex space-x-4 no-scrollbar snap-x snap-mandatory">
 
 <div class="snap-start shrink-0 w-full p-5 rounded-xl bg-gradient-to-br from-blue-900 via-indigo-950 to-slate-950 border border-blue-800/40 flex flex-col justify-between h-56 relative overflow-hidden shadow-xl cursor-pointer transition-all duration-300 hover:border-blue-600/50" onclick="window.location.href = 'sales-report.html'">
@@ -335,8 +319,7 @@
 </div>
 
             
-            <!-- FIXED: Changed card widths to w-[280px] to keep snapping layout uniform and eliminate browser overflow layouts -->
-        <div class="snap-start shrink-0 w-full p-5 rounded-xl bg-gradient-to-br from-emerald-900 via-teal-950 to-slate-950 border border-emerald-800/40 flex flex-col justify-between h-56 relative overflow-hidden shadow-xl cursor-pointer transition-all duration-300 hover:border-emerald-600/50" onclick="window.location.href = 'inventory-report.html'">
+            <div class="snap-start shrink-0 w-full p-5 rounded-xl bg-gradient-to-br from-emerald-900 via-teal-950 to-slate-950 border border-emerald-800/40 flex flex-col justify-between h-56 relative overflow-hidden shadow-xl cursor-pointer transition-all duration-300 hover:border-emerald-600/50" onclick="window.location.href = 'inventory-report.html'">
     <div class="absolute -right-4 -top-4 w-28 h-28 bg-emerald-400/10 rounded-full blur-3xl"></div>
     
     <div class="flex justify-between items-start relative z-10">
@@ -377,7 +360,6 @@
         </div>
     </div>
 
-    <!-- CHARTS SECTION -->
     <div class="flex flex-col space-y-5">
         <div class="w-full p-4 rounded-ios-lg bg-ios-card border border-black/5 shadow-sm">
             <div class="flex items-center justify-between mb-4 pb-2 border-b border-black/5">
@@ -423,7 +405,6 @@
         </div>
     </div>
 
-    <!-- HIGH VALUE ACTIONS -->
     <section class="mt-6 w-full">
         <div class="flex items-center justify-between mb-3 px-1">
             <h3 class="text-xs font-bold uppercase tracking-wider text-ios-text-secondary">Top Weekly Transactions</h3>
@@ -439,8 +420,7 @@
     
   </div>
 
-  <!-- FIXED BOTTOM NAVIGATION BAR -->
-<nav style="
+  <nav style="
     position: fixed; 
     bottom: 0; 
     left: 0; 
@@ -506,7 +486,6 @@ padding-bottom: env(safe-area-inset-bottom, 20px);
     </a>
 </nav>
 
-  <!-- ALERTS & OVERLAYS SYSTEM -->
   <div id="error-overlay" class="fixed bottom-24 left-4 right-4 p-3.5 bg-ios-red/90 border border-ios-red rounded-ios shadow-md z-50 hidden text-white backdrop-blur-md">
       <div class="flex items-center space-x-2">
           <i class="fas fa-exclamation-circle text-base"></i>
@@ -564,6 +543,9 @@ padding-bottom: env(safe-area-inset-bottom, 20px);
         // Dynamic Local Cache Buffers
         let cachedRawStats = {};
         let cachedRawEmpties = {};
+        let activeDateListeners = {};
+        let activeStatsPath = null;
+        let activeStatsCacheKey = null;
 
         let lineChartInstance = null;
         let doughnutChartInstance = null;
@@ -835,9 +817,42 @@ padding-bottom: env(safe-area-inset-bottom, 20px);
             };
         };
 
+        // --- SINGLE-DATE TARGETED SYNC ENGINE ---
+        // Attaches listeners strictly to needed date nodes (one date at a time) to eliminate heavy dataset downloads
+        const syncSelectedWeekDates = () => {
+            if (!activeStatsPath) return;
+
+            const currentWeekData = getWeekData(currentWeekStartDate);
+            const lastWeekStartDate = new Date(currentWeekStartDate);
+            lastWeekStartDate.setDate(lastWeekStartDate.getDate() - 7);
+            const lastWeekData = getWeekData(lastWeekStartDate);
+
+            const requiredDates = [...currentWeekData.map(d => d.dateKey), ...lastWeekData.map(d => d.dateKey)];
+
+            requiredDates.forEach(dateKey => {
+                if (!activeDateListeners[dateKey]) {
+                    const singleDateRef = database.ref(`${activeStatsPath}/${dateKey}`);
+                    activeDateListeners[dateKey] = singleDateRef;
+
+                    singleDateRef.on('value', (snap) => {
+                        if (snap.exists()) {
+                            cachedRawStats[dateKey] = snap.val();
+                        } else {
+                            delete cachedRawStats[dateKey];
+                        }
+
+                        if (activeStatsCacheKey) {
+                            localStorage.setItem(activeStatsCacheKey, JSON.stringify(cachedRawStats));
+                        }
+                        
+                        processAndRenderData(cachedRawStats, cachedRawEmpties);
+                    });
+                }
+            });
+        };
+
         // --- PIPELINE DATA LISTENER SETUP (SILENT REALTIME SYNC) ---
         const initializeRealtimeEngine = async (hasCache) => {
-            // ONLY display the loading screen if we don't have cached data to show
             if (!hasCache) {
                 document.getElementById('loading-overlay').style.display = 'flex';
             }
@@ -859,23 +874,19 @@ padding-bottom: env(safe-area-inset-bottom, 20px);
                 userDetails.profileUrl = profileUrl;
 
                 const { statsPath, emptiesPath } = await getFirebasePaths(accountKey, username);
-                const statsCacheKey = `AV_cache_stats_${accountKey}`;
+                activeStatsPath = statsPath;
+                activeStatsCacheKey = `AV_cache_stats_${accountKey}`;
                 const emptiesCacheKey = `AV_cache_empties_${accountKey}`;
 
-                // Establish continuous sync context
-                database.ref(statsPath).on('value', (statsSnap) => {
-                    database.ref(emptiesPath).on('value', (emptiesSnap) => {
-                        cachedRawStats = statsSnap.val() || {};
-                        cachedRawEmpties = emptiesSnap.val() || {};
-                        
-                        // Silently commit fresh mutations down into hot storage
-                        localStorage.setItem(statsCacheKey, JSON.stringify(cachedRawStats));
-                        localStorage.setItem(emptiesCacheKey, JSON.stringify(cachedRawEmpties));
-                        
-                        // Dynamically updates UI without disruptions
-                        processAndRenderData(cachedRawStats, cachedRawEmpties);
-                    });
+                // Sync empties tracking configuration
+                database.ref(emptiesPath).on('value', (emptiesSnap) => {
+                    cachedRawEmpties = emptiesSnap.val() || {};
+                    localStorage.setItem(emptiesCacheKey, JSON.stringify(cachedRawEmpties));
+                    processAndRenderData(cachedRawStats, cachedRawEmpties);
                 });
+
+                // Trigger single-date targeted synchronization
+                syncSelectedWeekDates();
 
             } catch (err) {
                 console.error("Critical Execution Fault:", err);
@@ -1245,11 +1256,13 @@ padding-bottom: env(safe-area-inset-bottom, 20px);
         // --- CALENDAR SELECTION EVENT LISTENERS ---
         document.getElementById('prev-week-btn').addEventListener('click', () => {
             currentWeekStartDate.setDate(currentWeekStartDate.getDate() - 7);
+            syncSelectedWeekDates();
             processAndRenderData(cachedRawStats, cachedRawEmpties);
         });
         
         document.getElementById('next-week-btn').addEventListener('click', () => {
             currentWeekStartDate.setDate(currentWeekStartDate.getDate() + 7);
+            syncSelectedWeekDates();
             processAndRenderData(cachedRawStats, cachedRawEmpties);
         });
         
@@ -1436,7 +1449,7 @@ padding-bottom: env(safe-area-inset-bottom, 20px);
             <i id="av-source-ico" class="fas fa-mobile-alt av-icon active"></i>
             <div id="av-source-txt" class="av-device-name">Current</div>
         </div>
-        <div class="av-sync-path"><div class="av-pulse" id="av-stream-pulse"></div></div>
+        <div class="av-sync-path"><div class="av-stream-pulse" id="av-stream-pulse"></div></div>
         <div class="av-device" id="av-node-trg">
             <i id="av-target-ico" class="fas fa-mobile-alt av-icon"></i>
             <div id="av-target-txt" class="av-device-name">Remote</div>
@@ -1556,7 +1569,7 @@ padding-bottom: env(safe-area-inset-bottom, 20px);
                 btn.style.pointerEvents = "none";
                 
                 // Acceleration effect
-                pulse.style.animationDuration = "0.5s";
+                if (pulse) pulse.style.animationDuration = "0.5s";
 
                 await currentRequestData.db.ref(`${path}/status`).set('approved');
                 
@@ -1579,5 +1592,6 @@ padding-bottom: env(safe-area-inset-bottom, 20px);
     bootstrapDownloadListener();
 })();
 </script>
+
 </body>
 </html>
