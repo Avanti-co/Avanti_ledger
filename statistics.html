@@ -823,7 +823,92 @@ padding-bottom: env(safe-area-inset-bottom, 50px);
 
 
     </div>
+<div id="download"class=" ">
 
+</div>
+
+<script>
+(function() {
+    let activeTimestampRef = null;
+    let lastMonitoredDate = null;
+
+    /**
+     * Helper to retrieve the '_lastUpdated' timestamp from localStorage
+     * for a specific dateKey.
+     */
+    function getLocalTimestamp(dateKey) {
+        try {
+            const accountKey = localStorage.getItem("AV_ledger_account_key") || "default_acc";
+            const username = localStorage.getItem("AV_ledger_username") || "default_user";
+            const dbPath = typeof REMOTE_DB_PATH !== 'undefined' ? REMOTE_DB_PATH : "default_db";
+            const cacheKey = `AVANTI_LEDGER_LOCAL_MIRROR_${accountKey}_${username}_${dbPath}`;
+
+            const cached = JSON.parse(localStorage.getItem(cacheKey) || "{}");
+            if (cached.dates && cached.dates[dateKey]) {
+                return cached.dates[dateKey]._lastUpdated || 0;
+            }
+        } catch (err) {
+            console.error("Timestamp Monitor: Local storage parse error", err);
+        }
+        return 0;
+    }
+
+    /**
+     * Attaches a lightweight real-time listener strictly to the 
+     * current date's '_lastUpdated' node on Firebase.
+     */
+    function syncDateTimestampListener() {
+        if (typeof firebaseDB === 'undefined' || !firebaseDB || !isOnline) return;
+        if (typeof REMOTE_DB_PATH === 'undefined' || REMOTE_DB_PATH === 'avanti_stats_default') return;
+        if (typeof state === 'undefined' || !state.currentDate) return;
+
+        const currentDate = state.currentDate;
+
+        // Skip re-binding if we are already listening to this date
+        if (lastMonitoredDate === currentDate && activeTimestampRef) return;
+
+        // Detach previous listener when switching dates to prevent memory leaks
+        if (activeTimestampRef) {
+            activeTimestampRef.off();
+            activeTimestampRef = null;
+        }
+
+        lastMonitoredDate = currentDate;
+        activeTimestampRef = firebaseDB.ref(`${REMOTE_DB_PATH}/dates/${currentDate}/_lastUpdated`);
+
+        // Real-time listener for the timestamp string/number
+        activeTimestampRef.on('value', (snapshot) => {
+            const remoteTimestamp = snapshot.val() || 0;
+            const localTimestamp = getLocalTimestamp(currentDate);
+
+            // Compare remote vs local timestamp
+            if (remoteTimestamp > 0 && remoteTimestamp !== localTimestamp) {
+                
+
+                if (typeof refreshCurrentDate === 'function') {
+                    refreshCurrentDate();
+                } else if (typeof fetchDateData === 'function') {
+                    fetchDateData(currentDate);
+                }
+            }
+        });
+    }
+
+    // Monitor date switches every 500ms to automatically update the listener target
+    setInterval(() => {
+        if (typeof state !== 'undefined' && state.currentDate && state.currentDate !== lastMonitoredDate) {
+            syncDateTimestampListener();
+        }
+    }, 500);
+
+    // Initialize listener when DOM is ready
+    document.addEventListener("DOMContentLoaded", () => {
+        // Short delay to allow Firebase and state setup to initialize first
+        setTimeout(syncDateTimestampListener, 1000);
+    });
+
+})();
+</script>
 
 
 
@@ -2287,72 +2372,38 @@ async function checkProfileAndSyncSettings() {
  * Sets up Firebase listeners for the Avanti ledger data.
  * Ensures that if no current date is set in the DB, it defaults to today.
  */
-function setupDataListener() {
-    // 1. Guard clauses for initialization safety
+/**
+ * Replaces real-time listeners with a single-date fetch logic.
+ */
+async function setupDataListener() {
     if (!firebaseDB || REMOTE_DB_PATH === DEFAULT_FALLBACK_PATH || dataListenerActive) {
         return;
     }
 
-    // 2. Cleanup existing listeners to prevent memory leaks/duplicate triggers
-    if (currentDataRef) {
-        currentDataRef.off();
-    }
-
-    currentDataRef = firebaseDB.ref(REMOTE_DB_PATH);
     dataListenerActive = true;
 
-    // 3. Listen to the 'dates' collection for real-time ledger updates
-    const datesRef = currentDataRef.child('dates');
+    // Fetch currentDate setting once
+    try {
+        const currentSnap = await firebaseDB.ref(`${REMOTE_DB_PATH}/currentDate`).once('value');
+        let remoteDate = currentSnap.val();
 
-    // Handle new date entries added to the database
-    datesRef.on('child_added', snap => {
-        const dateKey = snap.key;
-        state.dates[dateKey] = snap.val();
-    });
+        if (!remoteDate) {
+            remoteDate = new Date().toISOString().split('T')[0];
+            firebaseDB.ref(`${REMOTE_DB_PATH}/currentDate`).set(remoteDate);
+        }
 
-    // Handle updates to existing ledger entries
-    datesRef.on('child_changed', snap => {
-        const dateKey = snap.key;
-        state.dates[dateKey] = snap.val();
+        state.currentDate = remoteDate;
+        ensureDateExists(state.currentDate);
         
-        // Only re-render the UI if the modified date is the one currently being viewed
-        if (dateKey === state.currentDate) {
-            renderTable();
-            renderExpensesIncomes();
-            updateTotalsNumbers();
-        }
-    });
+        // Fetch only the current active date from Firebase
+        await fetchDateData(state.currentDate);
 
-    // Handle deletion of date entries
-    datesRef.on('child_removed', snap => {
-        delete state.dates[snap.key];
-        if (snap.key === state.currentDate) {
-            renderAll();
-        }
-    });
-
-    // 4. Current Selected Date Listener with Auto-Initialization
-    currentDataRef.child('currentDate').on('value', snap => {
-        let newDate = snap.val();
-
-        // LOGIC: If current date doesn’t exist in DB, set it as today's date (YYYY-MM-DD)
-        if (!newDate) {
-            newDate = new Date().toISOString().split('T')[0];
-            
-            // Persist this default to the remote database immediately
-            currentDataRef.child('currentDate').set(newDate);
-            
-            // Ensure the data structure for this specific date exists in the 'dates' node
-            ensureDateExists(newDate);
-        }
-
-        // Trigger UI update only if the date has changed or was just initialized
-        if (newDate !== state.currentDate) {
-            state.currentDate = newDate;
-            ensureDateExists(state.currentDate);
-            renderAll();
-        }
-    });
+    } catch (e) {
+        
+        if (!state.currentDate) state.currentDate = todayKey();
+        ensureDateExists(state.currentDate);
+        renderAll();
+    }
 }
 
 async function loadState(){
@@ -3448,58 +3499,45 @@ function saveDateImmediately(dateKey){
 } 
 
 function propagateNameAcrossDates(itemId, newName){
-
     const updates = {};
 
-    for(let i=0;i<=state.futureWindowDays;i++){
-
-        const dKey = addDays(state.currentDate,i);
+    for(let i=0; i <= state.futureWindowDays; i++){
+        const dKey = addDays(state.currentDate, i);
         const dateData = state.dates[dKey];
 
-        if(!dateData) continue;
-        if(dateData.balanced === true) continue;
+        // Skip if locally present and marked balanced
+        if(dateData && dateData.balanced === true) continue;
 
-        if(dateData.items && dateData.items[itemId]){
-
+        // Update local state if date is in memory
+        if(dateData && dateData.items && dateData.items[itemId]){
             dateData.items[itemId].name = newName;
-
-            updates[
-                `dates/${dKey}/items/${itemId}/name`
-            ] = newName;
         }
+
+        // ALWAYS send payload to Firebase path
+        updates[`dates/${dKey}/items/${itemId}/name`] = newName;
     }
 
     if(firebaseDB && isOnline && Object.keys(updates).length){
         firebaseDB.ref(REMOTE_DB_PATH).update(updates);
     }
 }
-/**
- * Propagates price changes forward from the current date.
- */
-function propagatePriceToFuture(itemId,newPrice){
 
+function propagatePriceToFuture(itemId, newPrice){
     const updates = {};
+    const price = Number(newPrice);
 
-    for(let i=0;i<=state.futureWindowDays;i++){
-
-        const dKey = addDays(state.currentDate,i);
-
-        ensureDateExists(dKey);
-
+    for(let i=0; i <= state.futureWindowDays; i++){
+        const dKey = addDays(state.currentDate, i);
         const dateData = state.dates[dKey];
 
-        if(dateData.balanced === true) continue;
+        if(dateData && dateData.balanced === true) continue;
 
-        if(dateData.items && dateData.items[itemId]){
-
-            const price = Number(newPrice);
-
+        if(dateData && dateData.items && dateData.items[itemId]){
             dateData.items[itemId].price = price;
-
-            updates[
-                `dates/${dKey}/items/${itemId}/price`
-            ] = price;
         }
+
+        // ALWAYS send payload to Firebase path
+        updates[`dates/${dKey}/items/${itemId}/price`] = price;
     }
 
     if(firebaseDB && isOnline && Object.keys(updates).length){
@@ -3507,57 +3545,40 @@ function propagatePriceToFuture(itemId,newPrice){
     }
 }
 
-/**
- * Propagates closing stock to the immediate next day's opening stock.
- */
 function propagateClosingToNext(itemId){
-
     const thisDate = state.currentDate;
-    const nextDate = addDays(thisDate,1);
+    const nextDate = addDays(thisDate, 1);
 
-    const thisItem =
-        state.dates[thisDate]?.items?.[itemId];
-
+    const thisItem = state.dates[thisDate]?.items?.[itemId];
     if(!thisItem) return;
 
-    ensureDateExists(nextDate);
-
     const nextDateData = state.dates[nextDate];
-
-    if(nextDateData.balanced === true){
-        return;
-    }
+    if(nextDateData && nextDateData.balanced === true) return;
 
     const updates = {};
+    const closingVal = Number(thisItem.closing || 0);
 
-    if(!nextDateData.items[itemId]){
-
-        const copy = makeItem(
-            itemId,
-            thisItem.name,
-            thisItem.closing,
-            0,
-            thisItem.price,
-            0,
-            thisItem.position || 0
-        );
-
-        copy.batches = clone(thisItem.batches || []);
-
-        nextDateData.items[itemId] = copy;
-
-        updates[
-            `dates/${nextDate}/items/${itemId}`
-        ] = copy;
-
-    }else{
-
-        nextDateData.items[itemId].opening =
-            Number(thisItem.closing || 0);
-
-        updates[
-            `dates/${nextDate}/items/${itemId}/opening`
-        ] = Number(thisItem.closing || 0);
+    if(nextDateData){
+        if(!nextDateData.items[itemId]){
+            const copy = makeItem(
+                itemId,
+                thisItem.name,
+                closingVal,
+                0,
+                thisItem.price,
+                0,
+                thisItem.position || 0
+            );
+            copy.batches = clone(thisItem.batches || []);
+            nextDateData.items[itemId] = copy;
+            updates[`dates/${nextDate}/items/${itemId}`] = copy;
+        } else {
+            nextDateData.items[itemId].opening = closingVal;
+            updates[`dates/${nextDate}/items/${itemId}/opening`] = closingVal;
+        }
+    } else {
+        // If nextDate isn't loaded in local state yet, update Firebase directly
+        updates[`dates/${nextDate}/items/${itemId}/opening`] = closingVal;
     }
 
     if(firebaseDB && isOnline){
@@ -3565,27 +3586,16 @@ function propagateClosingToNext(itemId){
     }
 }
 
-/**
- * Propagates item creation (add new row) to future dates.
- */
 function propagateItemToFuture(item, fromDateKey){
-
     const updates = {};
 
-    for(let i=1;i<=state.futureWindowDays;i++){
-
-        const dKey = addDays(fromDateKey,i);
-
-        ensureDateExists(dKey);
-
+    for(let i=1; i <= state.futureWindowDays; i++){
+        const dKey = addDays(fromDateKey, i);
         const dateData = state.dates[dKey];
 
-        if(dateData.balanced === true){
-            continue;
-        }
+        if(dateData && dateData.balanced === true) continue;
 
-        if(!dateData.items[item.id]){
-
+        if(!dateData || !dateData.items || !dateData.items[item.id]){
             const copy = makeItem(
                 item.id,
                 item.name,
@@ -3595,14 +3605,13 @@ function propagateItemToFuture(item, fromDateKey){
                 0,
                 item.position || 0
             );
-
             copy.batches = clone(item.batches || []);
 
-            dateData.items[item.id] = copy;
+            if(dateData && dateData.items) {
+                dateData.items[item.id] = copy;
+            }
 
-            updates[
-                `dates/${dKey}/items/${item.id}`
-            ] = copy;
+            updates[`dates/${dKey}/items/${item.id}`] = copy;
         }
     }
 
@@ -3660,29 +3669,103 @@ renderAll()
 }
 
 /* ---------- Date Navigation ---------- */
-function prevDate(){
-    // 1. Calculate the new date locally
+
+
+/* ---------- Progress Indicator Helper ---------- */
+function getOrCreateProgressElement() {
+    let el = document.getElementById('tableProgressStatus');
+    if (!el) {
+        const table = document.getElementById('download');
+        if (table && table.parentNode) {
+            el = document.createElement('div');
+            el.id = 'tableProgressStatus';
+            el.style.cssText = 'text-align: center; font-size: 15px; color: #007aff; margin-top: 10px; font-weight: 500; transition: opacity 0.3s;';
+            table.parentNode.insertBefore(el, table.nextSibling);
+        }
+    }
+    return el;
+}
+
+/* ---------- Single Date Downloader & Manual Refresh ---------- */
+
+/**
+ * Downloads data strictly for the requested dateKey from Firebase once.
+ */
+async function fetchDateData(dateKey) {
+    if (!firebaseDB || !isOnline || REMOTE_DB_PATH === DEFAULT_FALLBACK_PATH) return;
+
+    const progressEl = getOrCreateProgressElement();
+    if (progressEl) {
+        progressEl.style.color = '#007aff';
+        progressEl.textContent = `Downloading ledger data for ${formatDateLabel(dateKey)}...`;
+    }
+
+    try {
+        const dateRef = firebaseDB.ref(`${REMOTE_DB_PATH}/dates/${dateKey}`);
+        const snap = await dateRef.once('value');
+        const dateVal = snap.val();
+
+        if (dateVal) {
+            state.dates[dateKey] = dateVal;
+        } else {
+            ensureDateExists(dateKey);
+        }
+
+        // Maintain local mirror cache compatibility
+        if (typeof stampDate === 'function') stampDate(dateKey);
+        if (typeof saveLocalMirror === 'function') saveLocalMirror();
+
+        if (progressEl) {
+            progressEl.style.color = '#34c759';
+            progressEl.textContent = `Data updated for ${formatDateLabel(dateKey)}.`;
+            setTimeout(() => {
+                if (progressEl && progressEl.textContent.includes('Data updated')) {
+                    progressEl.textContent = '';
+                }
+            }, 2500);
+        }
+    } catch (err) {
+        console.error("Firebase fetch failed for date:", dateKey, err);
+        if (progressEl) {
+            progressEl.style.color = '#ff3b30';
+            progressEl.textContent = "Error downloading data from Firebase.";
+        }
+    } finally {
+        renderAll();
+    }
+}
+
+/**
+ * Button handler for manual refresh.
+ */
+async function refreshCurrentDate() {
+    if (state.currentDate) {
+        await fetchDateData(state.currentDate);
+    }
+}
+
+
+async function prevDate(){
     state.currentDate = addDays(state.currentDate, -1);
     
-    // 2. Ensure the data structure exists for the new date
+    // 1. Fetch from Firebase FIRST
+    await fetchDateData(state.currentDate);
+    
+    // 2. Ensure shape & save only after fetch completes
     ensureDateExists(state.currentDate);
-    
-    // 3. Sync to Firebase (updates 'currentDate' and the date's object)
     saveState(); 
-    
-    // Note: renderAll() is handled by the real-time listener in setupDataListener,
-    // but calling it here ensures the UI feels snappy even on slow connections.
     renderAll(); 
 }
 
-function nextDate(){
+async function nextDate(){
     const oldDate = state.currentDate;
-    
-    // 1. Calculate the new date locally
     state.currentDate = addDays(state.currentDate, 1);
-    ensureDateExists(state.currentDate);
     
-    // 2. Bootstrap data if the next date is empty (Existing Logic)
+    // 1. Fetch from Firebase FIRST
+    await fetchDateData(state.currentDate);
+    
+    // 2. Fall back to local carry-over ONLY if Firebase returned an empty date
+    ensureDateExists(state.currentDate);
     if(!state.dates[state.currentDate] || Object.keys(state.dates[state.currentDate].items || {}).length === 0){
         const prev = state.dates[oldDate];
         if(prev){
@@ -3698,12 +3781,10 @@ function nextDate(){
         }
     }
     
-    // 3. Sync to Firebase (Corrected the 'savaState' typo)
     saveState();
-    
-    // 4. Update UI
     renderAll();
 }
+
 
 
 /* ---------- Balancing Switch ---------- */
@@ -6385,58 +6466,36 @@ function setupInterceptors() {
    6. FIREBASE SYNC & CONFLICT RESOLUTION
    - Audits Firebase data and prevents stale overwrites
 ========================================================= */
+/* =========================================================
+   6. FIREBASE SYNC & CONFLICT RESOLUTION (NON-REALTIME)
+========================================================= */
 function setupConflictResolution() {
     if (typeof window.setupDataListener === 'function') {
         const origSetupDataListener = window.setupDataListener;
-        window.setupDataListener = function() {
-            // Execute main listener first so it can bind its native events
-            origSetupDataListener.apply(this, arguments);
+        window.setupDataListener = async function() {
+            await origSetupDataListener.apply(this, arguments);
 
             if (typeof firebaseDB === 'undefined' || !firebaseDB || typeof REMOTE_DB_PATH === 'undefined' || REMOTE_DB_PATH === 'avanti_stats_default') return;
 
-            // This 'value' listener runs directly *after* child events, allowing us to inspect 
-            // the final state and revert any stale overrides the main code blindly accepted.
-            firebaseDB.ref(REMOTE_DB_PATH).child('dates').on('value', snap => {
-                const remoteDates = snap.val() || {};
+            // Audit current date conflict resolution once
+            if (state && state.currentDate) {
+                const dateKey = state.currentDate;
+                const snap = await firebaseDB.ref(`${REMOTE_DB_PATH}/dates/${dateKey}`).once('value');
+                const rDate = snap.val();
+
                 const CACHE_KEY = getCacheKey();
                 const cachedMirror = JSON.parse(localStorage.getItem(CACHE_KEY) || "{}");
-                const cachedDates = cachedMirror.dates || {};
-                
-                let conflictResolved = false;
+                const lDate = (cachedMirror.dates || {})[dateKey];
 
-                for (const dateKey in remoteDates) {
-                    const rDate = remoteDates[dateKey];
-                    const lDate = cachedDates[dateKey];
+                const rTime = rDate ? (rDate._lastUpdated || 0) : 0;
+                const lTime = lDate ? (lDate._lastUpdated || 0) : 0;
 
-                    const rTime = rDate._lastUpdated || 0;
-                    const lTime = lDate ? (lDate._lastUpdated || 0) : 0;
-
-                    // LOGIC: If Local timestamp is strictly greater, reject Firebase's stale overwrite
-                    if (lDate && lTime > rTime) {
-                        
-                        
-                        // Restore the newer local state in memory
-                        if(typeof state !== 'undefined') state.dates[dateKey] = lDate;
-                        
-                        // Push corrected, newer state up to Firebase
-                        firebaseDB.ref(`${REMOTE_DB_PATH}/dates/${dateKey}`).update(lDate);
-                        conflictResolved = true;
-                    } else {
-                        // Remote is newer or equal, safe to accept into our cache mirror
-                        cachedDates[dateKey] = rDate;
-                    }
+                if (lDate && lTime > rTime) {
+                    state.dates[dateKey] = lDate;
+                    firebaseDB.ref(`${REMOTE_DB_PATH}/dates/${dateKey}`).update(lDate);
+                    if (typeof renderAll === 'function') renderAll();
                 }
-
-                // Store confirmed latest data back into LocalStorage
-                cachedMirror.dates = cachedDates;
-                if (typeof state !== 'undefined' && state.currentDate) cachedMirror.currentDate = state.currentDate;
-                localStorage.setItem(CACHE_KEY, JSON.stringify(cachedMirror));
-
-                // Only re-render if we actually reverted a conflict to prevent UI flickering
-                if (conflictResolved && typeof renderAll === 'function') {
-                    renderAll();
-                }
-            });
+            }
         };
     }
 }
@@ -6455,7 +6514,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
 })();
 </script>
-
 <script>
 (function () {
 "use strict";
@@ -6774,8 +6832,6 @@ const timer=setInterval(function(){
 
 })();
 </script>
-
-
 
 
 
