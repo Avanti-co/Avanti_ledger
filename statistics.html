@@ -1401,8 +1401,9 @@ document.getElementById('bottomSheetModal1').classList.remove('show');
     activeActionType = null;
 }
 
-function executeConfirmedAction() {
-    const targetDate = document.getElementById('bottomSheetTargetDate').value;
+async function executeConfirmedAction() {
+    const targetDateInput = document.getElementById('bottomSheetTargetDate');
+    const targetDate = targetDateInput ? targetDateInput.value : null;
     
     if ((activeActionType === 'transfer' || activeActionType === 'duplicate') && !targetDate) {
         alert("Please select a target date.");
@@ -1414,11 +1415,9 @@ function executeConfirmedAction() {
     }
 
     const loggedAction = activeActionType;
-    let sourceDateKey = "unknown date";
+    const sourceDateKey = state.currentDate;
 
-    // Wrapped processing core in a try/catch block to guarantee modal shutdown and log execution
     try {
-        sourceDateKey = state.currentDate;
         if (typeof ensureDateExists === 'function') ensureDateExists(sourceDateKey);
         const sourceData = state.dates[sourceDateKey] || {};
 
@@ -1427,71 +1426,85 @@ function executeConfirmedAction() {
             return JSON.parse(JSON.stringify(obj));
         };
 
-        if (activeActionType === 'transfer') {
-            if (typeof ensureDateExists === 'function') ensureDateExists(targetDate);
-            
-            if (state.dates[targetDate] && state.dates[targetDate].balanced === true) {
+        const updates = {};
+
+        if (loggedAction === 'transfer' || loggedAction === 'duplicate') {
+            // 1. Fetch Target Date directly from Firebase to check if locked/balanced
+            let targetBalanced = false;
+            if (firebaseDB && isOnline && REMOTE_DB_PATH !== DEFAULT_FALLBACK_PATH) {
+                const snap = await firebaseDB.ref(`${REMOTE_DB_PATH}/dates/${targetDate}`).once('value');
+                const targetVal = snap.val();
+                if (targetVal && (targetVal.balanced === true || String(targetVal.balanced).toLowerCase() === 'true')) {
+                    targetBalanced = true;
+                }
+            } else if (state.dates[targetDate] && state.dates[targetDate].balanced) {
+                targetBalanced = true;
+            }
+
+            if (targetBalanced) {
                 alert("Error: The target date is balanced and locked. Action canceled.");
                 closeBottomSheet();
                 return;
             }
 
-            if (!state.dates[targetDate]) state.dates[targetDate] = {};
-            state.dates[targetDate].items = dataClone(sourceData.items || {});
-            state.dates[targetDate].expenses = dataClone(sourceData.expenses || []);
-            state.dates[targetDate].incomes = dataClone(sourceData.incomes || []);
+            // 2. Prepare cloned dataset for Target Date
+            const targetItems = dataClone(sourceData.items || {});
+            const targetExpenses = dataClone(sourceData.expenses || []);
+            const targetIncomes = dataClone(sourceData.incomes || []);
 
-            Object.values(sourceData.items || {}).forEach(item => {
-                item.opening = 0;
-                item.orders = 0;
-                item.closing = 0;
-                item.batches = [];
-            });
-            
-            sourceData.expenses = [];
-            sourceData.incomes = [];
+            // Set payload paths for Firebase
+            updates[`dates/${targetDate}/items`] = targetItems;
+            updates[`dates/${targetDate}/expenses`] = targetExpenses;
+            updates[`dates/${targetDate}/incomes`] = targetIncomes;
 
-        } else if (activeActionType === 'duplicate') {
-            if (typeof ensureDateExists === 'function') ensureDateExists(targetDate);
-
-            if (state.dates[targetDate] && state.dates[targetDate].balanced === true) {
-                alert("Error: The target date is balanced and locked. Action canceled.");
-                closeBottomSheet();
-                return;
+            // Update local memory if target date happens to be currently loaded
+            if (state.dates[targetDate]) {
+                state.dates[targetDate].items = targetItems;
+                state.dates[targetDate].expenses = targetExpenses;
+                state.dates[targetDate].incomes = targetIncomes;
             }
 
-            if (!state.dates[targetDate]) state.dates[targetDate] = {};
-            state.dates[targetDate].items = dataClone(sourceData.items || {});
-            state.dates[targetDate].expenses = dataClone(sourceData.expenses || []);
-            state.dates[targetDate].incomes = dataClone(sourceData.incomes || []);
+            // If Transfer: Reset source page quantities and finance logs
+            if (loggedAction === 'transfer') {
+                Object.values(sourceData.items || {}).forEach(item => {
+                    item.opening = 0;
+                    item.orders = 0;
+                    item.closing = 0;
+                    item.batches = [];
+                });
+                sourceData.expenses = [];
+                sourceData.incomes = [];
 
-        } else if (activeActionType === 'clear') {
+                updates[`dates/${sourceDateKey}`] = sourceData;
+            }
+
+        } else if (loggedAction === 'clear') {
             if (typeof makeEmptyDate === 'function') {
                 state.dates[sourceDateKey] = makeEmptyDate();
             } else {
-                state.dates[sourceDateKey] = { items: {}, expenses: [], incomes: [] };
+                state.dates[sourceDateKey] = { items: {}, expenses: [], incomes: [], balanced: false };
             }
+            updates[`dates/${sourceDateKey}`] = state.dates[sourceDateKey];
         }
 
+        // 3. Write payload directly to Remote Firebase DB
+        if (firebaseDB && isOnline && REMOTE_DB_PATH !== DEFAULT_FALLBACK_PATH && Object.keys(updates).length > 0) {
+            await firebaseDB.ref(REMOTE_DB_PATH).update(updates);
+        }
+
+        // 4. Update local state and UI
         if (typeof saveState === 'function') saveState();
         if (typeof renderAll === 'function') renderAll();
-        
-    } catch(error) {
-        
-    }
 
-    // Modal is safely closed regardless of script dependencies errors
-    closeBottomSheet();
-    
-    // Clear notifications printed to console window
-    if (loggedAction === 'transfer') {
-        console.log(`Success: Data moved from ${sourceDateKey} to ${targetDate}.`);
-    } else if (loggedAction === 'duplicate') {
-        console.log(`Success: Data copied from ${sourceDateKey} to ${targetDate}.`);
-    } else if (loggedAction === 'clear') {
-        console.log(`Success: Cleared all data on ${sourceDateKey}.`);
+        console.log(`Success: ${loggedAction} completed successfully.`);
+
+    } catch (error) {
+        console.error(`Error executing ${loggedAction}:`, error);
+    } finally {
+        closeBottomSheet();
     }
 }
+
 </script>
 
 
@@ -6514,9 +6527,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
 })();
 </script>
-
-
-
 
 </body>
 </html>
